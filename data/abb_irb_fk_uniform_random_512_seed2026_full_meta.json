@@ -1,0 +1,51 @@
+{
+  "robot_name": "ABB_IRB",
+  "robot_model": "IRB 1200-7/0.7",
+  "base_name": "abb_irb_fk_uniform_random_512_seed2026",
+  "created_at": "2026-04-22T20:13:23",
+  "n_samples": 512,
+  "sampling": "uniform random within current ABB_IRB project joint limits",
+  "joint_limits_deg": [
+    [
+      -170.0,
+      170.0
+    ],
+    [
+      -100.0,
+      135.0
+    ],
+    [
+      -200.0,
+      70.0
+    ],
+    [
+      -270.0,
+      270.0
+    ],
+    [
+      -130.0,
+      130.0
+    ],
+    [
+      -180.0,
+      180.0
+    ]
+  ],
+  "theta_offsets_deg": [
+    0.0,
+    -90.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "pose_orientation": "ZYX euler (yaw-pitch-roll) in radians",
+  "units": {
+    "position": "mm",
+    "angles": "deg/rad"
+  },
+  "files": {
+    "csv": "abb_irb_fk_uniform_random_512_seed2026_full.csv",
+    "npz": "abb_irb_fk_uniform_random_512_seed2026_full.npz"
+  }
+}

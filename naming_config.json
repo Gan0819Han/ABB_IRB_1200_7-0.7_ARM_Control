@@ -1,0 +1,11 @@
+{
+  "project_tag": "",
+  "robot_name": "abb_irb",
+  "task_name": "fk",
+  "sampling_name": "uniform_random",
+  "default_split_ratios": [
+    0.7,
+    0.15,
+    0.15
+  ]
+}
