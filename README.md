@@ -939,7 +939,7 @@ cd /path/to/ABB_Arm_Control
 该命令会对 `abb_simplified` 下的全部 `96` 个子空间进行正式训练。
 
 ```powershell
-python -X utf8 train_prediction_models.py --segment_profile abb_simplified --samples_per_subspace 80000 --epochs 300 --batch_size 1024 --hidden_layers 3 --neurons_per_layer 20 --train_ratio 0.7 --val_ratio 0.15 --test_ratio 0.15 --normalizer_samples 200000 --feature_batch_size 8192 --out_dir artifacts/prediction_system_formal
+python -X utf8 train_prediction_models.py --segment_profile abb_simplified --samples_per_subspace 100000 --epochs 400 --batch_size 4096 --hidden_layers 3 --neurons_per_layer 20 --train_ratio 0.7 --val_ratio 0.15 --test_ratio 0.15 --normalizer_samples 200000 --feature_batch_size 8192 --out_dir artifacts/prediction_system_formal
 ```
 
 命令含义：

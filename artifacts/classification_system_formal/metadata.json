@@ -1,0 +1,156 @@
+{
+  "framework": "pytorch",
+  "robot_name": "ABB_IRB",
+  "robot_model": "IRB 1200-7/0.7",
+  "paper_style": "ABB_IRB classification system (migrated from Ref[22] workflow)",
+  "segment_profile": "abb_strict",
+  "input_features": [
+    "x_mm",
+    "y_mm",
+    "z_mm",
+    "phi_rad",
+    "theta_rad",
+    "psi_rad"
+  ],
+  "num_classes": 192,
+  "joint_segments_deg": [
+    [
+      [
+        -170.0,
+        0.0
+      ],
+      [
+        0.0,
+        170.0
+      ]
+    ],
+    [
+      [
+        -100.0,
+        20.0
+      ],
+      [
+        20.0,
+        135.0
+      ]
+    ],
+    [
+      [
+        -200.0,
+        -65.0
+      ],
+      [
+        -65.0,
+        70.0
+      ]
+    ],
+    [
+      [
+        -270.0,
+        -135.0
+      ],
+      [
+        -135.0,
+        0.0
+      ],
+      [
+        0.0,
+        135.0
+      ],
+      [
+        135.0,
+        270.0
+      ]
+    ],
+    [
+      [
+        -130.0,
+        -45.0
+      ],
+      [
+        -45.0,
+        45.0
+      ],
+      [
+        45.0,
+        130.0
+      ]
+    ],
+    [
+      [
+        -180.0,
+        0.0
+      ],
+      [
+        0.0,
+        180.0
+      ]
+    ]
+  ],
+  "theta_offsets_deg": [
+    0.0,
+    -90.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "models": [
+    {
+      "variant": 1,
+      "file": "classifier_v1.pt",
+      "train_samples": 400000,
+      "val_samples": 5000,
+      "best_val_loss": 3.193921875,
+      "best_val_acc": 0.111
+    },
+    {
+      "variant": 2,
+      "file": "classifier_v2.pt",
+      "train_samples": 600000,
+      "val_samples": 5000,
+      "best_val_loss": 2.68613125,
+      "best_val_acc": 0.1422
+    },
+    {
+      "variant": 3,
+      "file": "classifier_v3.pt",
+      "train_samples": 500000,
+      "val_samples": 5000,
+      "best_val_loss": 2.67229375,
+      "best_val_acc": 0.1416
+    }
+  ],
+  "normalizer": {
+    "mean": [
+      4.957221984863281,
+      0.07415208220481873,
+      583.2866821289062,
+      0.0012452087830752134,
+      -0.0011344124795868993,
+      0.0023457002826035023
+    ],
+    "std": [
+      298.8928527832031,
+      316.58673095703125,
+      355.0384521484375,
+      1.813951015472412,
+      0.6750938296318054,
+      1.779281735420227
+    ]
+  },
+  "hyperparameters": {
+    "epochs": 80,
+    "batch_size": 4096,
+    "lr": 0.001,
+    "seed": 42,
+    "trainset_v1": 400000,
+    "trainset_v2": 600000,
+    "trainset_v3": 500000,
+    "val_samples": 5000,
+    "feature_device": "cuda",
+    "feature_batch_size": 8192,
+    "num_workers": 8,
+    "amp_enabled": true
+  }
+}

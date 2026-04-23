@@ -81,6 +81,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--pose", type=str, required=True, help="x_mm,y_mm,z_mm,phi_rad,theta_rad,psi_rad")
     parser.add_argument("--pred_meta", type=str, default="artifacts/prediction_system/metadata.json")
     parser.add_argument("--cls_meta", type=str, default="artifacts/classification_system/metadata.json")
+    parser.add_argument(
+        "--cls_topk",
+        type=int,
+        default=1,
+        help="Use top-k predicted subspaces from each classifier as candidates.",
+    )
     parser.add_argument("--enable_nr", action="store_true", help="Apply Newton-Raphson refinement.")
     parser.add_argument("--nr_max_iters", type=int, default=40)
     parser.add_argument("--nr_tol_pos_mm", type=float, default=1e-3)
@@ -101,6 +107,8 @@ def main() -> None:
     cls_meta_path = Path(args.cls_meta)
     pred_meta = load_json(pred_meta_path)
     cls_meta = load_json(cls_meta_path)
+    if args.cls_topk <= 0:
+        raise ValueError("--cls_topk must be >= 1.")
     pred_profile = pred_meta.get("segment_profile", "abb_strict")
     cls_profile = cls_meta.get("segment_profile", "abb_strict")
     if pred_profile != cls_profile:
@@ -121,16 +129,19 @@ def main() -> None:
     candidate_labels: List[int] = []
     for item in cls_meta["models"]:
         ckpt = safe_torch_load(cls_meta_path.parent / item["file"])
+        num_classes = int(ckpt["num_classes"])
         cls = build_classifier_variant(
             variant=int(item["variant"]),
             input_dim=6,
-            num_classes=int(ckpt["num_classes"]),
+            num_classes=num_classes,
         )
         cls.load_state_dict(ckpt["state_dict"])
         cls.eval()
         with torch.no_grad():
-            pred = int(torch.argmax(cls(torch.from_numpy(x_cls)), dim=1).item())
-        candidate_labels.append(pred)
+            logits = cls(torch.from_numpy(x_cls))
+            topk = min(args.cls_topk, num_classes)
+            pred_ids = torch.topk(logits, k=topk, dim=1).indices.reshape(-1).tolist()
+        candidate_labels.extend(int(x) for x in pred_ids)
     candidate_labels = sorted(set(candidate_labels))
     t_cls_end = time.perf_counter()
 
@@ -198,6 +209,7 @@ def main() -> None:
 
     result = {
         "target_pose6": target_pose.tolist(),
+        "cls_topk": int(args.cls_topk),
         "candidate_subspaces": candidate_labels,
         "candidate_source": candidate_source,
         "fallback_full_scan_triggered": fallback_triggered,
