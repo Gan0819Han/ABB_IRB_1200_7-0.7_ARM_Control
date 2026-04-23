@@ -1,0 +1,144 @@
+{
+  "target_pose6": [
+    100.0,
+    200.0,
+    800.0,
+    0.10000000149011612,
+    -0.20000000298023224,
+    0.30000001192092896
+  ],
+  "segment_profile": "abb_strict",
+  "branch_profile": "coarse12",
+  "topk": {
+    "shoulder": 2,
+    "elbow": 1,
+    "wrist": 2,
+    "fine_per_branch": 2
+  },
+  "branch_candidates": [
+    {
+      "branch_label": 1,
+      "branch_name": "shoulder_negative|elbow_low|wrist_middle",
+      "score": -1.5767469108104706
+    },
+    {
+      "branch_label": 7,
+      "branch_name": "shoulder_positive|elbow_low|wrist_middle",
+      "score": -1.6871357858181
+    },
+    {
+      "branch_label": 8,
+      "branch_name": "shoulder_positive|elbow_low|wrist_positive",
+      "score": -2.635265350341797
+    },
+    {
+      "branch_label": 2,
+      "branch_name": "shoulder_negative|elbow_low|wrist_positive",
+      "score": -2.6968207955360413
+    }
+  ],
+  "fine_per_branch": [
+    {
+      "branch_label": 1,
+      "branch_name": "shoulder_negative|elbow_low|wrist_middle",
+      "branch_score": -1.5767469108104706,
+      "fine_candidates": [
+        {
+          "fine_label": 7,
+          "subspace_id": 21,
+          "score": -10.226810544729233
+        },
+        {
+          "fine_label": 1,
+          "subspace_id": 3,
+          "score": -10.287646144628525
+        }
+      ]
+    },
+    {
+      "branch_label": 7,
+      "branch_name": "shoulder_positive|elbow_low|wrist_middle",
+      "branch_score": -1.6871357858181,
+      "fine_candidates": [
+        {
+          "fine_label": 14,
+          "subspace_id": 164,
+          "score": -6.266586989164352
+        },
+        {
+          "fine_label": 8,
+          "subspace_id": 146,
+          "score": -6.443645924329758
+        }
+      ]
+    },
+    {
+      "branch_label": 8,
+      "branch_name": "shoulder_positive|elbow_low|wrist_positive",
+      "branch_score": -2.635265350341797,
+      "fine_candidates": [
+        {
+          "fine_label": 8,
+          "subspace_id": 148,
+          "score": -6.1624754667282104
+        },
+        {
+          "fine_label": 14,
+          "subspace_id": 166,
+          "score": -6.542173445224762
+        }
+      ]
+    },
+    {
+      "branch_label": 2,
+      "branch_name": "shoulder_negative|elbow_low|wrist_positive",
+      "branch_score": -2.6968207955360413,
+      "fine_candidates": [
+        {
+          "fine_label": 2,
+          "subspace_id": 10,
+          "score": -6.246236607432365
+        },
+        {
+          "fine_label": 4,
+          "subspace_id": 16,
+          "score": -9.050385236740112
+        }
+      ]
+    }
+  ],
+  "candidate_subspaces": [
+    {
+      "subspace_id": 148,
+      "score": -6.1624754667282104
+    },
+    {
+      "subspace_id": 10,
+      "score": -6.246236607432365
+    },
+    {
+      "subspace_id": 164,
+      "score": -6.266586989164352
+    },
+    {
+      "subspace_id": 146,
+      "score": -6.443645924329758
+    },
+    {
+      "subspace_id": 166,
+      "score": -6.542173445224762
+    },
+    {
+      "subspace_id": 16,
+      "score": -9.050385236740112
+    },
+    {
+      "subspace_id": 21,
+      "score": -10.226810544729233
+    },
+    {
+      "subspace_id": 3,
+      "score": -10.287646144628525
+    }
+  ]
+}

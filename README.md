@@ -1029,3 +1029,527 @@ python -X utf8 predict_ik.py --pose=100,200,800,0.1,-0.2,0.3 --pred_meta artifac
 3. `predict_ik.py --enable_nr`
 
 当前这三步完成后，ABB 版才算进入“正式实验结果可分析”的阶段。
+
+---
+
+## 16. 分层分类方案升级记录
+
+### 16.1 升级动机
+
+在 `abb_strict = 192` 版本下，单头 `192` 类分类器的 `top-1` 验证精度偏低，而第一层粗分支分类虽然已经明显优于原单头分类，但仍然会给出较大的候选子空间集合。
+
+当前判断如下：
+
+1. 原单头 `192` 类分类器更像“直接从位姿猜具体角度块编号”，任务过细。
+2. 第一层粗分支分类器更符合工程理解，它先判断：
+   - `shoulder`
+   - `elbow`
+   - `wrist`
+3. 但在 `abb_strict` 下，一个粗分支仍然对应：
+
+$$
+q_2(2)\times q_4(4)\times q_6(2)=16
+$$
+
+个局部子空间，因此如果只停留在第一层，候选数量仍然偏大。
+
+因此，当前在工程链路中新增了“第二层细分分类器”：
+
+1. 第一层：`粗分支分类`
+2. 第二层：`粗分支条件下的局部细分分类`
+3. 第三步：将 `(branch_label, fine_label)` 重新映射回全局 `subspace_id`
+
+### 16.2 当前第一层粗分支正式结果
+
+第一层正式结果保存在：
+
+- `artifacts/branch_classification_system/metadata.json`
+
+当前三种网络结果为：
+
+1. `v1`
+   - `joint_acc = 0.2620`
+   - `shoulder_acc = 0.5965`
+   - `elbow_acc = 0.6915`
+   - `wrist_acc = 0.5938`
+2. `v2`
+   - `joint_acc = 0.3068`
+   - `shoulder_acc = 0.6155`
+   - `elbow_acc = 0.6923`
+   - `wrist_acc = 0.6228`
+3. `v3`
+   - `joint_acc = 0.3038`
+   - `shoulder_acc = 0.6115`
+   - `elbow_acc = 0.6835`
+   - `wrist_acc = 0.6218`
+
+说明：
+
+1. `joint_acc` 表示三个头同时正确的比例，不是单一头精度。
+2. 与旧的单头 `192` 类分类器 `top-1 ≈ 0.11 ~ 0.14` 相比，第一层粗分支分类已经明显更合理。
+3. 当前最稳定的是 `elbow` 头，最难的是 `shoulder / wrist`。
+
+### 16.3 第二层细分分类器的设计
+
+第二层不再直接分类完整 `192` 类，而是在第一层粗分支已知的条件下，只预测该粗分支内部剩余的局部状态。
+
+在 `abb_strict` 下，粗分支由：
+
+1. `q1 -> shoulder`
+2. `q3 -> elbow`
+3. `q5 -> wrist`
+
+决定，因此粗分支内部剩余自由度是：
+
+1. `q2_bin`
+2. `q4_bin`
+3. `q6_bin`
+
+于是第二层局部类别数为：
+
+$$
+2\times4\times2=16
+$$
+
+在 `abb_simplified` 下则为：
+
+$$
+2\times2\times2=8
+$$
+
+第二层输入不是单纯的 `pose6`，而是：
+
+$$
+\mathbf{z}=
+[\tilde x,\ \tilde y,\ \tilde z,\ \tilde\phi,\ \tilde\theta,\ \tilde\psi,\ \text{branch\_onehot}_{12}]
+$$
+
+其中：
+
+1. 前 6 维为归一化后的末端位姿
+2. 后 12 维为第一层粗分支的 one-hot 条件编码
+
+第二层输出为 `fine_label`，随后通过：
+
+$$
+(\text{branch\_label},\ \text{fine\_label})
+\rightarrow \text{subspace\_id}
+$$
+
+映射回全局子空间编号。
+
+### 16.4 新增代码文件
+
+本次新增或扩展的主要文件如下：
+
+1. `abb_nn/branching.py`
+   - 补充了第二层细分标签与映射逻辑
+   - 新增：
+     - `assign_fine_labels(...)`
+     - `encode_fine_index(...)`
+     - `decode_fine_label(...)`
+     - `branch_fine_to_subspace_label(...)`
+2. `train_fine_classification_models.py`
+   - 第二层细分分类器训练脚本
+3. `predict_hierarchical_candidates.py`
+   - 两层分类联合推理脚本
+   - 输出最终压缩后的 `candidate_subspaces`
+
+### 16.5 第二层 Smoke 验证
+
+为了保证代码链路完整，先进行了最小 smoke 级别验证。
+
+#### 16.5.1 训练命令
+
+```powershell
+conda activate arm_nn
+python -X utf8 train_fine_classification_models.py --segment_profile abb_strict --trainset_v1 128 --trainset_v2 192 --trainset_v3 160 --val_samples 64 --epochs 2 --batch_size 32 --feature_batch_size 256 --num_workers 0 --out_dir artifacts/fine_classification_smoke
+```
+
+Smoke 结果：
+
+1. `v1`
+   - `top1 = 0.0938`
+   - `top3 = 0.1562`
+2. `v2`
+   - `top1 = 0.0625`
+   - `top3 = 0.1406`
+3. `v3`
+   - `top1 = 0.0625`
+   - `top3 = 0.1719`
+
+说明：
+
+1. 这里仅用于验证训练与保存流程正确，不用于评价最终精度。
+2. 第二层 smoke 样本量极小，因此精度不具参考价值。
+
+#### 16.5.2 分层候选推理命令
+
+```powershell
+conda activate arm_nn
+python -X utf8 predict_hierarchical_candidates.py --pose=100,200,800,0.1,-0.2,0.3 --branch_meta artifacts/branch_classification_smoke/metadata.json --fine_meta artifacts/fine_classification_smoke/metadata.json --topk_shoulder 2 --topk_elbow 1 --topk_wrist 2 --max_branch_candidates 4 --fine_topk_per_branch 2 --max_subspace_candidates 8 --out_json artifacts/fine_classification_smoke/predict_hierarchical_smoke.json
+```
+
+当前 smoke 结果表明：
+
+1. 第一层先保留 `4` 个粗分支候选
+2. 第二层对每个粗分支取 `2` 个局部 `fine_label`
+3. 最终得到 `8` 个全局 `subspace_id` 候选
+
+这证明两层分类逻辑已经可以正常把候选空间从：
+
+1. `192` 个全局子空间
+2. 压缩到 `4` 个粗分支
+3. 再进一步压缩到 `8` 个最终子空间候选
+
+### 16.6 第二层正式训练命令
+
+如果继续沿用当前第一层正式粗分支系统，第二层正式训练建议先使用如下命令：
+
+```powershell
+conda activate arm_nn
+python -X utf8 train_fine_classification_models.py --segment_profile abb_strict --trainset_v1 250000 --trainset_v2 400000 --trainset_v3 320000 --val_samples 4000 --epochs 60 --batch_size 4096 --feature_batch_size 8192 --out_dir artifacts/fine_classification_system
+```
+
+命令含义：
+
+1. `--segment_profile abb_strict`
+   - 与当前第一层正式粗分支分类保持一致
+2. `trainset_v1/v2/v3`
+   - 三个模型各自训练样本规模
+3. `val_samples 4000`
+   - 验证样本数量
+4. `epochs 60`
+   - 第二层细分分类器训练轮数
+5. `batch_size 4096`
+   - 训练 batch size
+6. `feature_batch_size 8192`
+   - FK 特征生成 batch size
+
+### 16.7 两层分类联合推理命令
+
+第一层和第二层都训练完成后，可使用如下命令输出最终压缩后的候选子空间：
+
+```powershell
+conda activate arm_nn
+python -X utf8 predict_hierarchical_candidates.py --pose=100,200,800,0.1,-0.2,0.3 --branch_meta artifacts/branch_classification_system/metadata.json --fine_meta artifacts/fine_classification_system/metadata.json --topk_shoulder 2 --topk_elbow 1 --topk_wrist 2 --max_branch_candidates 4 --fine_topk_per_branch 2 --max_subspace_candidates 8 --out_json artifacts/fine_classification_system/test_pose_001.json
+```
+
+建议理解为：
+
+1. 第一层先做“解族级别”粗分支判断
+2. 第二层再在粗分支内部做“局部角度块”细分
+3. 最终只把少量 `subspace_id` 送入后续回归器与 `NR`
+
+### 16.8 分层分类完整推理命令
+
+目前 `predict_ik.py` 已经支持将两层分类结果直接接入后续：
+
+1. 候选子空间筛选
+2. 子空间回归初值预测
+3. `FK` 回代位置误差比较
+4. `NR` 局部修正
+5. 推理总耗时与分阶段耗时输出
+
+推荐正式命令如下：
+
+```powershell
+conda activate arm_nn
+python -X utf8 predict_ik.py --candidate_mode hierarchical --pose "100,200,800,0.1,-0.2,0.3" --pred_meta artifacts/prediction_system_formal/metadata.json --branch_meta artifacts/branch_classification_system/metadata.json --fine_meta artifacts/fine_classification_system/metadata.json --topk_shoulder 2 --topk_elbow 1 --topk_wrist 2 --max_branch_candidates 6 --fine_topk_per_branch 3 --max_subspace_candidates 18 --enable_nr --out_json artifacts/fine_classification_system/test_pose_001_full_ik.json
+```
+
+说明：
+
+1. `candidate_mode hierarchical`
+   - 启用两层分类候选生成，而不是旧的单头 `192` 类分类
+2. `pred_meta`
+   - 对应已经训练完成的 `192` 个子空间回归系统
+3. `branch_meta`
+   - 第一层粗分支分类器
+4. `fine_meta`
+   - 第二层局部细分分类器
+5. `max_branch_candidates 6`
+   - 最多保留 `6` 个粗分支候选
+6. `fine_topk_per_branch 3`
+   - 每个粗分支保留 `3` 个细分类候选
+7. `max_subspace_candidates 18`
+   - 最终最多送入 `18` 个全局子空间回归器
+8. `enable_nr`
+   - 对神经网络初值再做数值法精修
+
+当前这一完整链路的输出结果中将直接包含：
+
+1. `candidate_generation`
+   - 两层分类产生的粗分支、细分候选和最终 `subspace_id`
+2. `initial_solution`
+   - 回归器筛选得到的最优初值
+3. `refined_solution`
+   - `NR` 修正后的最终逆解
+4. `timing_breakdown_ms`
+   - 包括粗分类、细分类、初值选择、`NR` 修正和总时间
+
+### 16.9 单样本完整推理结果记录
+
+在当前正式工件：
+
+1. `artifacts/prediction_system_formal`
+2. `artifacts/branch_classification_system`
+3. `artifacts/fine_classification_system`
+
+基础上，已完成一次单样本完整推理验证，命令如下：
+
+```powershell
+conda activate arm_nn
+python -X utf8 predict_ik.py --candidate_mode hierarchical --pose "100,200,800,0.1,-0.2,0.3" --pred_meta artifacts/prediction_system_formal/metadata.json --branch_meta artifacts/branch_classification_system/metadata.json --fine_meta artifacts/fine_classification_system/metadata.json --topk_shoulder 2 --topk_elbow 1 --topk_wrist 2 --max_branch_candidates 4 --fine_topk_per_branch 3 --max_subspace_candidates 15 --enable_nr --out_json artifacts/fine_classification_system/test_pose_001_full_ik.json
+```
+
+本次结果的关键结论如下：
+
+1. 第一层粗分支最终保留了 `4` 个候选：
+   - `shoulder_negative|elbow_low|wrist_middle`
+   - `shoulder_positive|elbow_low|wrist_middle`
+   - `shoulder_positive|elbow_low|wrist_positive`
+   - `shoulder_negative|elbow_low|wrist_positive`
+2. 第二层细分类对每个粗分支保留 `3` 个局部候选，因此最终实际得到 `12` 个全局子空间候选，而不是 `15` 个：
+   - `148, 10, 164, 146, 166, 153, 16, 21, 3, 69, 58, 160`
+3. 候选集中包含了最终正确子空间 `164`，说明当前分层分类的主要价值已经体现出来：
+   - 不要求分类器 `top-1` 直接命中最终子空间
+   - 只要正确子空间被保留进候选集，后续回归器与 `FK` 回代筛选即可继续完成识别
+
+本次回归器筛选与 `NR` 修正结果为：
+
+1. 最优初始子空间：`164`
+2. 初始关节角：
+   - `[69.2542, 99.3345, -198.6218, 198.3277, 11.1474, -77.8755] deg`
+3. 初始位置误差：
+   - `44.8264 mm`
+4. `fallback_full_scan_triggered = false`
+   - 说明当前候选集已经足够覆盖正确解，无需退化到全子空间扫描
+5. `NR` 迭代次数：
+   - `4`
+6. `NR` 是否收敛：
+   - `true`
+7. 最终位置误差：
+   - `7.094e-05 mm`
+8. 最终姿态误差：
+   - `9.311e-07 rad`
+
+由此可以认为：
+
+1. 当前神经网络初值已经进入了数值法的有效收敛域
+2. `NN + NR` 组合已经能够在该测试样本上实现高精度逆解
+3. 当前瓶颈仍主要在“候选子空间召回率”而不是子空间回归器本身
+
+本次单样本运行的时间统计如下：
+
+1. 候选生成时间：
+   - `10.2222 ms`
+2. 其中粗分支分类时间：
+   - `3.1930 ms`
+3. 其中细分类时间：
+   - `7.0292 ms`
+4. 子空间初值筛选时间：
+   - `15.4157 ms`
+5. `NR` 修正时间：
+   - `15.4391 ms`
+6. 总时间：
+   - `94.4150 ms`
+
+说明：
+
+1. 这里的总时间包含脚本级开销、模型加载、`JSON` 读取等附加成本
+2. 如果后续需要做严格 benchmark，应改为常驻进程、多样本重复测试后再统计平均推理耗时
+
+### 16.10 当前阶段结论
+
+截至目前，ABB 工程中的分类系统已经形成如下层级：
+
+1. `train_classification_models.py`
+   - 旧方案：单头 `96/192` 类分类
+2. `train_branch_classification_models.py`
+   - 新方案第一层：`shoulder / elbow / wrist` 粗分支分类
+3. `train_fine_classification_models.py`
+   - 新方案第二层：粗分支条件下的局部细分分类
+
+当前阶段已经完成：
+
+1. `192` 子空间回归器训练与保存
+2. 第一层粗分支分类器训练
+3. 第二层局部细分分类器训练
+4. `predict_hierarchical_candidates.py` 候选子空间压缩
+5. `predict_ik.py` 中“分层分类 + 子空间回归 + NR”完整链路接入
+
+因此当前推荐的正式在线推理路径已经从：
+
+1. 单头 `192` 类分类
+2. 子空间回归
+3. `NR`
+
+升级为：
+
+1. 第一层粗分支分类
+2. 第二层局部细分分类
+3. 候选子空间回归初值
+4. `FK` 回代筛选
+5. `NR` 精修
+
+### 16.11 当前主文件职责与推荐执行顺序
+
+为了避免后续使用时混淆，当前 ABB 工程中截图内这些主文件可按“建模层、训练层、候选分析层、完整推理层”来理解。
+
+#### 16.11.1 文件职责总览
+
+1. `robot_config.py`
+   - 机器人统一配置文件
+   - 保存 `ABB_IRB` 的：
+     - `DH` 参数
+     - 关节限位
+     - 第 2 轴偏置
+     - 单位约定
+   - 作用是为整个工程提供统一参数源
+2. `fk_model.py`
+   - 正运动学与基础运动学工具文件
+   - 负责：
+     - `FK`
+     - 末端 `pose6`
+     - 关节点坐标
+     - 腕中心
+     - 欧拉角转换
+     - 数值雅可比
+   - 是训练、推理、`NR`、后续 benchmark 的底层数学基础
+3. `generate_dataset.py`
+   - 全局随机采样 `FK` 数据生成工具
+   - 用于从全局关节空间生成：
+     - 关节角
+     - 末端位置
+     - 旋转矩阵
+     - 欧拉角
+     - `T06`
+   - 更偏通用数据准备工具，不是当前正式逆解主链的核心入口
+4. `naming.py`
+   - 数据文件命名工具
+   - 统一生成数据集、划分集和元数据文件名
+5. `naming_config.json`
+   - `naming.py` 的命名配置文件
+   - 定义：
+     - `robot_name`
+     - `task_name`
+     - `sampling_name`
+     - 默认数据划分比例
+6. `train_prediction_models.py`
+   - 子空间回归器训练脚本
+   - 作用是对每个 `96/192` 子空间分别训练局部逆解回归网络
+   - 当前这是逆解系统中的核心训练脚本之一
+7. `train_classification_models.py`
+   - 旧版单层分类器训练脚本
+   - 直接训练：
+     - `pose6 -> subspace_id`
+   - 目前主要保留作对照基线
+8. `train_branch_classification_models.py`
+   - 新版第一层粗分类器训练脚本
+   - 训练：
+     - `pose6 -> shoulder / elbow / wrist`
+   - 作用是先判断机械臂属于哪一类大构型
+9. `train_fine_classification_models.py`
+   - 新版第二层细分类器训练脚本
+   - 训练：
+     - `(pose6 + branch条件) -> fine_label`
+   - 作用是在已知粗分支的前提下，继续细分到局部子空间
+10. `predict_branch_candidates.py`
+    - 只运行第一层粗分类的分析脚本
+    - 输出：
+      - 候选粗分支
+      - 每个粗分支兼容的全局子空间集合
+    - 主要用于检查第一层分类效果，不输出最终逆解
+11. `predict_hierarchical_candidates.py`
+    - 两层分类联合分析脚本
+    - 输出：
+      - 粗分支候选
+      - 细分类候选
+      - 最终压缩后的全局 `subspace_id`
+    - 主要用于检查候选子空间召回情况，不输出最终关节角
+12. `predict_ik.py`
+    - 当前最终完整逆解推理主脚本
+    - 在 `hierarchical` 模式下会完整执行：
+      - 两层分类生成候选子空间
+      - 子空间回归器预测初值
+      - `FK` 回代筛选
+      - `NR` 精修
+      - 结果与时间统计输出
+    - 这是当前正式在线推理入口
+13. `README.md`
+    - 当前 ABB 工程的总记录文件
+    - 统一记录：
+      - 参数确认
+      - 设计思路
+      - 训练命令
+      - 推理命令
+      - 实验结果
+      - 阶段性分析
+
+#### 16.11.2 当前推荐执行顺序
+
+如果以当前正式分层方案为主，推荐执行顺序如下：
+
+1. `train_prediction_models.py`
+   - 先训练全部子空间回归器
+2. `train_branch_classification_models.py`
+   - 训练第一层粗分支分类器
+3. `train_fine_classification_models.py`
+   - 训练第二层局部细分分类器
+4. `predict_ik.py --candidate_mode hierarchical`
+   - 进行完整逆解推理
+
+当前建议将：
+
+1. `predict_branch_candidates.py`
+2. `predict_hierarchical_candidates.py`
+
+理解为“分类候选分析工具”，而不是最终完整逆解入口。
+
+#### 16.11.3 推理与验证的区别
+
+当前工程语境下，“推理”和“验证”不是两个完全分开的独立系统，而是前后衔接的两个阶段。
+
+1. 推理
+   - 指从目标位姿出发，求出一组候选逆解或最终逆解
+   - 包括：
+     - 分类
+     - 子空间回归
+     - 数值修正
+2. 验证
+   - 指判断当前求出的关节角是否真的对应目标位姿
+   - 当前主要通过：
+     - `FK` 回代误差计算
+     - `NR` 收敛情况
+     - 最终位置误差与姿态误差
+
+因此：
+
+1. `predict_hierarchical_candidates.py`
+   - 更偏“推理前半段的候选分析”
+   - 只回答“哪些子空间最可能”
+2. `predict_ik.py`
+   - 才是“完整推理 + 内部验证”
+   - 不仅给出最终关节角，还会给出：
+     - 初始解误差
+     - `NR` 修正结果
+     - 最终位置误差
+     - 最终姿态误差
+     - 时间统计
+
+#### 16.11.4 当前主链一句话总结
+
+当前 ABB 工程的正式推荐主链为：
+
+1. `train_prediction_models.py`
+2. `train_branch_classification_models.py`
+3. `train_fine_classification_models.py`
+4. `predict_ik.py --candidate_mode hierarchical`
+
+其中：
+
+1. `predict_hierarchical_candidates.py`
+   - 用于分析候选子空间是否召回正确
+2. `predict_ik.py`
+   - 用于真正输出最终逆解并完成内部验证

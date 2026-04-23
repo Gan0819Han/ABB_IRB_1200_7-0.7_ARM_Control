@@ -1,0 +1,383 @@
+{
+  "framework": "pytorch",
+  "robot_name": "ABB_IRB",
+  "robot_model": "IRB 1200-7/0.7",
+  "paper_style": "ABB_IRB hierarchical branch classification system",
+  "segment_profile": "abb_strict",
+  "branch_profile": "coarse12",
+  "input_features": [
+    "x_mm",
+    "y_mm",
+    "z_mm",
+    "phi_rad",
+    "theta_rad",
+    "psi_rad"
+  ],
+  "branch_head_names": [
+    "shoulder",
+    "elbow",
+    "wrist"
+  ],
+  "branch_head_dims": [
+    2,
+    2,
+    3
+  ],
+  "branch_class_names": {
+    "shoulder": [
+      "shoulder_negative",
+      "shoulder_positive"
+    ],
+    "elbow": [
+      "elbow_low",
+      "elbow_high"
+    ],
+    "wrist": [
+      "wrist_negative",
+      "wrist_middle",
+      "wrist_positive"
+    ]
+  },
+  "num_combined_branches": 12,
+  "branch_to_subspaces": [
+    {
+      "branch_label": 0,
+      "branch_name": "shoulder_negative|elbow_low|wrist_negative",
+      "compatible_subspaces": [
+        0,
+        1,
+        6,
+        7,
+        12,
+        13,
+        18,
+        19,
+        48,
+        49,
+        54,
+        55,
+        60,
+        61,
+        66,
+        67
+      ]
+    },
+    {
+      "branch_label": 1,
+      "branch_name": "shoulder_negative|elbow_low|wrist_middle",
+      "compatible_subspaces": [
+        2,
+        3,
+        8,
+        9,
+        14,
+        15,
+        20,
+        21,
+        50,
+        51,
+        56,
+        57,
+        62,
+        63,
+        68,
+        69
+      ]
+    },
+    {
+      "branch_label": 2,
+      "branch_name": "shoulder_negative|elbow_low|wrist_positive",
+      "compatible_subspaces": [
+        4,
+        5,
+        10,
+        11,
+        16,
+        17,
+        22,
+        23,
+        52,
+        53,
+        58,
+        59,
+        64,
+        65,
+        70,
+        71
+      ]
+    },
+    {
+      "branch_label": 3,
+      "branch_name": "shoulder_negative|elbow_high|wrist_negative",
+      "compatible_subspaces": [
+        24,
+        25,
+        30,
+        31,
+        36,
+        37,
+        42,
+        43,
+        72,
+        73,
+        78,
+        79,
+        84,
+        85,
+        90,
+        91
+      ]
+    },
+    {
+      "branch_label": 4,
+      "branch_name": "shoulder_negative|elbow_high|wrist_middle",
+      "compatible_subspaces": [
+        26,
+        27,
+        32,
+        33,
+        38,
+        39,
+        44,
+        45,
+        74,
+        75,
+        80,
+        81,
+        86,
+        87,
+        92,
+        93
+      ]
+    },
+    {
+      "branch_label": 5,
+      "branch_name": "shoulder_negative|elbow_high|wrist_positive",
+      "compatible_subspaces": [
+        28,
+        29,
+        34,
+        35,
+        40,
+        41,
+        46,
+        47,
+        76,
+        77,
+        82,
+        83,
+        88,
+        89,
+        94,
+        95
+      ]
+    },
+    {
+      "branch_label": 6,
+      "branch_name": "shoulder_positive|elbow_low|wrist_negative",
+      "compatible_subspaces": [
+        96,
+        97,
+        102,
+        103,
+        108,
+        109,
+        114,
+        115,
+        144,
+        145,
+        150,
+        151,
+        156,
+        157,
+        162,
+        163
+      ]
+    },
+    {
+      "branch_label": 7,
+      "branch_name": "shoulder_positive|elbow_low|wrist_middle",
+      "compatible_subspaces": [
+        98,
+        99,
+        104,
+        105,
+        110,
+        111,
+        116,
+        117,
+        146,
+        147,
+        152,
+        153,
+        158,
+        159,
+        164,
+        165
+      ]
+    },
+    {
+      "branch_label": 8,
+      "branch_name": "shoulder_positive|elbow_low|wrist_positive",
+      "compatible_subspaces": [
+        100,
+        101,
+        106,
+        107,
+        112,
+        113,
+        118,
+        119,
+        148,
+        149,
+        154,
+        155,
+        160,
+        161,
+        166,
+        167
+      ]
+    },
+    {
+      "branch_label": 9,
+      "branch_name": "shoulder_positive|elbow_high|wrist_negative",
+      "compatible_subspaces": [
+        120,
+        121,
+        126,
+        127,
+        132,
+        133,
+        138,
+        139,
+        168,
+        169,
+        174,
+        175,
+        180,
+        181,
+        186,
+        187
+      ]
+    },
+    {
+      "branch_label": 10,
+      "branch_name": "shoulder_positive|elbow_high|wrist_middle",
+      "compatible_subspaces": [
+        122,
+        123,
+        128,
+        129,
+        134,
+        135,
+        140,
+        141,
+        170,
+        171,
+        176,
+        177,
+        182,
+        183,
+        188,
+        189
+      ]
+    },
+    {
+      "branch_label": 11,
+      "branch_name": "shoulder_positive|elbow_high|wrist_positive",
+      "compatible_subspaces": [
+        124,
+        125,
+        130,
+        131,
+        136,
+        137,
+        142,
+        143,
+        172,
+        173,
+        178,
+        179,
+        184,
+        185,
+        190,
+        191
+      ]
+    }
+  ],
+  "theta_offsets_deg": [
+    0.0,
+    -90.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "models": [
+    {
+      "variant": 1,
+      "file": "branch_classifier_v1.pt",
+      "train_samples": 250000,
+      "val_samples": 4000,
+      "best_val_loss": 1.9232001304626465,
+      "best_val_acc_joint": 0.262,
+      "best_val_acc_shoulder": 0.5965,
+      "best_val_acc_elbow": 0.6915,
+      "best_val_acc_wrist": 0.59375
+    },
+    {
+      "variant": 2,
+      "file": "branch_classifier_v2.pt",
+      "train_samples": 400000,
+      "val_samples": 4000,
+      "best_val_loss": 1.769753336906433,
+      "best_val_acc_joint": 0.30675,
+      "best_val_acc_shoulder": 0.6155,
+      "best_val_acc_elbow": 0.69225,
+      "best_val_acc_wrist": 0.62275
+    },
+    {
+      "variant": 3,
+      "file": "branch_classifier_v3.pt",
+      "train_samples": 320000,
+      "val_samples": 4000,
+      "best_val_loss": 1.8586972951889038,
+      "best_val_acc_joint": 0.30375,
+      "best_val_acc_shoulder": 0.6115,
+      "best_val_acc_elbow": 0.6835,
+      "best_val_acc_wrist": 0.62175
+    }
+  ],
+  "normalizer": {
+    "mean": [
+      4.991192817687988,
+      -0.2974278926849365,
+      583.06201171875,
+      0.002917243866249919,
+      -0.001073692343197763,
+      0.0023805545642971992
+    ],
+    "std": [
+      298.8138732910156,
+      316.6103210449219,
+      355.0445251464844,
+      1.8138293027877808,
+      0.6751399040222168,
+      1.780548334121704
+    ]
+  },
+  "hyperparameters": {
+    "epochs": 60,
+    "batch_size": 4096,
+    "lr": 0.001,
+    "seed": 42,
+    "trainset_v1": 250000,
+    "trainset_v2": 400000,
+    "trainset_v3": 320000,
+    "val_samples": 4000,
+    "feature_device": "cuda",
+    "feature_batch_size": 8192,
+    "num_workers": 8,
+    "amp_enabled": true
+  }
+}
