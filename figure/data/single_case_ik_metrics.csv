@@ -1,0 +1,11 @@
+﻿group,item,value
+timing,candidate_generation_ms,10.222199999999848
+timing,branch_classification_ms,3.1930000000000014
+timing,fine_classification_ms,7.029199999999847
+timing,initial_selection_ms,15.415699999999921
+timing,nr_refinement_ms,15.439100000000039
+timing,total_ms,94.41500000000013
+error,initial_pos_err_mm,44.826365820498395
+error,refined_pos_err_mm,7.093969487127623e-05
+error,refined_ori_err_rad,9.311358831586125e-07
+iters,nr_iters,4.0

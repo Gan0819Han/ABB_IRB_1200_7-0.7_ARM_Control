@@ -1,0 +1,13 @@
+﻿profile,joint,bins,subspace_count
+abb_simplified,q1,2,96
+abb_simplified,q2,2,96
+abb_simplified,q3,2,96
+abb_simplified,q4,2,96
+abb_simplified,q5,3,96
+abb_simplified,q6,2,96
+abb_strict,q1,2,192
+abb_strict,q2,2,192
+abb_strict,q3,2,192
+abb_strict,q4,4,192
+abb_strict,q5,3,192
+abb_strict,q6,2,192

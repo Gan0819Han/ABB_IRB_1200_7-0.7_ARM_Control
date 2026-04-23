@@ -1,1555 +1,887 @@
-# ABB_IRB 项目记录
-
-## 1. 项目定位
-
-本目录用于承接原 `xArm` 版本工程在 `ABB_IRB` 机械臂上的迁移、重建与扩展工作。
-
-当前研究重点不是直接复现真实产线控制器，而是围绕以下主线建立一套完整、可验证、可扩展的研究链路：
-
-1. 机械臂运动学建模
-2. 正运动学 FK 与雅可比建模
-3. 基于神经网络的逆运动学近似求解
-4. Newton-Raphson / DLS 等数值法校正与对比
-5. 开放空间与固定障碍场景下的碰撞检测和轨迹验证
-6. 后续面向列车车底受限环境的避障与可视化扩展
-
-本文件作为当前 ABB 工程的总记录页，后续所有关键思路、参数确认、代码实现、实验命令、运行结果和结论，统一追加在本文件中，便于后续上传 GitHub 后直接查看项目进展。
-
----
-
-## 2. 当前目录约定
-
-后续所有与 ABB 机械臂相关的代码、数据、配置和实验产物，统一保存在：
-
-`E:\CSU\毕业设计\ABB_Arm_Control`
-
-当前已建立的配置文档：
-
-- [docs/ABB_IRB_当前配置草案.md](E:\CSU\毕业设计\ABB_Arm_Control\docs\ABB_IRB_当前配置草案.md)
-
-说明：
-
-1. `README.md` 负责记录整体思路、阶段性结论、命令、结果与路线。
-2. `docs/` 负责保存参考资料、参数草案、说明文档等。
-3. 后续如需新建代码子目录，将在本目录下按功能划分建立，例如 `kinematics/`、`ik/`、`training/`、`artifacts/` 等。
-
----
-
-## 3. 当前已确认的基础配置
-
-### 3.1 机器人型号
-
-- 工程内部统一命名：`ABB_IRB`
-- 当前对应具体型号：`ABB IRB 1200-7/0.7`
-
-说明：
-
-1. 工程命名层面统一写作 `ABB_IRB`，避免未来文件名和代码变量过长。
-2. 资料核对、参数来源和尺寸验证阶段仍然明确对应 `IRB 1200-7/0.7`。
-
-### 3.2 末端工具假设
-
-当前阶段默认不挂载额外工具，末端执行器视为法兰中心，采用：
-
-$$
-{}^{\text{flange}}\mathbf{T}_{\text{tool}}=\mathbf{I}
-$$
-
-因此当前研究中的末端位姿等价于法兰位姿。
-
-### 3.3 位姿表达形式
-
-当前保持与原 xArm 工程一致，采用 6 维位姿表达：
-
-$$
-\mathbf{x}=[x,\ y,\ z,\ \phi,\ \theta,\ \psi]^\top
-$$
-
-其中：
-
-1. 位置单位为 `mm`
-2. 姿态采用 `ZYX Euler`
-3. 姿态角单位为 `rad`
-
----
-
-## 4. 关节范围与当前建模范围
-
-依据 ABB 官方规格书，当前采用的关节范围为：
-
-- `q1 ∈ [-170°, 170°]`
-- `q2 ∈ [-100°, 135°]`
-- `q3 ∈ [-200°, 70°]`
-- `q4 ∈ [-270°, 270°]`
-- `q5 ∈ [-130°, 130°]`
-- `q6` 官方默认范围为 `[-400°, 400°]`
-
-当前工程为了保持训练与分类系统简洁，暂定将第 6 轴建模范围压缩为：
-
-- `q6 ∈ [-180°, 180°]`
-
-说明：
-
-1. 这不会影响当前阶段的 FK、IK、NN、NR、DLS、碰撞检测流程建立。
-2. 后续若研究连续回转、最短转角或电缆绕线，再恢复更大的轴 6 范围。
-
----
-
-## 5. 当前采用的运动学建模结论
-
-### 5.1 建模方式
-
-当前建议冻结为：
-
-- `Standard DH`
-- 长度单位：`mm`
-- 外部关节输入单位：`deg`
-- 三角函数内部计算单位：`rad`
-
-选择原因：
-
-1. 与原 `ref22_reproduction` 项目结构兼容性最高。
-2. 后续迁移 FK、Jacobian、NR、DLS、训练与推理脚本时改动最小。
-3. 更适合在当前阶段快速验证整条工程链路。
-
-### 5.2 当前采用的 Standard DH 参数
-
-当前以 `IRB 1200-7/0.7` 标准版为对象，建议采用如下参数作为第一版运动学基线：
-
-| 关节 i | a_i (mm) | alpha_i (deg) | d_i (mm) | theta_i |
-|---|---:|---:|---:|---|
-| 1 | 0 | -90 | 399.1 | q1 |
-| 2 | 350 | 0 | 0 | q2 - 90° |
-| 3 | 42 | -90 | 0 | q3 |
-| 4 | 0 | 90 | 351.0 | q4 |
-| 5 | 0 | -90 | 0 | q5 |
-| 6 | 0 | 0 | 82.0 | q6 |
-
-对应的内部偏置写法为：
-
-$$
-\theta_1=q_1,\quad
-\theta_2=q_2-90^\circ,\quad
-\theta_3=q_3,\quad
-\theta_4=q_4,\quad
-\theta_5=q_5,\quad
-\theta_6=q_6
-$$
-
----
-
-## 6. 关于 `theta2_offset = -90°` 的当前理解
-
-这是当前建模中最关键的知识点之一。
-
-### 6.1 它不表示关节 2 的机械限位变化
-
-这里必须区分两类角度：
-
-1. `q_i`：机械臂物理关节角，也是训练、控制、限位判断时使用的角
-2. `theta_i`：DH 变换矩阵中实际使用的建模角
-
-因此：
-
-$$
-\theta_2=q_2-90^\circ
-$$
-
-并不意味着关节 2 的物理零位被改掉了，而是说明在当前这套 `Standard DH` 建系方式下，DH 第 2 轴参考角与机械零位之间存在一个固定偏置。
-
-### 6.2 为什么需要这个偏置
-
-如果直接令：
-
-$$
-\theta_2=q_2
-$$
-
-则当所有关节角都取零时，机械臂的几何姿态会偏离 ABB 官方给出的典型 `L` 型零位，说明当前坐标系定义与实际机械零位不一致。
-
-若采用：
-
-$$
-\theta_2=q_2-90^\circ
-$$
-
-则零位姿态下的骨架结构与 ABB 官方尺寸图和工作范围图能够保持一致。
-
-### 6.3 数值校核结论
-
-当前已根据 ABB 官方工作范围图对 `机械腕中心` 位置进行了数值反校验。
-
-采用上述 `Standard DH + theta2_offset=-90°` 时，模型计算结果与官方表格的典型位置误差约为亚毫米量级，说明该建模方案当前是自洽的。
-
-已核对的典型点包括：
-
-1. `Pos0`
-2. `Pos3`
-3. `Pos6`
-4. `Pos7`
-5. `Pos9`
-
-当前判断：
-
-- `a/d` 数值可信
-- `theta2_offset=-90°` 合理且必要
-- 可作为 ABB 工程第一阶段的 FK 核心配置
-
----
-
-## 7. 参数来源与资料使用说明
-
-### 7.1 当前重点参考资料
-
-- `docs/IRB1200产品规格.pdf`
-- `docs/IRB1200数据表.pdf`
-- `docs/IRB1200产品概述.pdf`
-- `docs/DH参数参考.txt`
-- `docs/结构参数图1.png`
-- `docs/结构参数图2.png`
-- `docs/改进IRB1200DH参数.png`
-
-### 7.2 当前对资料可信度的判断
-
-1. `IRB1200产品规格.pdf` 与 `IRB1200数据表.pdf` 为官方资料，优先级最高。
-2. `IRB1200产品概述.pdf` 可用于辅助确认尺寸量级。
-3. `DH参数参考.txt` 与 `改进IRB1200DH参数.png` 主要用于辅助构建 DH 表和理解建系方式，不能替代官方资料。
-4. `结构参数图2.png` 对应 Hygienic 版本，末端尺寸与标准版存在差异，不能直接拿来替换当前 `d6=82 mm`。
-
----
-
-## 8. 当前建议采用的子空间划分方案
-
-为了尽量平滑迁移原 xArm 工程结构，当前先保留两套 ABB 子空间配置。
-
-### 8.1 `abb_simplified`
-
-- `q1`: 2 段
-- `q2`: 2 段
-- `q3`: 2 段
-- `q4`: 2 段
-- `q5`: 3 段
-- `q6`: 2 段
-
-总数：
-
-$$
-2\times2\times2\times2\times3\times2=96
-$$
-
-### 8.2 `abb_strict`
-
-- `q1`: 2 段
-- `q2`: 2 段
-- `q3`: 2 段
-- `q4`: 4 段
-- `q5`: 3 段
-- `q6`: 2 段
-
-总数：
-
-$$
-2\times2\times2\times4\times3\times2=192
-$$
-
-当前建议：
-
-1. 第一阶段优先使用 `abb_simplified`
-2. 待 FK、数据链路和推理链路跑通后，再视精度决定是否升级到 `abb_strict`
-
----
-
-## 9. 当前迁移策略
-
-当前不建议直接在原 `ref22_reproduction` 上硬改。
-
-建议策略：
-
-1. 保留 `ref22_reproduction` 作为 xArm 已完成版本
-2. 在 `ABB_Arm_Control` 中单独建立 ABB 工程
-3. 先实现 ABB 版运动学核心
-4. 再迁移训练、推理、对比和避障模块
-
-原因：
-
-1. 可以保留原工程作为可回溯基线
-2. 避免 xArm 与 ABB 参数混用
-3. 便于后续在 GitHub 上清晰展示“平台迁移”的过程
-
----
-
-## 10. 当前建议的实施顺序
-
-### 阶段 1：FK 核心建立与验证
-
-目标：
-
-1. 实现 ABB 版 `fk_model`
-2. 实现关节骨架点输出
-3. 实现位姿转换、雅可比计算等基础功能
-4. 验证零位姿态与典型工作点
-
-这是当前最优先的工作，因为如果 FK 错了，后续数据集、NN、NR、DLS 和碰撞检测都会整体失效。
-
-### 阶段 2：关节分段系统建立
-
-目标：
-
-1. 实现 `abb_simplified`
-2. 实现 `abb_strict`
-3. 建立子空间编号、解码、采样逻辑
-
-### 阶段 3：数据生成与训练链路迁移
-
-目标：
-
-1. 生成 ABB 数据集
-2. 训练 prediction system
-3. 训练 classification system
-4. 跑通 `predict_ik + NR`
-
-### 阶段 4：传统数值法与基准对比
-
-目标：
-
-1. 实现 DLS 或其他数值法
-2. 对比 `NN`、`NN+NR`、`DLS`
-3. 统计时间、误差、成功率
-
-### 阶段 5：避障与可视化迁移
-
-目标：
-
-1. 在开放空间中验证 ABB 机械臂避障
-2. 建立固定障碍场景
-3. 输出碰撞/无碰撞轨迹图像与视频
-4. 逐步过渡到车底受限环境建模
-
----
-
-## 11. 后续 README 记录规范
-
-从现在开始，本文件将持续追加以下内容：
-
-1. 关键参数变更
-2. 代码目录结构变更
-3. 核心脚本功能说明
-4. 运行命令
-5. 运行结果
-6. 图表、误差分析与阶段性结论
-
-建议记录格式：
-
-- 日期
-- 操作内容
-- 命令
-- 输出结果
-- 结论
-- 下一步
-
----
-
-## 12. 当前阶段性结论
-
-截至目前，ABB 版本已经完成“参数与建模前提确认 + FK 核心第一版实现 + 官方工作点校核 + 子空间模块 + 数据生成链路 + prediction system smoke test + classification system smoke test + `predict_ik + NR` 端到端 smoke test”，已经正式进入代码实现阶段。
-
-当前可以认为已经基本冻结的内容如下：
-
-1. 工程命名：`ABB_IRB`
-2. 对应型号：`IRB 1200-7/0.7`
-3. 建模方式：`Standard DH`
-4. 关节范围：
-   - `q1 [-170,170]`
-   - `q2 [-100,135]`
-   - `q3 [-200,70]`
-   - `q4 [-270,270]`
-   - `q5 [-130,130]`
-   - `q6 [-180,180]`（当前项目建模范围）
-5. DH 参数：
-   - `a = [0, 350, 42, 0, 0, 0]`
-   - `alpha = [-90, 0, -90, 90, -90, 0]`
-   - `d = [399.1, 0, 0, 351, 0, 82]`
-   - `theta2_offset = -90°`
-6. 位姿表达：`[x, y, z, phi, theta, psi]`
-7. 子空间方案：
-   - `abb_simplified = 96`
-   - `abb_strict = 192`
-
----
-
-## 13. 当前待执行的下一步
-
-下一步优先做以下内容：
-
-1. 进行一轮更合理规模的 `prediction + classification` 训练
-2. 用正式训练产物做第一次可参考的 ABB 推理实验
-3. 再决定先做 benchmark 还是先做避障迁移
-4. 之后再考虑将 DLS/L-BFGS-B 等传统数值法迁移到 ABB 版本
-
-当前不建议跳过数据链路验证而直接开始大规模训练。
-
----
-
-## 14. 实验记录
-
-### 2026-04-22
-
-#### 已完成
-
-1. 确定工程统一命名为 `ABB_IRB`
-2. 确定研究对象为 `IRB 1200-7/0.7`
-3. 确定当前不挂工具，末端视为法兰中心
-4. 整理并记录当前配置草案文档
-5. 基于官方资料与尺寸图确认第一版 `a/d` 参数
-6. 通过工作范围典型点反校验，确认 `theta2_offset=-90°` 当前成立
-
-#### 当前结论
-
-可以进入代码实现阶段，但必须先做 FK 核心验证，再进行数据生成与训练。
-
-#### 备注
-
-后续每次代码实现、运行命令、图像输出、训练结果和分析结论，统一继续追加在本节之后。
-
-### 2026-04-22 - FK 核心第一版实现
-
-#### 本轮新增代码
-
-1. `robot_config.py`
-   - 统一保存 ABB_IRB 当前阶段的机器人参数
-   - 包括 DH 参数、关节限位、`theta2_offset` 和官方腕中心参考点
-2. `fk_model.py`
-   - 实现 `numpy` 版 FK
-   - 实现关节骨架点输出
-   - 实现 `pose6` 输出
-   - 实现 `torch` 批量 FK 接口
-   - 实现数值雅可比接口
-3. `scripts/validate_fk_model.py`
-   - 对零位骨架点进行导出
-   - 对 ABB 官方工作范围图中的典型腕中心点做误差校核
-   - 比较不同 `theta2_offset` 假设的误差
-
-#### 当前目录结构
-
-当前 ABB 工程最小骨架如下：
+﻿# ABB_IRB 神经网络逆运动学工程 / ABB_IRB Neural IK Project
+
+本项目围绕 `ABB IRB 1200-7/0.7` 机械臂，建立了一套从运动学建模、数据生成、分段神经网络逆运动学、分层分类候选生成、数值法校正到可视化与 benchmark 的完整研究链路。当前工程重点不是控制器级工业部署，而是形成一套可验证、可扩展、可用于本科毕业设计论文撰写的研究型实现。
+
+> 说明：
+> - 按时间顺序的实验记录、命令记录和阶段性讨论，已统一移动到 [Summary.md](Summary.md)。
+> - 本 `README.md` 负责说明当前工程的总体流程、数学模型、核心脚本职责、性能指标与复现实验入口。
+
+## 1. 当前完成状态
+
+截至目前，工程已经完成以下核心环节：
+
+1. `ABB_IRB` 机械臂标准 `DH` 建模与 `FK` 验证。
+2. 两套关节子空间划分方案：`abb_simplified = 96`、`abb_strict = 192`。
+3. 基于 `abb_strict` 的 `192` 个子空间回归器训练与保存。
+4. 单层 `192` 类分类器基线训练与保存。
+5. 两层分层分类器训练与保存：
+   - 第一层粗分类：`shoulder / elbow / wrist`
+   - 第二层细分类：`q2_bin / q4_bin / q6_bin`
+6. `predict_ik.py` 完整推理链路：
+   - 候选子空间生成
+   - 子空间回归初值预测
+   - `FK` 回代筛选
+   - 阻尼 `Newton-Raphson` 局部精修
+   - 时间统计输出
+7. 工作空间参考样本导出、图表生成与 `100` 样本 benchmark。
+
+## 2. 项目主流程
+
+当前推荐的正式流程如下：
+
+1. 根据 `robot_config.py` 确定机械臂参数、关节限位和 `DH` 偏置。
+2. 使用 `fk_model.py` 建立正运动学、`pose6` 和数值雅可比。
+3. 在关节空间内按子区间划分得到 `96/192` 个子空间。
+4. 对每个子空间采样关节角，通过 `FK` 生成位姿样本，训练局部回归网络。
+5. 训练分类器，将目标位姿映射到候选子空间集合。
+6. 用候选子空间对应的回归器生成逆解初值。
+7. 对每个初值执行 `FK` 回代，按位置误差筛选最优初值。
+8. 采用阻尼 `Newton-Raphson` 进行局部修正，获得最终逆解。
+9. 对最终逆解进行位置误差、姿态误差和时间统计。
+
+可概括为：
 
 ```text
-ABB_Arm_Control/
-├─ docs/
-├─ scripts/
-│  └─ validate_fk_model.py
-├─ robot_config.py
-├─ fk_model.py
-└─ README.md
+目标位姿
+  -> 分类器产生候选子空间
+  -> 子空间回归器输出初值
+  -> FK回代筛选
+  -> NR局部精修
+  -> 最终逆解 + 误差 + 时间
 ```
 
-#### 本轮运行环境
+## 3. 目录与主文件职责
 
-- 虚拟环境：`arm_nn`
-- 工作目录：`E:\CSU\毕业设计\ABB_Arm_Control`
+### 3.1 根目录关键文件
 
-#### 本轮运行命令
-
-```powershell
-conda activate arm_nn
-python -X utf8 scripts/validate_fk_model.py
-```
-
-#### 本轮输出结果
-
-生成报告：
-
-- `artifacts/fk_validation/fk_validation_report.json`
-
-终端关键输出：
-
-```text
-theta2_offset_deg=-90.0
-mean_xz_error_mm=0.413227
-max_xz_error_mm=0.575172
-[Pos0] err=0.100000 mm
-[Pos3] err=0.502328 mm
-[Pos6] err=0.351964 mm
-[Pos7] err=0.536669 mm
-[Pos9] err=0.575172 mm
-```
-
-不同 `theta2_offset` 假设对比：
-
-| theta2_offset (deg) | mean_xz_error_mm | max_xz_error_mm |
-|---:|---:|---:|
-| -90 | 0.413227 | 0.575172 |
-| 0 | 697.198521 | 994.681593 |
-| 90 | 985.806420 | 1406.503915 |
-
-零位关节骨架点结果：
-
-| 点位 | 坐标 (mm) |
+| 文件 | 作用 |
 |---|---|
-| base | `(0.0, 0.0, 0.0)` |
-| joint1 | `(0.0, 0.0, 399.1)` |
-| joint2 | `(0.0, 0.0, 749.1)` |
-| joint3 | `(0.0, 0.0, 791.1)` |
-| joint4 / wrist center | `(351.0, 0.0, 791.1)` |
-| joint5 | `(351.0, 0.0, 791.1)` |
-| joint6 / end-effector | `(433.0, 0.0, 791.1)` |
+| `robot_config.py` | 机器人统一配置：DH 参数、关节限位、偏置、单位约定 |
+| `fk_model.py` | 正运动学、`pose6` 计算、关节点坐标、欧拉角变换、数值雅可比 |
+| `train_prediction_models.py` | 训练每个子空间的局部回归器 |
+| `train_classification_models.py` | 训练单层 `96/192` 类分类器基线 |
+| `train_branch_classification_models.py` | 训练第一层粗分类器 |
+| `train_fine_classification_models.py` | 训练第二层细分类器 |
+| `predict_hierarchical_candidates.py` | 只分析分层分类候选，不输出最终逆解 |
+| `predict_ik.py` | 当前正式在线推理入口 |
+| `generate_dataset.py` | 全局随机采样并生成 `FK` 数据 |
+| `export_subspace_reference_data.py` | 导出每个子空间的参考样本 |
+| `Summary.md` | 时间顺序的记录页 |
 
-#### 本轮结论
+### 3.2 子目录说明
 
-1. 当前 `Standard DH` 参数组已经可用于 ABB 工程第一阶段实现。
-2. `theta2_offset = -90°` 不是经验性修补项，而是当前坐标系定义下的必要偏置。
-3. 用 ABB 官方工作范围图的腕中心点进行验证后，当前模型误差已降至亚毫米量级。
-4. ABB 版本现在可以继续向“子空间划分 -> 数据生成 -> 小样本训练链路验证”推进。
+| 目录 | 内容 |
+|---|---|
+| `abb_nn/` | 神经网络模型、子空间划分、分层标签、优化模块 |
+| `artifacts/` | 已训练模型、验证报告、推理结果 |
+| `data/` | 数据集与子空间参考样本 |
+| `docs/` | 参数资料、说明文档 |
+| `figure/` | 绘图脚本、图表数据与最终 PNG 图像 |
+| `scripts/` | 独立验证脚本 |
 
-### 2026-04-22 - 子空间模块与数据生成链路
+## 4. 机械臂运动学模型
 
-#### 本轮新增代码
+### 4.1 位姿表示
 
-1. `abb_nn/__init__.py`
-2. `abb_nn/subspace.py`
-   - 新增 `abb_simplified`
-   - 新增 `abb_strict`
-   - 支持子空间计数、编码、解码、采样
-3. `naming.py`
-4. `naming_config.json`
-5. `generate_dataset.py`
-   - 支持 ABB 随机关节采样
-   - 支持 CUDA 批量 FK 生成
-   - 保存 `csv / npz / meta`
-6. `scripts/validate_subspaces.py`
-   - 输出子空间 profile 检查结果
-
-#### 本轮运行命令
-
-```powershell
-conda activate arm_nn
-python -X utf8 scripts/validate_subspaces.py
-python -X utf8 generate_dataset.py --n_samples 512 --seed 2026 --out_dir data --feature_batch_size 512 --overwrite
-```
-
-#### 本轮输出结果
-
-子空间校核输出：
-
-```text
-[abb_simplified] bins=2 x 2 x 2 x 2 x 3 x 2 => subspaces=96
-[abb_strict] bins=2 x 2 x 2 x 4 x 3 x 2 => subspaces=192
-```
-
-对应文件：
-
-- `artifacts/subspace_validation/subspace_profiles.json`
-
-数据生成输出：
-
-```text
-Robot: ABB_IRB (IRB 1200-7/0.7)
-Base name: abb_irb_fk_uniform_random_512_seed2026
-Generated samples: 512
-Feature device: cuda
-```
-
-生成文件：
-
-- `data/abb_irb_fk_uniform_random_512_seed2026_full.csv`
-- `data/abb_irb_fk_uniform_random_512_seed2026_full.npz`
-- `data/abb_irb_fk_uniform_random_512_seed2026_full_meta.json`
-
-生成数据结构：
-
-| 键 | 形状 | 类型 |
-|---|---|---|
-| `q_deg` | `(512, 6)` | `float32` |
-| `position_mm` | `(512, 3)` | `float32` |
-| `rotation` | `(512, 3, 3)` | `float32` |
-| `euler_rad_zyx` | `(512, 3)` | `float32` |
-| `T06` | `(512, 4, 4)` | `float32` |
-
-该数据集的抽样范围已覆盖当前项目关节限位，例如：
-
-- `q_min ≈ [-168.83, -99.67, -198.54, -269.05, -129.53, -179.79]`
-- `q_max ≈ [169.47, 134.99, 69.85, 269.22, 129.94, 179.78]`
-
-#### 本轮结论
-
-1. ABB 版子空间划分已经正式落地，并与先前讨论的 `96 / 192` 设计一致。
-2. ABB 版数据生成链路已经可用，且已成功调用 CUDA 做批量 FK。
-3. 当前可以继续进入 prediction system 的小规模训练验证。
-
-### 2026-04-22 - Prediction System Smoke Test
-
-#### 本轮新增代码
-
-1. `abb_nn/data_utils.py`
-2. `abb_nn/models.py`
-3. `train_prediction_models.py`
-   - 已迁移为 ABB 版 segmented prediction training 脚本
-   - 当前支持：
-     - `abb_simplified / abb_strict`
-     - 子空间采样训练
-     - 全局 normalizer
-     - `q1-5` 与 `q6` 分开建模
-     - `e_max` 与测试位姿位置误差统计
-
-#### 本轮运行命令
-
-```powershell
-conda activate arm_nn
-python -X utf8 train_prediction_models.py --segment_profile abb_simplified --subspaces 0,95 --samples_per_subspace 64 --epochs 5 --batch_size 32 --hidden_layers 2 --neurons_per_layer 16 --train_ratio 0.7 --val_ratio 0.15 --test_ratio 0.15 --normalizer_samples 512 --feature_batch_size 256 --num_workers 0 --out_dir artifacts/prediction_system_smoke
-```
-
-#### 本轮输出结果
-
-```text
-[subspace 000] train=44 val=9 mse(q1-5)=12870.0508 mse(q6)=11913.7305 e_max=1109.802368
-[subspace 095] train=44 val=9 mse(q1-5)=10525.0938 mse(q6)=13942.5225 e_max=1187.886963
-Saved metadata: artifacts\prediction_system_smoke\metadata.json
-Trained subspaces: 2
-```
-
-对应文件：
-
-- `artifacts/prediction_system_smoke/metadata.json`
-- `artifacts/prediction_system_smoke/subspace_models/subspace_000.pt`
-- `artifacts/prediction_system_smoke/subspace_models/subspace_095.pt`
-
-当前 smoke test 元数据已正确记录：
-
-1. `segment_profile = abb_simplified`
-2. `subspace_count = 96`
-3. `theta_offsets_deg = [0, -90, 0, 0, 0, 0]`
-4. 已训练子空间数为 `2`
-5. normalizer 与超参数均已写入 `metadata.json`
-
-#### 本轮结果解释
-
-1. 当前数值很大，这本身不代表脚本有问题。
-2. 这是一个故意压缩到极小规模的 smoke test：
-   - 每个子空间只有 `64` 个样本
-   - 只有 `5` 个 epoch
-   - 只训练了 `2` 个子空间
-3. 因此这里的意义不是追求精度，而是验证：
-   - 采样是否正常
-   - FK 特征构建是否正常
-   - normalizer 是否正常
-   - 子模型训练与保存是否正常
-   - 元数据格式是否可供后续推理脚本继续使用
-
-#### 本轮结论
-
-1. ABB 版 prediction training 链路已经最小闭环跑通。
-2. 当前可以继续迁移 classification system。
-3. 在 classification 与 inference 脚本迁移完成前，不建议直接开展大规模精度实验。
-
-### 2026-04-22 - Classification System 设计与 Smoke Test
-
-#### 设计思路
-
-当前 ABB 版 `classification system` 的目标不是直接输出关节角，而是先回答：
-
-> 给定一个目标末端位姿，它更可能属于哪一个关节子空间？
-
-这一步的作用是为后续 `prediction system` 提供候选子空间，从而避免在推理时遍历全部 `96` 或 `192` 个子空间模型。
-
-当前采用的分类数据构造方式为：
-
-1. 在全局关节范围内均匀采样关节角 `q`
-2. 通过 FK 计算对应位姿 `x = [x, y, z, phi, theta, psi]`
-3. 通过子空间划分规则，将 `q` 映射为类别标签 `y = subspace_id`
-4. 用样本对 `(x, y)` 训练分类器
-
-因此分类器学习的是：
+工程中统一采用 `6` 维末端位姿：
 
 $$
-\mathbf{x} \rightarrow s
+\mathbf{x} = [x,\ y,\ z,\ \phi,\ \theta,\ \psi]^\top,
 $$
 
 其中：
 
-- `\mathbf{x}` 为 6 维末端位姿特征
-- `s` 为子空间编号
+- $x,y,z$ 单位为 `mm`
+- $(\phi,\theta,\psi)$ 为 `ZYX Euler` 角，单位为 `rad`
 
-#### 当前分类器架构
+### 4.2 标准 DH 参数
 
-当前沿用之前 Ref[22] 复刻版中的 3 种分类器变体：
+当前采用 `Standard DH` 建模，参数如下：
 
-1. `v1`
-   - 普通深层 MLP
-   - 宽度 `35`
-   - 深度 `6`
-2. `v2`
-   - 更深的残差式 MLP
-   - 宽度 `35`
-   - 深度 `20`
-3. `v3`
-   - 更深的残差式 MLP + BatchNorm
-   - 宽度 `35`
-   - 深度 `30`
+| 关节 $i$ | $a_i$ (mm) | $\alpha_i$ (deg) | $d_i$ (mm) | $\theta_i$ |
+|---|---:|---:|---:|---|
+| 1 | 0.0 | -90 | 399.1 | $q_1$ |
+| 2 | 350.0 | 0 | 0.0 | $q_2 - 90^\circ$ |
+| 3 | 42.0 | -90 | 0.0 | $q_3$ |
+| 4 | 0.0 | 90 | 351.0 | $q_4$ |
+| 5 | 0.0 | -90 | 0.0 | $q_5$ |
+| 6 | 0.0 | 0 | 82.0 | $q_6$ |
 
-在 `abb_simplified` 配置下：
-
-- 输入维度：`6`
-- 输出类别数：`96`
-
-在 `abb_strict` 配置下：
-
-- 输入维度：`6`
-- 输出类别数：`192`
-
-#### 本轮新增代码
-
-1. `abb_nn/models.py`
-   - 补充 `ResidualBlock`
-   - 补充 `ClassifierMLP`
-   - 补充 `build_classifier_variant`
-2. `abb_nn/__init__.py`
-   - 导出分类模型与数据工具
-3. `train_classification_models.py`
-   - 已迁移为 ABB 版 classification training 脚本
-   - 支持 `abb_simplified / abb_strict`
-   - 支持三种分类器版本的训练与保存
-
-#### 本轮运行命令
-
-```powershell
-conda activate arm_nn
-python -X utf8 train_classification_models.py --segment_profile abb_simplified --trainset_v1 256 --trainset_v2 384 --trainset_v3 320 --val_samples 128 --epochs 3 --batch_size 64 --feature_batch_size 256 --num_workers 0 --out_dir artifacts/classification_system_smoke
-```
-
-#### 本轮输出结果
-
-```text
-[classifier v1] train=256 val=128 val_loss=4.578125 val_acc=0.0156
-[classifier v2] train=384 val=128 val_loss=4.550781 val_acc=0.0078
-[classifier v3] train=320 val=128 val_loss=4.751953 val_acc=0.0000
-Saved metadata: artifacts\classification_system_smoke\metadata.json
-```
-
-生成文件：
-
-- `artifacts/classification_system_smoke/classifier_v1.pt`
-- `artifacts/classification_system_smoke/classifier_v2.pt`
-- `artifacts/classification_system_smoke/classifier_v3.pt`
-- `artifacts/classification_system_smoke/metadata.json`
-
-当前 `metadata.json` 已正确记录：
-
-1. `segment_profile = abb_simplified`
-2. `num_classes = 96`
-3. `theta_offsets_deg = [0, -90, 0, 0, 0, 0]`
-4. 3 个分类器版本对应的训练样本数、验证损失和验证精度
-5. global normalizer
-
-#### 本轮结果解释
-
-1. 当前精度极低，这本身是符合预期的。
-2. 原因不是脚本错误，而是当前 smoke test 被刻意压缩得非常小：
-   - `trainset_v1 = 256`
-   - `trainset_v2 = 384`
-   - `trainset_v3 = 320`
-   - `val_samples = 128`
-   - `epochs = 3`
-3. 对于 `96` 类问题，这种样本量和训练轮数几乎只够验证代码链路是否打通，不足以评价模型性能。
-4. 这一步的意义在于确认：
-   - 全局随机采样正常
-   - FK 特征构造正常
-   - `pose6 -> subspace_id` 标签生成正常
-   - 3 个分类器版本都能训练和保存
-   - metadata 格式可供后续推理脚本直接使用
-
-#### 本轮结论
-
-1. ABB 版 classification system 已经最小闭环跑通。
-2. 现在 ABB 工程已经具备：
-   - FK 核心
-   - 子空间系统
-   - 数据生成
-   - prediction training
-   - classification training
-3. 下一步可以进入 `predict_ik.py + NR` 迁移，建立 ABB 版第一次完整推理闭环。
-
-### 2026-04-22 - `predict_ik + NR` 端到端 Smoke Test
-
-#### 设计思路
-
-当前 ABB 版推理流程沿用之前 Ref[22] 复刻版的总体结构：
-
-1. 输入目标末端位姿 `pose6`
-2. 使用 `classification system` 预测候选子空间
-3. 在候选子空间中调用对应的 `prediction system` 子模型
-4. 用末端位置误差 `position_l2_mm` 选择更优初值
-5. 若需要，则再用 `Newton-Raphson / DLS-style` 局部校正
-
-即：
+其中第 2 关节采用固定偏置：
 
 $$
-\mathbf{x}_{target}
-\xrightarrow{\text{classification}}
-\{s_1,s_2,\dots\}
-\xrightarrow{\text{prediction}}
-\mathbf{q}_0
-\xrightarrow{\text{NR refine}}
-\mathbf{q}^{*}
+\theta_2 = q_2 - 90^\circ.
 $$
 
-#### 本轮新增代码
+### 4.3 单关节齐次变换矩阵
 
-1. `abb_nn/optimization.py`
-   - 新增 `NROptions`
-   - 新增 `newton_raphson_refine(...)`
-2. `predict_ik.py`
-   - 新增 ABB 版推理入口
-   - 支持：
-     - classification 候选子空间筛选
-     - prediction 子模型装载与初值生成
-     - `e_max` 基础筛选
-     - NR 校正
-     - 计时统计
-     - 可选 `--out_json`
-3. `abb_nn/__init__.py`
-   - 导出优化模块接口
-
-#### 当前推理脚本的额外处理
-
-由于当前 smoke 阶段 prediction system 只训练了部分子空间，而 classification 可能预测到未训练子空间，因此推理脚本增加了一个务实回退策略：
-
-1. 若分类器预测的子空间中没有任何一个已训练 prediction 子模型
-2. 则自动回退到“所有已训练子空间”
-3. 这样可以避免 smoke 阶段因为训练覆盖不完整而直接报错
-
-此外，在当前 Windows + conda 环境中，推理阶段出现过一次 `OpenMP duplicate runtime` 问题，因此在 `predict_ik.py` 中加入了最小兼容处理：
-
-```python
-os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
-```
-
-这属于当前本地运行环境兼容措施，不改变推理算法本身。
-
-#### 本轮 smoke test 所用目标位姿
-
-本轮测试位姿来自一组手工指定关节角的 FK 输出：
-
-- `q_deg = [-80, 0, -100, -120, -80, -90]`
-
-对应目标位姿为：
-
-```text
-57.581909,76.177643,1108.508537,-1.926516,-0.150956,-1.308327
-```
-
-#### 本轮运行命令
-
-```powershell
-conda activate arm_nn
-python -X utf8 predict_ik.py --pose=57.581909,76.177643,1108.508537,-1.926516,-0.150956,-1.308327 --pred_meta artifacts/prediction_system_smoke/metadata.json --cls_meta artifacts/classification_system_smoke/metadata.json --enable_nr --out_json artifacts/inference_smoke/predict_ik_smoke_result.json
-```
-
-#### 本轮输出结果
-
-结果文件：
-
-- `artifacts/inference_smoke/predict_ik_smoke_result.json`
-
-关键输出摘要：
-
-```text
-candidate_subspaces = [0]
-candidate_source = classification_predictions
-initial position_l2_mm = 495.7419
-nr_iters = 40
-nr_converged = false
-final_pos_err_mm = 57.0463
-final_ori_err_rad = 0.7198
-ik_solve_time_ms ≈ 220.78
-```
-
-时间分解：
-
-- `classification_ms ≈ 114.62`
-- `initial_selection_ms ≈ 7.90`
-- `nr_refinement_ms ≈ 93.01`
-- `total_ms ≈ 220.78`
-
-#### 本轮结果解释
-
-1. 这次端到端推理已经成功完成，说明 ABB 版完整闭环已经打通：
-   - classification
-   - prediction
-   - NR refinement
-2. 当前初始误差较大，原因很直接：
-   - prediction system 只训练了 `2` 个子空间
-   - 每个子空间仅 `64` 个样本
-   - 只训练了 `5` 个 epoch
-3. 在这种极弱训练配置下，NR 仍然把位置误差从约 `495.74 mm` 压低到约 `57.05 mm`，说明：
-   - 当前 FK/雅可比/NR 数值链路是有效的
-   - 但 prediction 初值质量仍然远不足以支撑正式实验
-4. `nr_converged = false` 也是符合预期的，因为当前 smoke model 的初值本身太差。
-
-#### 本轮结论
-
-1. ABB 版第一次完整逆解推理闭环已经建立完成。
-2. 当前 ABB 工程已经具备：
-   - FK
-   - 子空间系统
-   - 数据生成
-   - prediction training
-   - classification training
-   - inference + NR refinement
-3. 接下来不再缺“功能模块”，而是进入“提升训练质量与实验可信度”的阶段。
-
----
-
-## 15. 云端正式训练命令
-
-本节用于记录当前 ABB 工程在云平台上可直接执行的正式训练命令。
-
-当前推荐优先训练方案：
-
-1. 先使用 `abb_simplified`
-2. 先完整跑完 `prediction system formal`
-3. 再完整跑完 `classification system formal`
-4. 最后再进行逆解推理与 NR 校正验证
-
-说明：
-
-1. `abb_simplified` 对应 `96` 个子空间，适合作为 ABB 版本的第一版正式实验方案。
-2. 当前不建议先上 `abb_strict = 192`，因为训练成本更高，且需要先观察 `96` 子空间结果。
-3. 正式训练完成后，才建议使用 `predict_ik.py` 做推理精度与时间测试。
-
-### 15.1 云端环境建议
-
-推荐在云端按如下顺序执行：
-
-```powershell
-conda activate arm_nn
-cd /path/to/ABB_Arm_Control
-```
-
-如果云端是 Linux，也可直接执行：
-
-```bash
-source activate arm_nn
-cd /path/to/ABB_Arm_Control
-```
-
-其中 `/path/to/ABB_Arm_Control` 需要替换为你在云平台上的实际项目路径。
-
-### 15.2 Prediction System Formal 命令
-
-该命令会对 `abb_simplified` 下的全部 `96` 个子空间进行正式训练。
-
-```powershell
-python -X utf8 train_prediction_models.py --segment_profile abb_simplified --samples_per_subspace 100000 --epochs 400 --batch_size 4096 --hidden_layers 3 --neurons_per_layer 20 --train_ratio 0.7 --val_ratio 0.15 --test_ratio 0.15 --normalizer_samples 200000 --feature_batch_size 8192 --out_dir artifacts/prediction_system_formal
-```
-
-命令含义：
-
-1. `--segment_profile abb_simplified`
-   - 使用 ABB 简化版分段
-   - 共 `96` 个子空间
-2. `--samples_per_subspace 80000`
-   - 每个子空间采样 `80000` 条样本
-3. `--epochs 300`
-   - 每个子空间训练 `300` 个 epoch
-4. `--batch_size 1024`
-   - 回归网络训练 batch size
-5. `--hidden_layers 3`
-   - 子空间回归网络隐层数为 `3`
-6. `--neurons_per_layer 20`
-   - 每层 `20` 个神经元
-7. `--train_ratio 0.7 --val_ratio 0.15 --test_ratio 0.15`
-   - 每个子空间内部按 `70/15/15` 划分训练、验证、测试集
-8. `--normalizer_samples 200000`
-   - 全局 normalizer 使用 `200000` 个关节样本拟合
-9. `--feature_batch_size 8192`
-   - FK 批量特征生成的 batch 大小
-10. `--out_dir artifacts/prediction_system_formal`
-   - 输出目录
-
-### 15.3 Classification System Formal 命令
-
-该命令会基于 ABB 全局关节空间采样结果，训练 3 个分类器版本。
-
-```powershell
-python -X utf8 train_classification_models.py --segment_profile abb_simplified --trainset_v1 300000 --trainset_v2 500000 --trainset_v3 400000 --val_samples 3000 --epochs 40 --batch_size 4096 --feature_batch_size 8192 --out_dir artifacts/classification_system_formal
-```
-
-命令含义：
-
-1. `--segment_profile abb_simplified`
-   - 分类类别数为 `96`
-2. `--trainset_v1 300000`
-   - 分类器 `v1` 训练样本数 `300000`
-3. `--trainset_v2 500000`
-   - 分类器 `v2` 训练样本数 `500000`
-4. `--trainset_v3 400000`
-   - 分类器 `v3` 训练样本数 `400000`
-5. `--val_samples 3000`
-   - 分类验证样本数 `3000`
-6. `--epochs 40`
-   - 分类器训练轮数 `40`
-7. `--batch_size 4096`
-   - 分类训练 batch size
-8. `--feature_batch_size 8192`
-   - FK 批量特征生成 batch 大小
-9. `--out_dir artifacts/classification_system_formal`
-   - 输出目录
-
-### 15.4 正式训练完成后的推理命令模板
-
-在上述两条正式训练命令都执行完成后，可使用如下命令进行推理：
-
-```powershell
-python -X utf8 predict_ik.py --pose=x_mm,y_mm,z_mm,phi_rad,theta_rad,psi_rad --pred_meta artifacts/prediction_system_formal/metadata.json --cls_meta artifacts/classification_system_formal/metadata.json --enable_nr --out_json artifacts/inference_formal/result.json
-```
-
-示例：
-
-```powershell
-python -X utf8 predict_ik.py --pose=100,200,800,0.1,-0.2,0.3 --pred_meta artifacts/prediction_system_formal/metadata.json --cls_meta artifacts/classification_system_formal/metadata.json --enable_nr --out_json artifacts/inference_formal/test_pose_001.json
-```
-
-### 15.5 云端运行注意事项
-
-1. `prediction system formal` 的训练时间会显著长于 `classification system formal`。
-2. `prediction system formal` 只有在全部目标子空间训练完成后，才会生成最终 `metadata.json`。
-3. 如果云平台显存不足，可优先减小：
-   - `--feature_batch_size`
-   - `--batch_size`
-4. 如果云平台算力足够，建议先完整跑 `prediction_system_formal`，不要与其他大型任务同时抢占显存。
-5. 正式推理时，`pred_meta` 和 `cls_meta` 必须来自同一分段配置，当前即：
-   - `abb_simplified`
-
-### 15.6 当前推荐执行顺序
-
-建议严格按如下顺序执行：
-
-1. `train_prediction_models.py` formal
-2. `train_classification_models.py` formal
-3. `predict_ik.py --enable_nr`
-
-当前这三步完成后，ABB 版才算进入“正式实验结果可分析”的阶段。
-
----
-
-## 16. 分层分类方案升级记录
-
-### 16.1 升级动机
-
-在 `abb_strict = 192` 版本下，单头 `192` 类分类器的 `top-1` 验证精度偏低，而第一层粗分支分类虽然已经明显优于原单头分类，但仍然会给出较大的候选子空间集合。
-
-当前判断如下：
-
-1. 原单头 `192` 类分类器更像“直接从位姿猜具体角度块编号”，任务过细。
-2. 第一层粗分支分类器更符合工程理解，它先判断：
-   - `shoulder`
-   - `elbow`
-   - `wrist`
-3. 但在 `abb_strict` 下，一个粗分支仍然对应：
+标准 `DH` 下，第 $i-1$ 坐标系到第 $i$ 坐标系的变换为：
 
 $$
-q_2(2)\times q_4(4)\times q_6(2)=16
+{}^{i-1}\mathbf{T}_i =
+\begin{bmatrix}
+\cos\theta_i & -\sin\theta_i\cos\alpha_i & \sin\theta_i\sin\alpha_i & a_i\cos\theta_i \\
+\sin\theta_i & \cos\theta_i\cos\alpha_i & -\cos\theta_i\sin\alpha_i & a_i\sin\theta_i \\
+0 & \sin\alpha_i & \cos\alpha_i & d_i \\
+0 & 0 & 0 & 1
+\end{bmatrix}.
 $$
 
-个局部子空间，因此如果只停留在第一层，候选数量仍然偏大。
-
-因此，当前在工程链路中新增了“第二层细分分类器”：
-
-1. 第一层：`粗分支分类`
-2. 第二层：`粗分支条件下的局部细分分类`
-3. 第三步：将 `(branch_label, fine_label)` 重新映射回全局 `subspace_id`
-
-### 16.2 当前第一层粗分支正式结果
-
-第一层正式结果保存在：
-
-- `artifacts/branch_classification_system/metadata.json`
-
-当前三种网络结果为：
-
-1. `v1`
-   - `joint_acc = 0.2620`
-   - `shoulder_acc = 0.5965`
-   - `elbow_acc = 0.6915`
-   - `wrist_acc = 0.5938`
-2. `v2`
-   - `joint_acc = 0.3068`
-   - `shoulder_acc = 0.6155`
-   - `elbow_acc = 0.6923`
-   - `wrist_acc = 0.6228`
-3. `v3`
-   - `joint_acc = 0.3038`
-   - `shoulder_acc = 0.6115`
-   - `elbow_acc = 0.6835`
-   - `wrist_acc = 0.6218`
-
-说明：
-
-1. `joint_acc` 表示三个头同时正确的比例，不是单一头精度。
-2. 与旧的单头 `192` 类分类器 `top-1 ≈ 0.11 ~ 0.14` 相比，第一层粗分支分类已经明显更合理。
-3. 当前最稳定的是 `elbow` 头，最难的是 `shoulder / wrist`。
-
-### 16.3 第二层细分分类器的设计
-
-第二层不再直接分类完整 `192` 类，而是在第一层粗分支已知的条件下，只预测该粗分支内部剩余的局部状态。
-
-在 `abb_strict` 下，粗分支由：
-
-1. `q1 -> shoulder`
-2. `q3 -> elbow`
-3. `q5 -> wrist`
-
-决定，因此粗分支内部剩余自由度是：
-
-1. `q2_bin`
-2. `q4_bin`
-3. `q6_bin`
-
-于是第二层局部类别数为：
+末端相对基座的齐次变换为：
 
 $$
-2\times4\times2=16
-$$
-
-在 `abb_simplified` 下则为：
-
-$$
-2\times2\times2=8
-$$
-
-第二层输入不是单纯的 `pose6`，而是：
-
-$$
-\mathbf{z}=
-[\tilde x,\ \tilde y,\ \tilde z,\ \tilde\phi,\ \tilde\theta,\ \tilde\psi,\ \text{branch\_onehot}_{12}]
+{}^{0}\mathbf{T}_6 = {}^{0}\mathbf{T}_1\,{}^{1}\mathbf{T}_2\,{}^{2}\mathbf{T}_3\,{}^{3}\mathbf{T}_4\,{}^{4}\mathbf{T}_5\,{}^{5}\mathbf{T}_6
+= \begin{bmatrix}
+\mathbf{R}_{06} & \mathbf{p}_{06} \\
+\mathbf{0}_{1\times 3} & 1
+\end{bmatrix}.
 $$
 
 其中：
 
-1. 前 6 维为归一化后的末端位姿
-2. 后 12 维为第一层粗分支的 one-hot 条件编码
+- $\mathbf{p}_{06} \in \mathbb{R}^3$ 为末端位置向量
+- $\mathbf{R}_{06} \in SO(3)$ 为末端旋转矩阵
 
-第二层输出为 `fine_label`，随后通过：
+### 4.4 数值雅可比
+
+当前 `NR` 校正使用数值雅可比：
 
 $$
-(\text{branch\_label},\ \text{fine\_label})
-\rightarrow \text{subspace\_id}
+\mathbf{J}_{:,i}(\mathbf{q}) \approx
+\frac{\mathbf{x}(\mathbf{q}+h\mathbf{e}_i) - \mathbf{x}(\mathbf{q}-h\mathbf{e}_i)}{2h},
+\quad h=10^{-6}.
 $$
 
-映射回全局子空间编号。
+这与 `fk_model.py` 中 `numerical_pose_jacobian_rad(...)` 的实现一致。
 
-### 16.4 新增代码文件
+### 4.5 关节限位
 
-本次新增或扩展的主要文件如下：
+当前项目建模限位为：
 
-1. `abb_nn/branching.py`
-   - 补充了第二层细分标签与映射逻辑
-   - 新增：
-     - `assign_fine_labels(...)`
-     - `encode_fine_index(...)`
-     - `decode_fine_label(...)`
-     - `branch_fine_to_subspace_label(...)`
-2. `train_fine_classification_models.py`
-   - 第二层细分分类器训练脚本
-3. `predict_hierarchical_candidates.py`
-   - 两层分类联合推理脚本
-   - 输出最终压缩后的 `candidate_subspaces`
+$$
+\begin{aligned}
+q_1 &\in [-170^\circ, 170^\circ], \\
+q_2 &\in [-100^\circ, 135^\circ], \\
+q_3 &\in [-200^\circ, 70^\circ], \\
+q_4 &\in [-270^\circ, 270^\circ], \\
+q_5 &\in [-130^\circ, 130^\circ], \\
+q_6 &\in [-180^\circ, 180^\circ].
+\end{aligned}
+$$
 
-### 16.5 第二层 Smoke 验证
+说明：第 6 轴在官方规格中可达 `±400°`，但当前工程为了控制数据规模与分段复杂度，将其压缩为单圈范围。
 
-为了保证代码链路完整，先进行了最小 smoke 级别验证。
+### 4.6 第 2 关节偏置验证结果
 
-#### 16.5.1 训练命令
+通过 ABB 官方工作范围图中的典型腕中心点进行反校核，当前 `theta2_offset = -90°` 是正确建模方式。验证结果如下：
+
+| $\theta_2$ 偏置假设 | 平均 `XZ` 误差 (mm) | 最大 `XZ` 误差 (mm) |
+|---:|---:|---:|
+| `-90°` | `0.4132` | `0.5752` |
+| `0°` | `697.1985` | `994.6816` |
+| `90°` | `985.8064` | `1406.5039` |
+
+![关节2偏置验证 / Joint-2 Offset Validation](figure/figures/fk_theta2_offset_validation.png)
+
+结论：当前 `DH` 参数与 `theta2_offset = -90°` 在工程内部是自洽的，可作为后续全部训练与推理的基础。
+
+## 5. 子空间划分与标签系统
+
+### 5.1 两套划分方案
+
+当前工程保留两套划分配置：
+
+| 配置 | q1 | q2 | q3 | q4 | q5 | q6 | 总子空间数 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `abb_simplified` | 2 | 2 | 2 | 2 | 3 | 2 | 96 |
+| `abb_strict` | 2 | 2 | 2 | 4 | 3 | 2 | 192 |
+
+对应总数计算为：
+
+$$
+N_{\text{subspace}} = \prod_{j=1}^{6} n_j.
+$$
+
+在当前正式实验中，使用的是：
+
+$$
+2 \times 2 \times 2 \times 4 \times 3 \times 2 = 192.
+$$
+
+![子空间划分配置 / Subspace Profile Comparison](figure/figures/subspace_profile_comparison.png)
+
+### 5.2 子空间编号方式
+
+若第 $j$ 个关节所在分段编号为 $b_j$，该关节总分段数为 $n_j$，则全局子空间标签采用混合进制编码：
+
+$$
+s = (((((b_1 n_2 + b_2)n_3 + b_3)n_4 + b_4)n_5 + b_5)n_6 + b_6).
+$$
+
+其中：
+
+- $b_j$ 从 `0` 开始计数
+- $s \in [0, N_{\text{subspace}} - 1]$
+
+这与 `abb_nn/subspace.py` 中 `encode_subspace_index(...)` 和 `decode_subspace_label(...)` 的逻辑一致。
+
+### 5.3 分层分类的粗标签与细标签
+
+当前 `abb_strict` 配置下，采用两层分类：
+
+#### 第一层：粗分类 `coarse12`
+
+由下列三个量共同构成：
+
+$$
+\begin{aligned}
+b_{\text{shoulder}} &= \mathbb{1}[q_1 \ge 0], \\
+b_{\text{elbow}} &= \mathbb{1}[q_3 \ge -65^\circ], \\
+b_{\text{wrist}} &= \operatorname{bin}_{\{-45^\circ,\ 45^\circ\}}(q_5).
+\end{aligned}
+$$
+
+因此粗分类总类别数为：
+
+$$
+2 \times 2 \times 3 = 12.
+$$
+
+#### 第二层：细分类 `fine16`
+
+在粗分支已知的前提下，再预测剩余三个关节的子区间：
+
+$$
+(q2\_bin,\ q4\_bin,\ q6\_bin).
+$$
+
+对于 `abb_strict`：
+
+$$
+2 \times 4 \times 2 = 16.
+$$
+
+第二层再通过映射
+
+$$
+(\text{branch\_label},\ \text{fine\_label}) \rightarrow \text{subspace\_id}
+$$
+
+恢复到全局 `192` 个子空间之一。
+
+## 6. 数据生成与特征构建
+
+### 6.1 全局随机采样数据
+
+全局数据生成的基本形式为：
+
+$$
+\mathbf{q}^{(i)} \sim \mathcal{U}(\mathcal{Q}),
+$$
+
+其中 $\mathcal{Q}$ 为关节限位构成的六维超矩形区域。随后通过 `FK` 生成对应位姿：
+
+$$
+\mathbf{x}^{(i)} = f_{\text{FK}}(\mathbf{q}^{(i)}).
+$$
+
+当前 `generate_dataset.py` 输出的核心字段包括：
+
+- `q_deg`
+- `position_mm`
+- `rotation`
+- `euler_rad_zyx`
+- `T06`
+
+### 6.2 子空间局部采样
+
+对于某个子空间 $s$，先得到该子空间的边界：
+
+$$
+\mathcal{Q}_s = [q_1^{\min}, q_1^{\max}] \times \cdots \times [q_6^{\min}, q_6^{\max}],
+$$
+
+再进行均匀采样：
+
+$$
+\mathbf{q}^{(i)}_s \sim \mathcal{U}(\mathcal{Q}_s).
+$$
+
+这与 `sample_q_in_subspace_deg(...)` 的实现一致。
+
+### 6.3 特征归一化
+
+所有回归器与分类器都使用标准化特征：
+
+$$
+\tilde{\mathbf{x}} = \frac{\mathbf{x} - \boldsymbol{\mu}}{\boldsymbol{\sigma}}.
+$$
+
+其中：
+
+- $\boldsymbol{\mu}$：样本均值
+- $\boldsymbol{\sigma}$：样本标准差
+
+当前均值和标准差都被写入各自的 `metadata.json` 中，推理阶段按同一参数做标准化。
+
+## 7. 预测系统：子空间回归器
+
+### 7.1 任务定义
+
+对于每个子空间 $s$，当前采用两个局部回归网络：
+
+$$
+\hat{\mathbf{q}}_{1:5}^{(s)} = g_s^{(15)}(\tilde{\mathbf{x}}),
+\qquad
+\hat{q}_{6}^{(s)} = g_s^{(6)}(\tilde{\mathbf{x}}).
+$$
+
+最终拼接为：
+
+$$
+\hat{\mathbf{q}}^{(s)} = [\hat{q}_1,\hat{q}_2,\hat{q}_3,\hat{q}_4,\hat{q}_5,\hat{q}_6]^\top.
+$$
+
+### 7.2 网络结构
+
+当前回归器采用 `MLPRegressor`，形式为：
+
+- 输入维度：`6`
+- 输出维度：`5` 或 `1`
+- 激活函数：`ReLU`
+- 正式模型超参数：
+  - `hidden_layers = 3`
+  - `neurons_per_layer = 20`
+
+因此正式模型等价于：
+
+$$
+6 \rightarrow 20 \rightarrow 20 \rightarrow 20 \rightarrow 5
+$$
+
+和
+
+$$
+6 \rightarrow 20 \rightarrow 20 \rightarrow 20 \rightarrow 1.
+$$
+
+### 7.3 损失函数
+
+对 $q_1 \sim q_5$ 和 $q_6$ 分别使用均方误差：
+
+$$
+\mathcal{L}_{1:5}^{(s)} = \frac{1}{N}\sum_{i=1}^{N}\lVert \hat{\mathbf{q}}_{1:5}^{(i,s)} - \mathbf{q}_{1:5}^{(i,s)} \rVert_2^2,
+$$
+
+$$
+\mathcal{L}_{6}^{(s)} = \frac{1}{N}\sum_{i=1}^{N}(\hat{q}_{6}^{(i,s)} - q_6^{(i,s)})^2.
+$$
+
+单位说明：
+
+- `mse(q1-5)` 单位为 `deg²`
+- `mse(q6)` 单位为 `deg²`
+
+### 7.4 回归器评价指标
+
+对每个子空间，当前保存的关键指标包括：
+
+#### 1. 验证集损失
+
+- `val_loss_q15_deg2`
+- `val_loss_q6_deg2`
+
+#### 2. 测试集平均位置误差
+
+对测试样本 $(\mathbf{x}_i, \mathbf{q}_i)$，回归器输出关节角后再通过 `FK` 回代，计算位置误差：
+
+$$
+e_{p,i}^{(s)} = \lVert \mathbf{p}(\hat{\mathbf{q}}_i^{(s)}) - \mathbf{p}_i^* \rVert_2.
+$$
+
+测试集平均位置误差为：
+
+$$
+\bar e_{p,\text{test}}^{(s)} = \frac{1}{N_{\text{test}}}\sum_{i=1}^{N_{\text{test}}} e_{p,i}^{(s)}.
+$$
+
+其在代码中对应：`test_pos_l2_mean_mm`，单位为 `mm`。
+
+#### 3. 验证集最大位置误差 `e_max`
+
+$$
+e_{\max}^{(s)} = \max_{i \in \text{val}} \lVert \mathbf{p}(\hat{\mathbf{q}}_i^{(s)}) - \mathbf{p}_i^* \rVert_2.
+$$
+
+这不是关节角误差，而是**末端位置误差上界估计**，单位为 `mm`。当前推理阶段用它作为候选筛选失败时的回退阈值。
+
+### 7.5 当前正式回归结果概览
+
+当前正式模型为：
+
+- `segment_profile = abb_strict`
+- `subspace_count = 192`
+- `trained_subspaces = 192`
+- `samples_per_subspace = 100000`
+- `epochs = 400`
+
+基于 `figure/data/prediction_subspace_metrics.csv` 的汇总统计如下：
+
+| 指标 | 数值 |
+|---|---:|
+| 子空间总数 | `192` |
+| `q1-5` 验证 MSE 平均值 | `332.6695 deg²` |
+| `q1-5` 验证 MSE 中位数 | `342.5140 deg²` |
+| `q6` 验证 MSE 平均值 | `465.1991 deg²` |
+| `q6` 验证 MSE 中位数 | `238.3765 deg²` |
+| 测试集平均位置误差均值 | `83.2627 mm` |
+| 测试集平均位置误差中位数 | `83.1365 mm` |
+| `e_max` 均值 | `620.0359 mm` |
+| `e_max` 中位数 | `546.7141 mm` |
+| `e_max` 最小值 | `325.5852 mm` |
+| `e_max` 最大值 | `1189.5448 mm` |
+
+![子空间位置误差分布 / Prediction Error Distribution](figure/figures/prediction_subspace_error_distribution.png)
+
+结论：
+
+1. 当前子空间回归器能够提供可用初值，但单独作为最终逆解仍然偏粗。
+2. `NR` 校正是必要环节，没有 `NR` 时很难达到工程精度要求。
+3. 回归器的主要作用是把解带入数值法的有效收敛域，而不是一步到位直接输出高精度逆解。
+
+## 8. 分类系统：基线与分层方案
+
+### 8.1 单层 `192` 类分类基线
+
+基线分类器直接学习：
+
+$$
+\hat s = c_{\text{flat}}(\tilde{\mathbf{x}}),
+$$
+
+其中 $\hat s$ 为全局子空间编号。
+
+损失函数为：
+
+$$
+\mathcal{L}_{\text{flat}} = \operatorname{CE}(c_{\text{flat}}(\tilde{\mathbf{x}}), s).
+$$
+
+### 8.2 分层分类的设计动机
+
+对于 ABB 机械臂，直接做 `192` 类分类会遇到两个问题：
+
+1. 对称构型较多，位姿到具体子空间并非简单一一对应。
+2. 直接预测完整子空间编号过细，`top-1` 准确率偏低。
+
+因此当前将问题拆成两层：
+
+1. 第一层：先判定大构型类型。
+2. 第二层：在给定大构型条件下，再做局部细分。
+
+### 8.3 第一层粗分类器
+
+第一层网络为三头分类器：
+
+$$
+(\hat y_{\text{shoulder}}, \hat y_{\text{elbow}}, \hat y_{\text{wrist}})
+= c_{\text{branch}}(\tilde{\mathbf{x}}).
+$$
+
+损失函数为三个交叉熵之和：
+
+$$
+\mathcal{L}_{\text{branch}} =\operatorname{CE}(\hat y_{\text{shoulder}}, y_{\text{shoulder}})+ \operatorname{CE}(\hat y_{\text{elbow}}, y_{\text{elbow}})+ \operatorname{CE}(\hat y_{\text{wrist}}, y_{\text{wrist}}).
+$$
+
+### 8.4 第二层细分类器
+
+第二层输入不是单纯位姿，而是条件输入：
+
+$$
+\mathbf{z} = [\tilde{\mathbf{x}},\ \text{onehot}(\text{branch\_label})].
+$$
+
+在当前 `abb_strict` 设置下，输入维度为：
+
+$$
+6 + 12 = 18.
+$$
+
+细分类器学习：
+
+$$
+\hat f = c_{\text{fine}}(\mathbf{z}),
+$$
+
+损失函数为：
+
+$$
+\mathcal{L}_{\text{fine}} = \operatorname{CE}(c_{\text{fine}}(\mathbf{z}), f).
+$$
+
+### 8.5 分类器网络结构
+
+分类器三种结构与 `Ref[22]` 迁移版保持一致：
+
+| 变体 | 宽度 | 深度 | 残差 | BatchNorm |
+|---|---:|---:|---:|---:|
+| `v1` | 35 | 6 | 否 | 否 |
+| `v2` | 35 | 20 | 是 | 否 |
+| `v3` | 35 | 30 | 是 | 是 |
+
+### 8.6 当前分类结果
+
+基于 `figure/data/classification_metrics_summary.csv`，当前正式结果如下：
+
+#### 单层 `192` 类分类器
+
+| 变体 | Top-1 准确率 |
+|---|---:|
+| `v1` | `0.1110` |
+| `v2` | `0.1422` |
+| `v3` | `0.1416` |
+
+#### 第一层粗分类器
+
+| 变体 | Joint Acc | Shoulder Acc | Elbow Acc | Wrist Acc |
+|---|---:|---:|---:|---:|
+| `v1` | `0.2620` | `0.5965` | `0.6915` | `0.5938` |
+| `v2` | `0.3068` | `0.6155` | `0.6923` | `0.6228` |
+| `v3` | `0.3038` | `0.6115` | `0.6835` | `0.6218` |
+
+#### 第二层细分类器
+
+| 变体 | Top-1 准确率 | Top-3 准确率 |
+|---|---:|---:|
+| `v1` | `0.1980` | `0.5295` |
+| `v2` | `0.4063` | `0.8050` |
+| `v3` | `0.4425` | `0.8325` |
+
+![分类系统结果 / Classification Performance](figure/figures/classification_hierarchical_comparison.png)
+
+结论：
+
+1. 对 ABB 机械臂，单层 `192` 类分类器 `top-1` 偏低，直接用于在线子空间定位并不稳健。
+2. 粗分类器在结构上更贴近机械臂“大构型”判别。
+3. 细分类器在粗分支条件下能把局部类别准确率提升到可用水平，特别是 `Top-3` 已达到 `0.8325`。
+
+## 9. 候选生成、初值筛选与 NR 校正
+
+### 9.1 粗分支候选生成
+
+对每个第一层模型，分别对 `shoulder / elbow / wrist` 三个头取 `top-k`，再做笛卡尔积。某个粗分支候选的得分为：
+
+$$
+S_{\text{branch}}^{(m)}(b) =\log p_{\text{shoulder}}^{(m)}(b_s)+ \log p_{\text{elbow}}^{(m)}(b_e)+ \log p_{\text{wrist}}^{(m)}(b_w).
+$$
+
+当前实现对同一粗分支标签保留多模型中的最大得分。
+
+### 9.2 细分类候选生成
+
+对每个粗分支候选，构造条件输入 $\mathbf{z}$，并将三个细分类模型的对数概率相加：
+
+$$
+S_{\text{fine}}(f \mid b) = \sum_{m=1}^{3} \log p_m(f \mid b, \mathbf{z}).
+$$
+
+最终全局子空间得分为：
+
+$$
+S_{\text{subspace}}(s) = S_{\text{branch}}(b) + S_{\text{fine}}(f \mid b),
+$$
+
+其中 $s$ 由 $(b,f)$ 映射得到。
+
+### 9.3 初值筛选
+
+对于候选子空间集合 $\mathcal{C}$，逐个调用对应回归器得到初值 $\hat{\mathbf{q}}^{(s)}$，再通过 `FK` 计算位置误差：
+
+$$
+e_p^{(s)} = \lVert \mathbf{p}(\hat{\mathbf{q}}^{(s)}) - \mathbf{p}^* \rVert_2.
+$$
+
+选择初始误差最小的候选：
+
+$$
+s^* = \arg\min_{s \in \mathcal{C}} e_p^{(s)}.
+$$
+
+若该最优候选满足：
+
+$$
+e_p^{(s^*)} > e_{\max}^{(s^*)},
+$$
+
+则触发全子空间扫描回退机制。
+
+### 9.4 阻尼 Newton-Raphson 校正
+
+当前 `abb_nn/optimization.py` 中的更新公式为：
+
+$$
+\mathbf{q}_{k+1} = \mathbf{q}_k + \mathbf{J}(\mathbf{q}_k)^\top
+\left( \mathbf{J}(\mathbf{q}_k)\mathbf{J}(\mathbf{q}_k)^\top + \lambda \mathbf{I} \right)^{-1}
+\mathbf{e}_k,
+$$
+
+其中：
+
+$$
+\mathbf{e}_k = \mathbf{x}^* - \mathbf{x}(\mathbf{q}_k).
+$$
+
+姿态误差部分使用角度回绕处理：
+
+$$
+\mathbf{e}_{\text{ori}} \leftarrow (\mathbf{e}_{\text{ori}} + \pi) \bmod 2\pi - \pi.
+$$
+
+收敛判据为：
+
+$$
+\lVert \mathbf{e}_{\text{pos}} \rVert_2 \le \varepsilon_p,
+\qquad
+\lVert \mathbf{e}_{\text{ori}} \rVert_2 \le \varepsilon_o.
+$$
+
+当前默认阈值为：
+
+- $\varepsilon_p = 10^{-3}\ \text{mm}$
+- $\varepsilon_o = 10^{-3}\ \text{rad}$
+
+### 9.5 单样本验证结果
+
+当前正式链路已经完成如下单样本验证：
+
+- 目标位姿：`[100, 200, 800, 0.1, -0.2, 0.3]`
+- 模式：`hierarchical + NR`
+
+关键结果如下：
+
+| 指标 | 数值 |
+|---|---:|
+| 初始最优子空间 | `164` |
+| 初始位置误差 | `44.8264 mm` |
+| `NR` 迭代次数 | `4` |
+| `NR` 是否收敛 | `True` |
+| 最终位置误差 | `7.094e-05 mm` |
+| 最终姿态误差 | `9.311e-07 rad` |
+| 候选生成时间 | `10.2222 ms` |
+| 初值筛选时间 | `15.4157 ms` |
+| `NR` 时间 | `15.4391 ms` |
+| 总时间 | `94.4150 ms` |
+
+![单样本完整逆解结果 / Single-Case IK Metrics](figure/figures/single_case_ik_metrics.png)
+
+结论：神经网络回归器已经能提供足够好的初值，使得阻尼 `NR` 在极少迭代步内收敛到高精度解。
+
+## 10. 工作空间参考样本与可视化
+
+为了不重新训练全部子空间模型，又能为论文和可视化提供统一样本源，当前增加了子空间参考样本导出：
 
 ```powershell
-conda activate arm_nn
-python -X utf8 train_fine_classification_models.py --segment_profile abb_strict --trainset_v1 128 --trainset_v2 192 --trainset_v3 160 --val_samples 64 --epochs 2 --batch_size 32 --feature_batch_size 256 --num_workers 0 --out_dir artifacts/fine_classification_smoke
+python -X utf8 export_subspace_reference_data.py --segment_profile abb_strict --samples_per_subspace 512 --out_dir data/subspace_reference_abb_strict_samples512_seed2026 --seed 2026 --overwrite
 ```
 
-Smoke 结果：
+当前目录：
 
-1. `v1`
-   - `top1 = 0.0938`
-   - `top3 = 0.1562`
-2. `v2`
-   - `top1 = 0.0625`
-   - `top3 = 0.1406`
-3. `v3`
-   - `top1 = 0.0625`
-   - `top3 = 0.1719`
+- `data/subspace_reference_abb_strict_samples512_seed2026`
 
-说明：
+内容包括：
 
-1. 这里仅用于验证训练与保存流程正确，不用于评价最终精度。
-2. 第二层 smoke 样本量极小，因此精度不具参考价值。
+- `192` 个 `subspace_xxx_reference.npz`
+- `1` 个 `metadata.json`
 
-#### 16.5.2 分层候选推理命令
+绘图时当前抽样使用了 `24576` 个参考点，得到的工作空间投影视图如下：
+
+![工作空间投影 / Workspace Projections](figure/figures/workspace_reference_projections.png)
+
+这些参考数据可直接用于：
+
+1. 工作空间覆盖展示。
+2. 子空间分布可视化。
+3. 轨迹和碰撞检测的快速采样验证。
+4. 论文中对样本空间与机械臂可达域的展示。
+
+## 11. Benchmark 设计与当前结果
+
+### 11.1 Benchmark 设计
+
+当前 benchmark 脚本为：
+
+- `figure/scripts/run_ik_benchmark.py`
+
+其流程为：
+
+1. 在关节限位内随机采样关节角。
+2. 通过 `FK` 得到目标位姿。
+3. 分别测试四种模式：
+   - `flat + No NR`
+   - `flat + NR`
+   - `hierarchical + No NR`
+   - `hierarchical + NR`
+4. 统计位置误差、姿态误差、是否收敛、总耗时等指标。
+
+### 11.2 工程成功率定义
+
+当前采用严格的工程成功判据：
+
+$$
+\text{success}_i = \mathbb{1}
+\left[
+ e_{p,i} \le 1.0\ \text{mm}
+ \ \land \ 
+ e_{o,i} \le 10^{-2}\ \text{rad}
+\right].
+$$
+
+因此总成功率定义为：
+
+$$
+\text{SR} = \frac{1}{N}\sum_{i=1}^{N} \text{success}_i.
+$$
+
+说明：旧版宽松定义下的误导性图已经删除，当前仅保留 `n100` 新口径结果。
+
+### 11.3 当前 `100` 样本 benchmark 结果
+
+基于 `figure/data/ik_benchmark_summary_n100.csv`，结果如下：
+
+| 模式 | 工程成功率 | NR 收敛率 | 最终位置误差中位数 (mm) | 最终姿态误差中位数 (rad) | 总时间中位数 (ms) | 平均候选数 |
+|---|---:|---:|---:|---:|---:|---:|
+| `flat + No NR` | `0.00` | `0.00` | `36.9429` | `0.324373` | `36.1901` | `4.21` |
+| `flat + NR` | `0.88` | `0.88` | `7.962e-05` | `3.673e-07` | `55.6374` | `4.21` |
+| `hierarchical + No NR` | `0.00` | `0.00` | `32.6541` | `0.518540` | `77.7959` | `12.00` |
+| `hierarchical + NR` | `0.78` | `0.78` | `6.866e-05` | `3.521e-07` | `101.1857` | `12.00` |
+
+![基准测试汇总 / IK Benchmark Summary](figure/figures/ik_benchmark_summary_n100.png)
+
+![基准测试误差分布 / IK Benchmark Distribution](figure/figures/ik_benchmark_distribution_n100.png)
+
+### 11.4 结果分析
+
+1. `No NR` 的两种模式成功率都是 `0`，说明当前神经网络初值不能直接当作最终逆解使用。
+2. `flat + NR` 当前是最强基线：
+   - 成功率 `0.88`
+   - 中位耗时 `55.64 ms`
+3. `hierarchical + NR` 当前成功率为 `0.78`，低于 `flat + NR`，说明当前分层候选参数在召回率上仍有优化空间。
+4. 两种 `+NR` 模式一旦成功，最终误差都能降到近乎数值精度极限，说明核心瓶颈不是 `NR`，而是候选子空间召回与初值质量。
+5. 当前 benchmark 的时间包含脚本调用、模型加载和 `JSON` 读写，不等同于常驻服务下的纯推理时间。
+
+## 12. 当前正式工件与建议保留内容
+
+### 12.1 训练与推理核心工件
+
+建议保留：
+
+- `artifacts/prediction_system_formal/`
+- `artifacts/classification_system_formal/`
+- `artifacts/branch_classification_system/`
+- `artifacts/fine_classification_system/`
+- `artifacts/fk_validation/`
+- `artifacts/subspace_validation/`
+
+### 12.2 数据与参考样本
+
+建议保留：
+
+- `data/subspace_reference_abb_strict_samples512_seed2026/`
+
+### 12.3 图表与表格
+
+建议保留：
+
+- `figure/figures/*.png`
+- `figure/data/*.csv`
+
+因为这些结果可以直接用于论文中的：
+
+1. 参数验证图。
+2. 子空间配置图。
+3. 分类效果图。
+4. 回归误差图。
+5. 基准测试图。
+
+## 13. 复现实验命令
+
+### 13.1 环境
 
 ```powershell
 conda activate arm_nn
-python -X utf8 predict_hierarchical_candidates.py --pose=100,200,800,0.1,-0.2,0.3 --branch_meta artifacts/branch_classification_smoke/metadata.json --fine_meta artifacts/fine_classification_smoke/metadata.json --topk_shoulder 2 --topk_elbow 1 --topk_wrist 2 --max_branch_candidates 4 --fine_topk_per_branch 2 --max_subspace_candidates 8 --out_json artifacts/fine_classification_smoke/predict_hierarchical_smoke.json
+cd E:\CSU\毕业设计\ABB_Arm_Control
 ```
 
-当前 smoke 结果表明：
-
-1. 第一层先保留 `4` 个粗分支候选
-2. 第二层对每个粗分支取 `2` 个局部 `fine_label`
-3. 最终得到 `8` 个全局 `subspace_id` 候选
-
-这证明两层分类逻辑已经可以正常把候选空间从：
-
-1. `192` 个全局子空间
-2. 压缩到 `4` 个粗分支
-3. 再进一步压缩到 `8` 个最终子空间候选
-
-### 16.6 第二层正式训练命令
-
-如果继续沿用当前第一层正式粗分支系统，第二层正式训练建议先使用如下命令：
+### 13.2 训练 `192` 子空间回归器
 
 ```powershell
-conda activate arm_nn
+python -X utf8 train_prediction_models.py --segment_profile abb_strict --samples_per_subspace 100000 --epochs 400 --batch_size 4096 --hidden_layers 3 --neurons_per_layer 20 --train_ratio 0.7 --val_ratio 0.15 --test_ratio 0.15 --normalizer_samples 200000 --feature_batch_size 8192 --out_dir artifacts/prediction_system_formal
+```
+
+### 13.3 训练单层 `192` 类分类器基线
+
+```powershell
+python -X utf8 train_classification_models.py --segment_profile abb_strict --trainset_v1 400000 --trainset_v2 600000 --trainset_v3 500000 --val_samples 5000 --epochs 80 --batch_size 4096 --feature_batch_size 8192 --out_dir artifacts/classification_system_formal
+```
+
+### 13.4 训练第一层粗分类器
+
+```powershell
+python -X utf8 train_branch_classification_models.py --segment_profile abb_strict --trainset_v1 250000 --trainset_v2 400000 --trainset_v3 320000 --val_samples 4000 --epochs 60 --batch_size 4096 --feature_batch_size 8192 --out_dir artifacts/branch_classification_system
+```
+
+### 13.5 训练第二层细分类器
+
+```powershell
 python -X utf8 train_fine_classification_models.py --segment_profile abb_strict --trainset_v1 250000 --trainset_v2 400000 --trainset_v3 320000 --val_samples 4000 --epochs 60 --batch_size 4096 --feature_batch_size 8192 --out_dir artifacts/fine_classification_system
 ```
 
-命令含义：
-
-1. `--segment_profile abb_strict`
-   - 与当前第一层正式粗分支分类保持一致
-2. `trainset_v1/v2/v3`
-   - 三个模型各自训练样本规模
-3. `val_samples 4000`
-   - 验证样本数量
-4. `epochs 60`
-   - 第二层细分分类器训练轮数
-5. `batch_size 4096`
-   - 训练 batch size
-6. `feature_batch_size 8192`
-   - FK 特征生成 batch size
-
-### 16.7 两层分类联合推理命令
-
-第一层和第二层都训练完成后，可使用如下命令输出最终压缩后的候选子空间：
+### 13.6 完整逆解推理
 
 ```powershell
-conda activate arm_nn
-python -X utf8 predict_hierarchical_candidates.py --pose=100,200,800,0.1,-0.2,0.3 --branch_meta artifacts/branch_classification_system/metadata.json --fine_meta artifacts/fine_classification_system/metadata.json --topk_shoulder 2 --topk_elbow 1 --topk_wrist 2 --max_branch_candidates 4 --fine_topk_per_branch 2 --max_subspace_candidates 8 --out_json artifacts/fine_classification_system/test_pose_001.json
-```
-
-建议理解为：
-
-1. 第一层先做“解族级别”粗分支判断
-2. 第二层再在粗分支内部做“局部角度块”细分
-3. 最终只把少量 `subspace_id` 送入后续回归器与 `NR`
-
-### 16.8 分层分类完整推理命令
-
-目前 `predict_ik.py` 已经支持将两层分类结果直接接入后续：
-
-1. 候选子空间筛选
-2. 子空间回归初值预测
-3. `FK` 回代位置误差比较
-4. `NR` 局部修正
-5. 推理总耗时与分阶段耗时输出
-
-推荐正式命令如下：
-
-```powershell
-conda activate arm_nn
-python -X utf8 predict_ik.py --candidate_mode hierarchical --pose "100,200,800,0.1,-0.2,0.3" --pred_meta artifacts/prediction_system_formal/metadata.json --branch_meta artifacts/branch_classification_system/metadata.json --fine_meta artifacts/fine_classification_system/metadata.json --topk_shoulder 2 --topk_elbow 1 --topk_wrist 2 --max_branch_candidates 6 --fine_topk_per_branch 3 --max_subspace_candidates 18 --enable_nr --out_json artifacts/fine_classification_system/test_pose_001_full_ik.json
-```
-
-说明：
-
-1. `candidate_mode hierarchical`
-   - 启用两层分类候选生成，而不是旧的单头 `192` 类分类
-2. `pred_meta`
-   - 对应已经训练完成的 `192` 个子空间回归系统
-3. `branch_meta`
-   - 第一层粗分支分类器
-4. `fine_meta`
-   - 第二层局部细分分类器
-5. `max_branch_candidates 6`
-   - 最多保留 `6` 个粗分支候选
-6. `fine_topk_per_branch 3`
-   - 每个粗分支保留 `3` 个细分类候选
-7. `max_subspace_candidates 18`
-   - 最终最多送入 `18` 个全局子空间回归器
-8. `enable_nr`
-   - 对神经网络初值再做数值法精修
-
-当前这一完整链路的输出结果中将直接包含：
-
-1. `candidate_generation`
-   - 两层分类产生的粗分支、细分候选和最终 `subspace_id`
-2. `initial_solution`
-   - 回归器筛选得到的最优初值
-3. `refined_solution`
-   - `NR` 修正后的最终逆解
-4. `timing_breakdown_ms`
-   - 包括粗分类、细分类、初值选择、`NR` 修正和总时间
-
-### 16.9 单样本完整推理结果记录
-
-在当前正式工件：
-
-1. `artifacts/prediction_system_formal`
-2. `artifacts/branch_classification_system`
-3. `artifacts/fine_classification_system`
-
-基础上，已完成一次单样本完整推理验证，命令如下：
-
-```powershell
-conda activate arm_nn
 python -X utf8 predict_ik.py --candidate_mode hierarchical --pose "100,200,800,0.1,-0.2,0.3" --pred_meta artifacts/prediction_system_formal/metadata.json --branch_meta artifacts/branch_classification_system/metadata.json --fine_meta artifacts/fine_classification_system/metadata.json --topk_shoulder 2 --topk_elbow 1 --topk_wrist 2 --max_branch_candidates 4 --fine_topk_per_branch 3 --max_subspace_candidates 15 --enable_nr --out_json artifacts/fine_classification_system/test_pose_001_full_ik.json
 ```
 
-本次结果的关键结论如下：
+### 13.7 参考样本导出
 
-1. 第一层粗分支最终保留了 `4` 个候选：
-   - `shoulder_negative|elbow_low|wrist_middle`
-   - `shoulder_positive|elbow_low|wrist_middle`
-   - `shoulder_positive|elbow_low|wrist_positive`
-   - `shoulder_negative|elbow_low|wrist_positive`
-2. 第二层细分类对每个粗分支保留 `3` 个局部候选，因此最终实际得到 `12` 个全局子空间候选，而不是 `15` 个：
-   - `148, 10, 164, 146, 166, 153, 16, 21, 3, 69, 58, 160`
-3. 候选集中包含了最终正确子空间 `164`，说明当前分层分类的主要价值已经体现出来：
-   - 不要求分类器 `top-1` 直接命中最终子空间
-   - 只要正确子空间被保留进候选集，后续回归器与 `FK` 回代筛选即可继续完成识别
+```powershell
+python -X utf8 export_subspace_reference_data.py --segment_profile abb_strict --samples_per_subspace 512 --out_dir data/subspace_reference_abb_strict_samples512_seed2026 --seed 2026 --overwrite
+```
 
-本次回归器筛选与 `NR` 修正结果为：
+### 13.8 图表生成
 
-1. 最优初始子空间：`164`
-2. 初始关节角：
-   - `[69.2542, 99.3345, -198.6218, 198.3277, 11.1474, -77.8755] deg`
-3. 初始位置误差：
-   - `44.8264 mm`
-4. `fallback_full_scan_triggered = false`
-   - 说明当前候选集已经足够覆盖正确解，无需退化到全子空间扫描
-5. `NR` 迭代次数：
-   - `4`
-6. `NR` 是否收敛：
-   - `true`
-7. 最终位置误差：
-   - `7.094e-05 mm`
-8. 最终姿态误差：
-   - `9.311e-07 rad`
+```powershell
+python -X utf8 figure/scripts/generate_core_figures.py
+python -X utf8 figure/scripts/generate_workspace_figures.py
+python -X utf8 figure/scripts/run_ik_benchmark.py --n_samples 100 --seed 2026 --success_pos_mm 1.0 --success_ori_rad 1e-2
+```
 
-由此可以认为：
+## 14. 当前阶段结论与下一步优化方向
 
-1. 当前神经网络初值已经进入了数值法的有效收敛域
-2. `NN + NR` 组合已经能够在该测试样本上实现高精度逆解
-3. 当前瓶颈仍主要在“候选子空间召回率”而不是子空间回归器本身
+### 14.1 当前结论
 
-本次单样本运行的时间统计如下：
+1. `ABB_IRB` 的 `FK` 建模已经稳定，`theta2_offset = -90°` 有明确数值验证支撑。
+2. `192` 个子空间回归器已经全部训练完成，能够稳定提供局部逆解初值。
+3. 单层 `192` 类分类器可以作为基线，但不适合直接作为最终候选生成核心。
+4. 两层分层分类器更符合 ABB 机械臂的构型特征。
+5. `NN + NR` 已经能够在单样本和随机样本 benchmark 中达到高精度逆解。
+6. 当前工程中真正的瓶颈已经从“局部修正精度”转移到“候选子空间召回率与速度权衡”。
 
-1. 候选生成时间：
-   - `10.2222 ms`
-2. 其中粗分支分类时间：
-   - `3.1930 ms`
-3. 其中细分类时间：
-   - `7.0292 ms`
-4. 子空间初值筛选时间：
-   - `15.4157 ms`
-5. `NR` 修正时间：
-   - `15.4391 ms`
-6. 总时间：
-   - `94.4150 ms`
+### 14.2 下一步可优化方向
 
-说明：
+1. 调整分层候选参数，提高 `hierarchical + NR` 的召回率。
+2. 研究常驻模型加载，消除脚本级启动耗时。
+3. 对候选初值的排序准则加入姿态误差项，而不是只看位置误差。
+4. 继续推进受限空间、障碍物建模与轨迹级碰撞检测。
+5. 将当前图表、公式和 benchmark 结果进一步整理为论文章节内容。
 
-1. 这里的总时间包含脚本级开销、模型加载、`JSON` 读取等附加成本
-2. 如果后续需要做严格 benchmark，应改为常驻进程、多样本重复测试后再统计平均推理耗时
+## 15. 文档导航
 
-### 16.10 当前阶段结论
+- 项目总说明：`README.md`
+- 时间顺序记录：`Summary.md`
+- 参数与资料：`docs/`
+- 图表结果：`figure/figures/`
+- 图表数据：`figure/data/`
+- 正式模型工件：`artifacts/`
 
-截至目前，ABB 工程中的分类系统已经形成如下层级：
-
-1. `train_classification_models.py`
-   - 旧方案：单头 `96/192` 类分类
-2. `train_branch_classification_models.py`
-   - 新方案第一层：`shoulder / elbow / wrist` 粗分支分类
-3. `train_fine_classification_models.py`
-   - 新方案第二层：粗分支条件下的局部细分分类
-
-当前阶段已经完成：
-
-1. `192` 子空间回归器训练与保存
-2. 第一层粗分支分类器训练
-3. 第二层局部细分分类器训练
-4. `predict_hierarchical_candidates.py` 候选子空间压缩
-5. `predict_ik.py` 中“分层分类 + 子空间回归 + NR”完整链路接入
-
-因此当前推荐的正式在线推理路径已经从：
-
-1. 单头 `192` 类分类
-2. 子空间回归
-3. `NR`
-
-升级为：
-
-1. 第一层粗分支分类
-2. 第二层局部细分分类
-3. 候选子空间回归初值
-4. `FK` 回代筛选
-5. `NR` 精修
-
-### 16.11 当前主文件职责与推荐执行顺序
-
-为了避免后续使用时混淆，当前 ABB 工程中截图内这些主文件可按“建模层、训练层、候选分析层、完整推理层”来理解。
-
-#### 16.11.1 文件职责总览
-
-1. `robot_config.py`
-   - 机器人统一配置文件
-   - 保存 `ABB_IRB` 的：
-     - `DH` 参数
-     - 关节限位
-     - 第 2 轴偏置
-     - 单位约定
-   - 作用是为整个工程提供统一参数源
-2. `fk_model.py`
-   - 正运动学与基础运动学工具文件
-   - 负责：
-     - `FK`
-     - 末端 `pose6`
-     - 关节点坐标
-     - 腕中心
-     - 欧拉角转换
-     - 数值雅可比
-   - 是训练、推理、`NR`、后续 benchmark 的底层数学基础
-3. `generate_dataset.py`
-   - 全局随机采样 `FK` 数据生成工具
-   - 用于从全局关节空间生成：
-     - 关节角
-     - 末端位置
-     - 旋转矩阵
-     - 欧拉角
-     - `T06`
-   - 更偏通用数据准备工具，不是当前正式逆解主链的核心入口
-4. `naming.py`
-   - 数据文件命名工具
-   - 统一生成数据集、划分集和元数据文件名
-5. `naming_config.json`
-   - `naming.py` 的命名配置文件
-   - 定义：
-     - `robot_name`
-     - `task_name`
-     - `sampling_name`
-     - 默认数据划分比例
-6. `train_prediction_models.py`
-   - 子空间回归器训练脚本
-   - 作用是对每个 `96/192` 子空间分别训练局部逆解回归网络
-   - 当前这是逆解系统中的核心训练脚本之一
-7. `train_classification_models.py`
-   - 旧版单层分类器训练脚本
-   - 直接训练：
-     - `pose6 -> subspace_id`
-   - 目前主要保留作对照基线
-8. `train_branch_classification_models.py`
-   - 新版第一层粗分类器训练脚本
-   - 训练：
-     - `pose6 -> shoulder / elbow / wrist`
-   - 作用是先判断机械臂属于哪一类大构型
-9. `train_fine_classification_models.py`
-   - 新版第二层细分类器训练脚本
-   - 训练：
-     - `(pose6 + branch条件) -> fine_label`
-   - 作用是在已知粗分支的前提下，继续细分到局部子空间
-10. `predict_branch_candidates.py`
-    - 只运行第一层粗分类的分析脚本
-    - 输出：
-      - 候选粗分支
-      - 每个粗分支兼容的全局子空间集合
-    - 主要用于检查第一层分类效果，不输出最终逆解
-11. `predict_hierarchical_candidates.py`
-    - 两层分类联合分析脚本
-    - 输出：
-      - 粗分支候选
-      - 细分类候选
-      - 最终压缩后的全局 `subspace_id`
-    - 主要用于检查候选子空间召回情况，不输出最终关节角
-12. `predict_ik.py`
-    - 当前最终完整逆解推理主脚本
-    - 在 `hierarchical` 模式下会完整执行：
-      - 两层分类生成候选子空间
-      - 子空间回归器预测初值
-      - `FK` 回代筛选
-      - `NR` 精修
-      - 结果与时间统计输出
-    - 这是当前正式在线推理入口
-13. `README.md`
-    - 当前 ABB 工程的总记录文件
-    - 统一记录：
-      - 参数确认
-      - 设计思路
-      - 训练命令
-      - 推理命令
-      - 实验结果
-      - 阶段性分析
-
-#### 16.11.2 当前推荐执行顺序
-
-如果以当前正式分层方案为主，推荐执行顺序如下：
-
-1. `train_prediction_models.py`
-   - 先训练全部子空间回归器
-2. `train_branch_classification_models.py`
-   - 训练第一层粗分支分类器
-3. `train_fine_classification_models.py`
-   - 训练第二层局部细分分类器
-4. `predict_ik.py --candidate_mode hierarchical`
-   - 进行完整逆解推理
-
-当前建议将：
-
-1. `predict_branch_candidates.py`
-2. `predict_hierarchical_candidates.py`
-
-理解为“分类候选分析工具”，而不是最终完整逆解入口。
-
-#### 16.11.3 推理与验证的区别
-
-当前工程语境下，“推理”和“验证”不是两个完全分开的独立系统，而是前后衔接的两个阶段。
-
-1. 推理
-   - 指从目标位姿出发，求出一组候选逆解或最终逆解
-   - 包括：
-     - 分类
-     - 子空间回归
-     - 数值修正
-2. 验证
-   - 指判断当前求出的关节角是否真的对应目标位姿
-   - 当前主要通过：
-     - `FK` 回代误差计算
-     - `NR` 收敛情况
-     - 最终位置误差与姿态误差
-
-因此：
-
-1. `predict_hierarchical_candidates.py`
-   - 更偏“推理前半段的候选分析”
-   - 只回答“哪些子空间最可能”
-2. `predict_ik.py`
-   - 才是“完整推理 + 内部验证”
-   - 不仅给出最终关节角，还会给出：
-     - 初始解误差
-     - `NR` 修正结果
-     - 最终位置误差
-     - 最终姿态误差
-     - 时间统计
-
-#### 16.11.4 当前主链一句话总结
-
-当前 ABB 工程的正式推荐主链为：
-
-1. `train_prediction_models.py`
-2. `train_branch_classification_models.py`
-3. `train_fine_classification_models.py`
-4. `predict_ik.py --candidate_mode hierarchical`
-
-其中：
-
-1. `predict_hierarchical_candidates.py`
-   - 用于分析候选子空间是否召回正确
-2. `predict_ik.py`
-   - 用于真正输出最终逆解并完成内部验证
