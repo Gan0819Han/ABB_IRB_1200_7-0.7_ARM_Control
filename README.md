@@ -272,7 +272,7 @@ $$
 \begin{aligned}
 b_{\text{shoulder}} &= \mathbb{1}[q_1 \ge 0], \\
 b_{\text{elbow}} &= \mathbb{1}[q_3 \ge -65^\circ], \\
-b_{\text{wrist}} &= \operatorname{bin}_{\{-45^\circ,\ 45^\circ\}}(q_5).
+b_{\text{wrist}} &= \mathrm{bin}_{\{-45^\circ,\ 45^\circ\}}\!\left(q_5\right).
 \end{aligned}
 $$
 
@@ -499,7 +499,7 @@ $$
 损失函数为：
 
 $$
-\mathcal{L}_{\text{flat}} = \operatorname{CE}(c_{\text{flat}}(\tilde{\mathbf{x}}), s).
+\mathcal{L}_{\text{flat}} = \mathrm{CE}\!\left(c_{\text{flat}}(\tilde{\mathbf{x}}),\, s\right).
 $$
 
 ### 8.2 分层分类的设计动机
@@ -526,7 +526,10 @@ $$
 损失函数为三个交叉熵之和：
 
 $$
-\mathcal{L}_{\text{branch}} =\operatorname{CE}(\hat y_{\text{shoulder}}, y_{\text{shoulder}})+ \operatorname{CE}(\hat y_{\text{elbow}}, y_{\text{elbow}})+ \operatorname{CE}(\hat y_{\text{wrist}}, y_{\text{wrist}}).
+\mathcal{L}_{\text{branch}} =
+\mathrm{CE}\!\left(\hat y_{\text{shoulder}},\, y_{\text{shoulder}}\right)
++ \mathrm{CE}\!\left(\hat y_{\text{elbow}},\, y_{\text{elbow}}\right)
++ \mathrm{CE}\!\left(\hat y_{\text{wrist}},\, y_{\text{wrist}}\right).
 $$
 
 ### 8.4 第二层细分类器
@@ -552,7 +555,7 @@ $$
 损失函数为：
 
 $$
-\mathcal{L}_{\text{fine}} = \operatorname{CE}(c_{\text{fine}}(\mathbf{z}), f).
+\mathcal{L}_{\text{fine}} = \mathrm{CE}\!\left(c_{\text{fine}}(\mathbf{z}),\, f\right).
 $$
 
 ### 8.5 分类器网络结构
