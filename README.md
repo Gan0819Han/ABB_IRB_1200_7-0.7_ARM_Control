@@ -646,13 +646,13 @@ $$
 选择初始误差最小的候选：
 
 $$
-s^* = \arg\min_{s \in \mathcal{C}} e_p^{(s)}.
+s^{\ast} = \arg\min_{s \in \mathcal{C}} e_p^{(s)}.
 $$
 
 若该最优候选满足：
 
 $$
-e_p^{(s^*)} > e_{\max}^{(s^*)},
+e_p^{(s^{\ast})} > e_{\max}^{(s^{\ast})}.
 $$
 
 则触发全子空间扫描回退机制。
@@ -865,19 +865,19 @@ $$
 对于局部迭代数值法，先定义加权位姿误差向量：
 
 $$
-\tilde{\mathbf{e}}(\mathbf{q}) = \left[\mathbf{p}^{*}-\mathbf{p}(\mathbf{q}),\ w_o\,\mathrm{wrap}\!\left(\boldsymbol{\eta}^{*}-\boldsymbol{\eta}(\mathbf{q})\right)\right]^{\top}.
+\tilde{\mathbf{e}}(\mathbf{q}) = \left[\mathbf{p}^{*}-\mathbf{p}(\mathbf{q}),\ w_o\,\mathrm{wrap}\!\left(\mathbf{r}^{*}-\mathbf{r}(\mathbf{q})\right)\right]^{\mathsf{T}}.
 $$
 
 其中：
 
 - $\mathbf{p}$ 为末端位置
-- $\boldsymbol{\eta}$ 为 `ZYX Euler` 姿态向量
+- $\mathbf{r}$ 为 `ZYX Euler` 姿态向量
 - $w_o$ 为姿态权重，当前取 `200`
 
 对应加权雅可比记为：
 
 $$
-\tilde{\mathbf{J}}(\mathbf{q}) = \left[\mathbf{J}_{p}(\mathbf{q}),\ w_o\,\mathbf{J}_{o}(\mathbf{q})\right]^{\top}.
+\tilde{\mathbf{J}}(\mathbf{q}) = \left[\mathbf{J}_{p}(\mathbf{q}),\ w_o\,\mathbf{J}_{o}(\mathbf{q})\right]^{\mathsf{T}}.
 $$
 
 `DLS` 更新公式为：
@@ -1860,8 +1860,8 @@ $$
 当前候选解来源不是单一逆解，而是：
 
 1. 先由分层分类器生成若干候选子空间
-2. 每个子空间的回归器给出一个逆解初值 $\mathbf{q}_0$
-3. 再对每个 $\mathbf{q}_0$ 进行阻尼 Newton-Raphson 修正，得到候选终解 $\mathbf{q}_{\text{goal}}^{(i)}$
+2. 每个子空间的回归器给出一个逆解初值 `q0`
+3. 再对每个 `q0` 进行阻尼 Newton-Raphson 修正，得到候选终解 `q_goal^(i)`
 
 对每个候选轨迹，定义代价函数：
 
