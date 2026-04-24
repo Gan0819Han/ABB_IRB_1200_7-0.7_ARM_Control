@@ -24,6 +24,7 @@
    - 阻尼 `Newton-Raphson` 局部精修
    - 时间统计输出
 7. 工作空间参考样本导出、图表生成与 `100` 样本 benchmark。
+8. `NN only / NN + NR / DLS / Multi-start DLS / L-BFGS-B / Multi-start L-BFGS-B` 六组逆解对比实验。
 
 ## 2. 项目主流程
 
@@ -770,9 +771,370 @@ $$
 4. 两种 `+NR` 模式一旦成功，最终误差都能降到近乎数值精度极限，说明核心瓶颈不是 `NR`，而是候选子空间召回与初值质量。
 5. 当前 benchmark 的时间包含脚本调用、模型加载和 `JSON` 读写，不等同于常驻服务下的纯推理时间。
 
-## 12. 当前正式工件与建议保留内容
+## 12. 六组逆解方法对比实验
 
-### 12.1 训练与推理核心工件
+### 12.1 对比组定义
+
+当前新增的对比组如下：
+
+| 组别 | 名称 | 定义 |
+|---|---|---|
+| `G1` | `NN only` | 当前分层分类候选生成 + 子空间回归器初值预测，不做 `NR` 校正 |
+| `G2` | `NN + NR` | 在 `NN only` 基础上增加阻尼 `NR` 局部精修 |
+| `G3` | `DLS` | 单初值阻尼最小二乘逆解，固定初值为机械臂零位 |
+| `G4` | `Multi-start DLS` | `10` 组初值的 `DLS`，包含 `1` 组零位初值和 `9` 组随机初值 |
+| `G5` | `L-BFGS-B` | 单初值有界优化逆解，固定初值为机械臂零位 |
+| `G6` | `Multi-start L-BFGS-B` | `10` 组初值的 `L-BFGS-B`，包含 `1` 组零位初值和 `9` 组随机初值 |
+
+### 12.2 统一实验设置
+
+本轮对比实验采用统一设置：
+
+1. 测试样本数：`N = 100`
+2. 随机种子：`2026`
+3. 测试场景：`cold-start`
+4. 目标位姿生成方式：先在关节限位内采样关节角，再通过 `FK` 生成目标位姿
+5. 运行平台：统一在同一 `CPU` 进程内完成，避免脚本启动与模型重复加载造成的时间偏差
+6. 多初值数量：`M = 10`
+7. 神经网络候选生成参数：
+   - `topk_shoulder = 2`
+   - `topk_elbow = 1`
+   - `topk_wrist = 2`
+   - `max_branch_candidates = 6`
+   - `fine_topk_per_branch = 3`
+   - `max_subspace_candidates = 18`
+8. `DLS` 参数：
+   - `max_iters = 80`
+   - `damping = 1e-2`
+   - `orientation_weight = 200`
+9. `L-BFGS-B` 参数：
+   - `max_iters = 200`
+   - `orientation_weight = 200`
+
+对应目标样本生成公式为：
+
+$$
+\mathbf{q}^{(i)} \sim \mathcal{U}(\mathcal{Q}),
+\qquad
+\mathbf{x}^{(i)} = f_{\mathrm{FK}}(\mathbf{q}^{(i)}),
+\qquad i=1,\dots,N.
+$$
+
+### 12.3 数值法与 benchmark 指标定义
+
+对于局部迭代数值法，先定义加权位姿误差向量：
+
+$$
+\tilde{\mathbf{e}}(\mathbf{q})=
+\begin{bmatrix}
+\mathbf{p}^{*}-\mathbf{p}(\mathbf{q}) \\
+w_o\,\mathrm{wrap}\!\left(\boldsymbol{\eta}^{*}-\boldsymbol{\eta}(\mathbf{q})\right)
+\end{bmatrix},
+$$
+
+其中：
+
+- $\mathbf{p}$ 为末端位置
+- $\boldsymbol{\eta}$ 为 `ZYX Euler` 姿态向量
+- $w_o$ 为姿态权重，当前取 `200`
+
+对应加权雅可比记为：
+
+$$
+\tilde{\mathbf{J}}(\mathbf{q})=
+\begin{bmatrix}
+\mathbf{J}_{p}(\mathbf{q}) \\
+w_o\,\mathbf{J}_{o}(\mathbf{q})
+\end{bmatrix}.
+$$
+
+`DLS` 更新公式为：
+
+$$
+\Delta \mathbf{q}=
+\tilde{\mathbf{J}}^\top
+\left(
+\tilde{\mathbf{J}}\tilde{\mathbf{J}}^\top + \lambda \mathbf{I}
+\right)^{-1}
+\tilde{\mathbf{e}},
+$$
+
+$$
+\mathbf{q}_{k+1}=\mathbf{q}_k+\Delta \mathbf{q}.
+$$
+
+`L-BFGS-B` 的优化目标函数为：
+
+$$
+F(\mathbf{q})=
+\frac{1}{2}\,
+\tilde{\mathbf{e}}(\mathbf{q})^\top
+\tilde{\mathbf{e}}(\mathbf{q}),
+\qquad
+\mathbf{q}\in\mathcal{Q}.
+$$
+
+多初值方法的最终输出定义为：
+
+$$
+\mathbf{q}^{*}=
+\arg\min_{\mathbf{q}_j \in \mathcal{S}}
+F(\mathbf{q}_j),
+$$
+
+其中 $\mathcal{S}$ 为所有起始点对应的求解结果集合。
+
+本轮实验统一采用以下核心评价指标：
+
+位置误差：
+
+$$
+e_p = \|\mathbf{p}(\mathbf{q})-\mathbf{p}^{*}\|_2.
+$$
+
+姿态误差：
+
+$$
+e_R=
+\arccos
+\left(
+\frac{\mathrm{tr}\!\left(\mathbf{R}^{*\top}\mathbf{R}(\mathbf{q})\right)-1}{2}
+\right).
+$$
+
+工程成功判据：
+
+$$
+\mathrm{success}=
+\mathbb{1}
+\left[
+e_p \le 1.0\ \mathrm{mm}
+\ \land\
+e_R \le 10^{-2}\ \mathrm{rad}
+\ \land\
+\mathbf{q}\in\mathcal{Q}
+\right].
+$$
+
+成功率：
+
+$$
+\mathrm{SR}=\frac{1}{N}\sum_{i=1}^{N}\mathrm{success}_i.
+$$
+
+收敛率：
+
+$$
+\mathrm{CR}=\frac{1}{N}\sum_{i=1}^{N}\mathrm{converged}_i.
+$$
+
+经验分布函数 `ECDF` 定义为：
+
+$$
+F_{z}(\tau)=\frac{1}{N}\sum_{i=1}^{N}\mathbb{1}[z_i\le \tau],
+$$
+
+其中 $z$ 可以取位置误差、姿态误差或迭代次数。
+
+`P95` 统计量定义为：
+
+$$
+P95(z)=\inf\{\tau \mid F_z(\tau)\ge 0.95\}.
+$$
+
+当前 `figure/data/ik_benchmark_six_methods_summary_n100.csv` 中各字段的含义如下：
+
+| 字段 | 定义 | 单位 |
+|---|---|---|
+| `success_rate` | 满足工程成功判据的样本比例 | `-` |
+| `converged_rate` | 数值过程报告收敛的样本比例 | `-` |
+| `mean_final_pos_err_mm` | 最终位置误差均值 | `mm` |
+| `median_final_pos_err_mm` | 最终位置误差中位数 | `mm` |
+| `p95_final_pos_err_mm` | 最终位置误差 `P95` | `mm` |
+| `mean_final_ori_err_rad` | 最终姿态误差均值 | `rad` |
+| `median_final_ori_err_rad` | 最终姿态误差中位数 | `rad` |
+| `p95_final_ori_err_rad` | 最终姿态误差 `P95` | `rad` |
+| `mean_solve_time_ms` | 单样本求解时间均值 | `ms` |
+| `median_solve_time_ms` | 单样本求解时间中位数 | `ms` |
+| `p95_solve_time_ms` | 单样本求解时间 `P95` | `ms` |
+| `mean_iters` | 平均迭代次数 | `step` |
+| `mean_starts_used` | 平均起点数 | `start` |
+| `mean_candidate_count` | 平均候选子空间数 | `count` |
+
+补充说明：
+
+1. `NN only` 不进行局部迭代，因此 `iters = 0`。
+2. `NN + NR` 的 `iters` 是 `Newton-Raphson` 迭代次数。
+3. `DLS / L-BFGS-B` 的 `iters` 是单次数值优化迭代次数。
+4. `Multi-start DLS / Multi-start L-BFGS-B` 的 `iters` 是“最终被选中最佳解”对应那一次优化的迭代数，而不是全部起点迭代数之和；因此多初值方法的总体计算开销应优先结合 `solve_time_ms` 解读。
+5. `mean_candidate_count` 仅对 `NN only` 和 `NN + NR` 有意义，因为传统数值法不经过子空间候选生成。
+
+### 12.4 运行命令与输出文件
+
+本轮正式对比实验运行命令为：
+
+```powershell
+conda activate arm_nn
+python -X utf8 figure/scripts/run_ik_benchmark_six_methods.py --n_samples 100 --seed 2026 --tag n100
+```
+
+生成结果如下：
+
+1. 明细结果：
+   - `figure/data/ik_benchmark_six_methods_detailed_n100.csv`
+2. 汇总结果：
+   - `figure/data/ik_benchmark_six_methods_summary_n100.csv`
+3. 图表：
+   - `figure/figures/ik_benchmark_six_methods_summary_n100.png`
+   - `figure/figures/ik_benchmark_six_methods_distribution_n100.png`
+   - `figure/figures/ik_benchmark_six_methods_cdf_n100.png`
+   - `figure/figures/ik_benchmark_six_methods_iterations_n100.png`
+
+其中：
+
+1. `summary` 图用于总览成功率、时间与误差关键统计量。
+2. `distribution` 图为最终版四联图，统一采用 `ECDF + 阈值达标率` 形式展示位置误差与姿态误差。
+3. `cdf` 图为位置误差的补充独立视图，用于与四联图结果互相校核。
+4. `iterations` 图为最终版双图，左侧为迭代分档占比，右侧为 `Median + P95` 柱状统计。
+
+### 12.5 当前 `n=100` 对比结果
+
+基于最新的 `figure/data/ik_benchmark_six_methods_summary_n100.csv`，结果如下：
+
+| 方法 | 成功率 | 收敛率 | 位置误差中位数 (mm) | 姿态误差中位数 (rad) | 求解时间中位数 (ms) | 平均迭代次数 |
+|---|---:|---:|---:|---:|---:|---:|
+| `NN only` | `0.00` | `0.00` | `28.7513` | `0.522755` | `21.9387` | `0.00` |
+| `NN + NR` | `0.78` | `0.78` | `9.6478e-06` | `1.7504e-07` | `28.3909` | `14.00` |
+| `DLS` | `0.39` | `0.39` | `23.0801` | `0.443023` | `48.0071` | `56.85` |
+| `Multi-start DLS` | `0.90` | `0.90` | `0.0313` | `1.8491e-04` | `369.9340` | `22.77` |
+| `L-BFGS-B` | `0.35` | `0.35` | `322.8446` | `1.265804` | `63.5474` | `22.26` |
+| `Multi-start L-BFGS-B` | `0.92` | `0.92` | `9.0951e-09` | `0.0` | `419.8229` | `35.45` |
+
+从汇总表可以先得到三个直接结论：
+
+1. `NN only` 虽然最快，但误差仍远大于工程阈值，因此不能作为最终逆解方案。
+2. `NN + NR` 在中位时间仅 `28.39 ms` 的情况下，将位置与姿态误差分别压到 `10^{-6} mm` 和 `10^{-7} rad` 量级，是当前速度与精度最均衡的方案。
+3. 多初值数值法成功率最高，其中 `Multi-start L-BFGS-B` 达到 `0.92`，但时间代价也最高，说明鲁棒性提升主要来自更大的计算预算。
+
+### 12.6 图表说明与结果分析
+
+#### 12.6.1 汇总图 `ik_benchmark_six_methods_summary_n100.png`
+
+![六组方法对比汇总 / Six-Method Benchmark Summary](figure/figures/ik_benchmark_six_methods_summary_n100.png)
+
+该图用于并列展示四类关键指标：
+
+1. 成功率 `success_rate`
+2. 中位求解时间 `median_solve_time_ms`
+3. 中位位置误差 `median_final_pos_err_mm`
+4. 中位姿态误差 `median_final_ori_err_rad`
+
+其作用是先给出整体排序，再配合后续分布图查看尾部分布。
+
+从汇总图可见：
+
+1. `NN only` 的中位时间最短，但成功率为 `0`，说明单独神经网络回归器只能提供初值。
+2. `NN + NR` 在速度上明显优于四种纯数值法，同时误差达到数值精度级别，是当前工程主推荐方案。
+3. 单起点 `DLS` 与单起点 `L-BFGS-B` 成功率分别仅为 `0.39` 与 `0.35`，说明在 `cold-start` 下它们对初值极为敏感。
+4. `Multi-start DLS` 与 `Multi-start L-BFGS-B` 的成功率提升到 `0.90` 和 `0.92`，但其时间中位数分别增至 `369.93 ms` 和 `419.82 ms`，在线应用成本较高。
+
+#### 12.6.2 四联误差图 `ik_benchmark_six_methods_distribution_n100.png`
+
+![六组方法误差分布 / Six-Method Error Distribution](figure/figures/ik_benchmark_six_methods_distribution_n100.png)
+
+该图是当前误差对比的最终版本，包含四个子图：
+
+1. 左上：位置误差 `ECDF`
+2. 右上：姿态误差 `ECDF`
+3. 左下：位置误差阈值达标率
+4. 右下：姿态误差阈值达标率
+
+其中虚线分别表示工程阈值：
+
+$$
+e_p = 1.0\ \mathrm{mm},
+\qquad
+e_R = 10^{-2}\ \mathrm{rad}.
+$$
+
+阈值达标率图中某条曲线在阈值 $\tau$ 处的值定义为：
+
+$$
+\mathrm{PassRate}(\tau)=\frac{1}{N}\sum_{i=1}^{N}\mathbb{1}[e_i\le\tau].
+$$
+
+这张图的主要信息如下：
+
+1. 在位置误差和姿态误差两个 `ECDF` 子图中，`NN + NR` 和两种多初值方法的曲线都明显比单起点方法更靠左上，说明它们在绝大多数样本上都能达到更小误差。
+2. `NN + NR` 在工程阈值处的位置达标率与姿态达标率均为 `0.78`，与汇总表中的成功率一致，说明其失败样本主要不是偶发数值噪声，而是候选召回或初值质量问题。
+3. `Multi-start L-BFGS-B` 在小误差区最靠前，说明其最终精度最强；但这并不意味着它最实用，因为时间成本显著更高。
+4. `DLS` 与 `L-BFGS-B` 的曲线在低误差区上升较慢，说明单起点传统数值法在本实验设置下存在明显的初值敏感问题。
+5. `NN only` 的曲线整体位于高误差区，进一步验证“神经网络初值 + 局部数值修正”才是合理使用方式。
+
+#### 12.6.3 位置误差补充图 `ik_benchmark_six_methods_cdf_n100.png`
+
+![六组方法位置误差CDF / Six-Method Position Error CDF](figure/figures/ik_benchmark_six_methods_cdf_n100.png)
+
+该图单独抽出位置误差 `ECDF`，作为四联误差图左上子图的补充放大版本。其主要作用有两点：
+
+1. 在不受姿态误差与阈值达标率子图干扰的情况下，更清晰地观察位置误差曲线的相对排序。
+2. 便于在论文中单独引用“位置精度”这一项，而无需同时展示姿态与阈值子图。
+
+从该图可再次确认：
+
+1. `Multi-start L-BFGS-B` 与 `NN + NR` 在位置误差维度明显领先。
+2. `Multi-start DLS` 的位置精度也较强，但其时间代价远高于 `NN + NR`。
+3. 单起点 `L-BFGS-B` 的位置误差最差，中位位置误差达到 `322.84 mm`，说明该方法在当前初值设定下并不适合作为冷启动主方案。
+
+#### 12.6.4 迭代统计图 `ik_benchmark_six_methods_iterations_n100.png`
+
+![六组方法迭代次数分布 / Six-Method Iteration Distribution](figure/figures/ik_benchmark_six_methods_iterations_n100.png)
+
+该图是当前迭代行为分析的最终版本，包含两个子图：
+
+1. 左图：迭代分档占比
+2. 右图：`Median` 与 `P95` 迭代次数柱状图
+
+左图的分档比例定义为：
+
+$$
+\rho_{m,b}=\frac{1}{N}\sum_{i=1}^{N}\mathbb{1}[\mathrm{iters}_{m,i}\in b],
+$$
+
+其中分档区间设置为：
+
+$$
+\{\le 5,\ 6\text{-}10,\ 11\text{-}20,\ 21\text{-}40,\ 41\text{-}80,\ >80\}.
+$$
+
+右图中：
+
+1. `Median` 反映典型样本所需迭代次数
+2. `P95` 反映尾部困难样本的迭代代价
+
+从图中可以读出：
+
+1. `NN + NR` 的中位迭代次数仅为 `6`，`44%` 的样本在 `<=5` 步内完成，`70%` 的样本在 `<=10` 步内完成，说明只要初值足够接近真实解，`NR` 修正过程通常很快。
+2. `DLS` 的中位迭代次数和 `P95` 都为 `80`，且 `65%` 的样本落在 `41-80` 区间，说明单起点 `DLS` 在本实验中经常逼近迭代上限。
+3. `Multi-start DLS` 的中位迭代次数降至 `12`，表明更好的起点能显著改善局部收敛速度；但 `P95` 仍为 `80`，说明其尾部样本仍然存在高成本。
+4. `L-BFGS-B` 的 `Median = 19.5`，`P95 = 50`，表现出一定的两极分化特征：部分样本很快结束，但失败样本误差很大。
+5. `Multi-start L-BFGS-B` 的被选中最佳解多数集中在 `21-40` 步，`Median = 34`，`P95 = 50`，说明其最终解质量较高，但典型迭代成本并不低。
+
+需要再次强调：对于多初值方法，迭代图里的 `iters` 只对应“被选中最佳解”的单次优化迭代次数，不代表全部 `10` 个起点的总迭代次数；因此其总体代价仍应以 `solve_time_ms` 为准。
+
+### 12.7 综合结论
+
+本轮六组方法对比可以归纳为以下结论：
+
+1. `NN only` 不能直接替代逆解数值修正，但可作为有效初值生成器。
+2. `NN + NR` 以 `28.39 ms` 的中位时间获得 `0.78` 的成功率，并在成功样本上达到接近机器精度的末端误差，是当前最具工程平衡性的方案。
+3. 单起点 `DLS` 和单起点 `L-BFGS-B` 在 `cold-start` 下都表现出明显的初值敏感性，不适合作为默认在线求解策略。
+4. `Multi-start DLS` 与 `Multi-start L-BFGS-B` 通过增加计算预算显著提高了鲁棒性，但时间代价增大到 `370~420 ms` 量级，更适合作为高可靠性离线求解或校核基线。
+5. 因此，当前工程中引入神经网络的核心价值不是完全取代传统数值法，而是为局部数值修正提供更好的初始点，从而在保持高精度的同时显著降低在线求解时间。
+
+## 13. 当前正式工件与建议保留内容
+
+### 13.1 训练与推理核心工件
 
 建议保留：
 
@@ -783,13 +1145,13 @@ $$
 - `artifacts/fk_validation/`
 - `artifacts/subspace_validation/`
 
-### 12.2 数据与参考样本
+### 13.2 数据与参考样本
 
 建议保留：
 
 - `data/subspace_reference_abb_strict_samples512_seed2026/`
 
-### 12.3 图表与表格
+### 13.3 图表与表格
 
 建议保留：
 
@@ -804,62 +1166,63 @@ $$
 4. 回归误差图。
 5. 基准测试图。
 
-## 13. 复现实验命令
+## 14. 复现实验命令
 
-### 13.1 环境
+### 14.1 环境
 
 ```powershell
 conda activate arm_nn
 cd E:\CSU\毕业设计\ABB_Arm_Control
 ```
 
-### 13.2 训练 `192` 子空间回归器
+### 14.2 训练 `192` 子空间回归器
 
 ```powershell
 python -X utf8 train_prediction_models.py --segment_profile abb_strict --samples_per_subspace 100000 --epochs 400 --batch_size 4096 --hidden_layers 3 --neurons_per_layer 20 --train_ratio 0.7 --val_ratio 0.15 --test_ratio 0.15 --normalizer_samples 200000 --feature_batch_size 8192 --out_dir artifacts/prediction_system_formal
 ```
 
-### 13.3 训练单层 `192` 类分类器基线
+### 14.3 训练单层 `192` 类分类器基线
 
 ```powershell
 python -X utf8 train_classification_models.py --segment_profile abb_strict --trainset_v1 400000 --trainset_v2 600000 --trainset_v3 500000 --val_samples 5000 --epochs 80 --batch_size 4096 --feature_batch_size 8192 --out_dir artifacts/classification_system_formal
 ```
 
-### 13.4 训练第一层粗分类器
+### 14.4 训练第一层粗分类器
 
 ```powershell
 python -X utf8 train_branch_classification_models.py --segment_profile abb_strict --trainset_v1 250000 --trainset_v2 400000 --trainset_v3 320000 --val_samples 4000 --epochs 60 --batch_size 4096 --feature_batch_size 8192 --out_dir artifacts/branch_classification_system
 ```
 
-### 13.5 训练第二层细分类器
+### 14.5 训练第二层细分类器
 
 ```powershell
 python -X utf8 train_fine_classification_models.py --segment_profile abb_strict --trainset_v1 250000 --trainset_v2 400000 --trainset_v3 320000 --val_samples 4000 --epochs 60 --batch_size 4096 --feature_batch_size 8192 --out_dir artifacts/fine_classification_system
 ```
 
-### 13.6 完整逆解推理
+### 14.6 完整逆解推理
 
 ```powershell
 python -X utf8 predict_ik.py --candidate_mode hierarchical --pose "100,200,800,0.1,-0.2,0.3" --pred_meta artifacts/prediction_system_formal/metadata.json --branch_meta artifacts/branch_classification_system/metadata.json --fine_meta artifacts/fine_classification_system/metadata.json --topk_shoulder 2 --topk_elbow 1 --topk_wrist 2 --max_branch_candidates 4 --fine_topk_per_branch 3 --max_subspace_candidates 15 --enable_nr --out_json artifacts/fine_classification_system/test_pose_001_full_ik.json
 ```
 
-### 13.7 参考样本导出
+### 14.7 参考样本导出
 
 ```powershell
 python -X utf8 export_subspace_reference_data.py --segment_profile abb_strict --samples_per_subspace 512 --out_dir data/subspace_reference_abb_strict_samples512_seed2026 --seed 2026 --overwrite
 ```
 
-### 13.8 图表生成
+### 14.8 图表生成
 
 ```powershell
 python -X utf8 figure/scripts/generate_core_figures.py
 python -X utf8 figure/scripts/generate_workspace_figures.py
 python -X utf8 figure/scripts/run_ik_benchmark.py --n_samples 100 --seed 2026 --success_pos_mm 1.0 --success_ori_rad 1e-2
+python -X utf8 figure/scripts/run_ik_benchmark_six_methods.py --n_samples 100 --seed 2026 --tag n100
 ```
 
-## 14. 当前阶段结论与下一步优化方向
+## 15. 当前阶段结论与下一步优化方向
 
-### 14.1 当前结论
+### 15.1 当前结论
 
 1. `ABB_IRB` 的 `FK` 建模已经稳定，`theta2_offset = -90°` 有明确数值验证支撑。
 2. `192` 个子空间回归器已经全部训练完成，能够稳定提供局部逆解初值。
@@ -868,7 +1231,7 @@ python -X utf8 figure/scripts/run_ik_benchmark.py --n_samples 100 --seed 2026 --
 5. `NN + NR` 已经能够在单样本和随机样本 benchmark 中达到高精度逆解。
 6. 当前工程中真正的瓶颈已经从“局部修正精度”转移到“候选子空间召回率与速度权衡”。
 
-### 14.2 下一步可优化方向
+### 15.2 下一步可优化方向
 
 1. 调整分层候选参数，提高 `hierarchical + NR` 的召回率。
 2. 研究常驻模型加载，消除脚本级启动耗时。
@@ -876,7 +1239,7 @@ python -X utf8 figure/scripts/run_ik_benchmark.py --n_samples 100 --seed 2026 --
 4. 继续推进受限空间、障碍物建模与轨迹级碰撞检测。
 5. 将当前图表、公式和 benchmark 结果进一步整理为论文章节内容。
 
-## 15. 文档导航
+## 16. 文档导航
 
 - 项目总说明：`README.md`
 - 时间顺序记录：`Summary.md`
@@ -884,4 +1247,3 @@ python -X utf8 figure/scripts/run_ik_benchmark.py --n_samples 100 --seed 2026 --
 - 图表结果：`figure/figures/`
 - 图表数据：`figure/data/`
 - 正式模型工件：`artifacts/`
-

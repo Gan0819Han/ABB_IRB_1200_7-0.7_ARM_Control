@@ -13,3 +13,7 @@
 - `figures/workspace_reference_3d.png`
 - `figures/ik_benchmark_summary_n100.png`
 - `figures/ik_benchmark_distribution_n100.png`
+- `figures/ik_benchmark_six_methods_summary_n100.png`
+- `figures/ik_benchmark_six_methods_distribution_n100.png`
+- `figures/ik_benchmark_six_methods_cdf_n100.png`
+- `figures/ik_benchmark_six_methods_iterations_n100.png`

@@ -43,7 +43,21 @@ from .branching import (
     subspace_to_branch_label,
 )
 from .data_utils import apply_normalizer, fit_normalizer, save_json
-from .optimization import NROptions, newton_raphson_refine
+from .optimization import (
+    DLSOptions,
+    LBFGSBOptions,
+    NROptions,
+    dls_refine,
+    evaluate_solution_metrics,
+    lbfgsb_refine,
+    multistart_dls_refine,
+    multistart_lbfgsb_refine,
+    newton_raphson_refine,
+    rotation_geodesic_error_rad,
+    sample_multistart_initial_guesses,
+    target_pose_to_rotation,
+    weighted_pose_cost,
+)
 
 __all__ = [
     "ABB_SIMPLIFIED_JOINT_SEGMENTS_DEG",
@@ -57,8 +71,19 @@ __all__ = [
     "apply_normalizer",
     "fit_normalizer",
     "save_json",
+    "DLSOptions",
+    "LBFGSBOptions",
     "NROptions",
+    "dls_refine",
+    "evaluate_solution_metrics",
+    "lbfgsb_refine",
+    "multistart_dls_refine",
+    "multistart_lbfgsb_refine",
     "newton_raphson_refine",
+    "rotation_geodesic_error_rad",
+    "sample_multistart_initial_guesses",
+    "target_pose_to_rotation",
+    "weighted_pose_cost",
     "assign_subspace_labels",
     "decode_subspace_label",
     "encode_subspace_index",

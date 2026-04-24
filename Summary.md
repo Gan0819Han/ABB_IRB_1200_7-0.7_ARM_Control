@@ -1660,3 +1660,63 @@ python -X utf8 export_subspace_reference_data.py --segment_profile abb_strict --
 1. 将“流水式实验记录”和“面向读者的工程总说明”分离
 2. 便于后续 GitHub 展示与毕业设计论文引用
 3. 便于后续继续在 `Summary.md` 中追加实验日志，而不破坏 `README.md` 的结构稳定性
+
+### 2026-04-23 - 六组逆解方法 benchmark
+
+#### 本轮新增代码
+
+1. `abb_nn/optimization.py`
+   - 新增位置误差与旋转几何误差评估接口
+   - 新增 `DLS` 单初值求解
+   - 新增 `Multi-start DLS`
+   - 新增 `L-BFGS-B` 单初值求解
+   - 新增 `Multi-start L-BFGS-B`
+2. `figure/scripts/run_ik_benchmark_six_methods.py`
+   - 新增 6 组方法统一 benchmark 脚本
+   - 同一批目标位姿、同一进程内对比：
+     - `NN only`
+     - `NN + NR`
+     - `DLS`
+     - `Multi-start DLS`
+     - `L-BFGS-B`
+     - `Multi-start L-BFGS-B`
+3. `README.md`
+   - 新增“六组逆解方法对比实验”章节
+   - 补充公式、命令、结果表与图表引用
+
+#### 本轮正式命令
+
+```powershell
+conda activate arm_nn
+python -X utf8 figure/scripts/run_ik_benchmark_six_methods.py --n_samples 100 --seed 2026 --tag n100
+```
+
+#### 本轮结果摘要
+
+基于 `n=100` 的 `cold-start` benchmark，当前结果为：
+
+1. `NN only`
+   - 成功率 `0.00`
+   - 中位时间 `16.88 ms`
+2. `NN + NR`
+   - 成功率 `0.78`
+   - 中位时间 `20.15 ms`
+3. `DLS`
+   - 成功率 `0.39`
+   - 中位时间 `41.83 ms`
+4. `Multi-start DLS`
+   - 成功率 `0.90`
+   - 中位时间 `349.02 ms`
+5. `L-BFGS-B`
+   - 成功率 `0.35`
+   - 中位时间 `52.12 ms`
+6. `Multi-start L-BFGS-B`
+   - 成功率 `0.92`
+   - 中位时间 `323.32 ms`
+
+#### 当前结论
+
+1. `NN only` 不能直接作为最终工程逆解输出
+2. `NN + NR` 在当前 6 组方法中体现出最优的“速度-精度”折中
+3. 多初值数值法成功率最高，但时间成本远高于 `NN + NR`
+4. 单初值数值法在 `cold-start` 条件下明显受初值影响
