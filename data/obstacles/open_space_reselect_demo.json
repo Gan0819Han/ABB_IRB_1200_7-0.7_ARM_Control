@@ -1,0 +1,13 @@
+{
+  "scene_name": "open_space_reselect_demo",
+  "link_radius_mm": 35.0,
+  "safety_margin_mm": 5.0,
+  "clearance_sample_count": 25,
+  "obstacles": [
+    {
+      "name": "demo_box_1",
+      "center_mm": [221.7, 274.53, 493.57],
+      "size_mm": [127.62, 90.45, 175.06]
+    }
+  ]
+}

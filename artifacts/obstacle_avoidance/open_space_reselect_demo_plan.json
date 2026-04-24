@@ -1,0 +1,7151 @@
+{
+  "planner_name": "collision_aware_nn_nr_selector",
+  "target_pose6": [
+    100.0,
+    200.0,
+    800.0,
+    0.10000000149011612,
+    -0.20000000298023224,
+    0.30000001192092896
+  ],
+  "q_start_deg": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "scene": {
+    "scene_name": "open_space_reselect_demo",
+    "link_radius_mm": 35.0,
+    "safety_margin_mm": 5.0,
+    "clearance_sample_count": 25,
+    "obstacles": [
+      {
+        "name": "demo_box_1",
+        "center_mm": [
+          221.7,
+          274.53,
+          493.57
+        ],
+        "size_mm": [
+          127.62,
+          90.45,
+          175.06
+        ],
+        "min_mm": [
+          157.89,
+          229.30499999999998,
+          406.03999999999996
+        ],
+        "max_mm": [
+          285.51,
+          319.755,
+          581.1
+        ]
+      }
+    ]
+  },
+  "candidate_generation": {
+    "mode": "hierarchical",
+    "topk": {
+      "shoulder": 2,
+      "elbow": 1,
+      "wrist": 2,
+      "fine_per_branch": 3
+    },
+    "max_branch_candidates": 6,
+    "max_subspace_candidates": 18,
+    "branch_candidates": [
+      {
+        "branch_label": 1,
+        "branch_name": "shoulder_negative|elbow_low|wrist_middle",
+        "score": -1.5767469108104706
+      },
+      {
+        "branch_label": 7,
+        "branch_name": "shoulder_positive|elbow_low|wrist_middle",
+        "score": -1.6871357858181
+      },
+      {
+        "branch_label": 8,
+        "branch_name": "shoulder_positive|elbow_low|wrist_positive",
+        "score": -2.635265350341797
+      },
+      {
+        "branch_label": 2,
+        "branch_name": "shoulder_negative|elbow_low|wrist_positive",
+        "score": -2.6968207955360413
+      },
+      {
+        "branch_label": 0,
+        "branch_name": "shoulder_negative|elbow_low|wrist_negative",
+        "score": -2.9384562373161316
+      },
+      {
+        "branch_label": 6,
+        "branch_name": "shoulder_positive|elbow_low|wrist_negative",
+        "score": -3.068225860595703
+      }
+    ],
+    "fine_per_branch": [
+      {
+        "branch_label": 1,
+        "branch_name": "shoulder_negative|elbow_low|wrist_middle",
+        "branch_score": -1.5767469108104706,
+        "fine_candidates": [
+          {
+            "fine_label": 7,
+            "subspace_id": 21,
+            "score": -10.226810544729233
+          },
+          {
+            "fine_label": 1,
+            "subspace_id": 3,
+            "score": -10.287646144628525
+          },
+          {
+            "fine_label": 15,
+            "subspace_id": 69,
+            "score": -10.399647206068039
+          }
+        ]
+      },
+      {
+        "branch_label": 7,
+        "branch_name": "shoulder_positive|elbow_low|wrist_middle",
+        "branch_score": -1.6871357858181,
+        "fine_candidates": [
+          {
+            "fine_label": 14,
+            "subspace_id": 164,
+            "score": -6.266586989164352
+          },
+          {
+            "fine_label": 8,
+            "subspace_id": 146,
+            "score": -6.443645924329758
+          },
+          {
+            "fine_label": 11,
+            "subspace_id": 153,
+            "score": -7.374469608068466
+          }
+        ]
+      },
+      {
+        "branch_label": 8,
+        "branch_name": "shoulder_positive|elbow_low|wrist_positive",
+        "branch_score": -2.635265350341797,
+        "fine_candidates": [
+          {
+            "fine_label": 8,
+            "subspace_id": 148,
+            "score": -6.1624754667282104
+          },
+          {
+            "fine_label": 14,
+            "subspace_id": 166,
+            "score": -6.542173445224762
+          },
+          {
+            "fine_label": 12,
+            "subspace_id": 160,
+            "score": -12.566317319869995
+          }
+        ]
+      },
+      {
+        "branch_label": 2,
+        "branch_name": "shoulder_negative|elbow_low|wrist_positive",
+        "branch_score": -2.6968207955360413,
+        "fine_candidates": [
+          {
+            "fine_label": 2,
+            "subspace_id": 10,
+            "score": -6.246236607432365
+          },
+          {
+            "fine_label": 4,
+            "subspace_id": 16,
+            "score": -9.050385236740112
+          },
+          {
+            "fine_label": 10,
+            "subspace_id": 58,
+            "score": -11.640958845615387
+          }
+        ]
+      },
+      {
+        "branch_label": 0,
+        "branch_name": "shoulder_negative|elbow_low|wrist_negative",
+        "branch_score": -2.9384562373161316,
+        "fine_candidates": [
+          {
+            "fine_label": 1,
+            "subspace_id": 1,
+            "score": -7.29680997133255
+          },
+          {
+            "fine_label": 7,
+            "subspace_id": 19,
+            "score": -7.388627886772156
+          },
+          {
+            "fine_label": 9,
+            "subspace_id": 49,
+            "score": -10.834942758083344
+          }
+        ]
+      },
+      {
+        "branch_label": 6,
+        "branch_name": "shoulder_positive|elbow_low|wrist_negative",
+        "branch_score": -3.068225860595703,
+        "fine_candidates": [
+          {
+            "fine_label": 11,
+            "subspace_id": 151,
+            "score": -8.816268563270569
+          },
+          {
+            "fine_label": 10,
+            "subspace_id": 150,
+            "score": -9.673371031880379
+          },
+          {
+            "fine_label": 13,
+            "subspace_id": 157,
+            "score": -10.168734312057495
+          }
+        ]
+      }
+    ],
+    "per_model_branch_candidates": [
+      {
+        "variant": 1,
+        "candidates": [
+          {
+            "branch_label": 7,
+            "branch_name": "shoulder_positive|elbow_low|wrist_middle",
+            "score": -1.8071416020393372
+          },
+          {
+            "branch_label": 1,
+            "branch_name": "shoulder_negative|elbow_low|wrist_middle",
+            "score": -1.8686970472335815
+          },
+          {
+            "branch_label": 8,
+            "branch_name": "shoulder_positive|elbow_low|wrist_positive",
+            "score": -2.635265350341797
+          },
+          {
+            "branch_label": 2,
+            "branch_name": "shoulder_negative|elbow_low|wrist_positive",
+            "score": -2.6968207955360413
+          }
+        ]
+      },
+      {
+        "variant": 2,
+        "candidates": [
+          {
+            "branch_label": 1,
+            "branch_name": "shoulder_negative|elbow_low|wrist_middle",
+            "score": -1.8109449446201324
+          },
+          {
+            "branch_label": 7,
+            "branch_name": "shoulder_positive|elbow_low|wrist_middle",
+            "score": -1.940714567899704
+          },
+          {
+            "branch_label": 0,
+            "branch_name": "shoulder_negative|elbow_low|wrist_negative",
+            "score": -2.9384562373161316
+          },
+          {
+            "branch_label": 6,
+            "branch_name": "shoulder_positive|elbow_low|wrist_negative",
+            "score": -3.068225860595703
+          }
+        ]
+      },
+      {
+        "variant": 3,
+        "candidates": [
+          {
+            "branch_label": 1,
+            "branch_name": "shoulder_negative|elbow_low|wrist_middle",
+            "score": -1.5767469108104706
+          },
+          {
+            "branch_label": 7,
+            "branch_name": "shoulder_positive|elbow_low|wrist_middle",
+            "score": -1.6871357858181
+          },
+          {
+            "branch_label": 2,
+            "branch_name": "shoulder_negative|elbow_low|wrist_positive",
+            "score": -2.8199477791786194
+          },
+          {
+            "branch_label": 8,
+            "branch_name": "shoulder_positive|elbow_low|wrist_positive",
+            "score": -2.930336654186249
+          }
+        ]
+      }
+    ],
+    "candidate_subspaces_with_scores": [
+      {
+        "subspace_id": 148,
+        "score": -6.1624754667282104
+      },
+      {
+        "subspace_id": 10,
+        "score": -6.246236607432365
+      },
+      {
+        "subspace_id": 164,
+        "score": -6.266586989164352
+      },
+      {
+        "subspace_id": 146,
+        "score": -6.443645924329758
+      },
+      {
+        "subspace_id": 166,
+        "score": -6.542173445224762
+      },
+      {
+        "subspace_id": 1,
+        "score": -7.29680997133255
+      },
+      {
+        "subspace_id": 153,
+        "score": -7.374469608068466
+      },
+      {
+        "subspace_id": 19,
+        "score": -7.388627886772156
+      },
+      {
+        "subspace_id": 151,
+        "score": -8.816268563270569
+      },
+      {
+        "subspace_id": 16,
+        "score": -9.050385236740112
+      },
+      {
+        "subspace_id": 150,
+        "score": -9.673371031880379
+      },
+      {
+        "subspace_id": 157,
+        "score": -10.168734312057495
+      },
+      {
+        "subspace_id": 21,
+        "score": -10.226810544729233
+      },
+      {
+        "subspace_id": 3,
+        "score": -10.287646144628525
+      },
+      {
+        "subspace_id": 69,
+        "score": -10.399647206068039
+      },
+      {
+        "subspace_id": 49,
+        "score": -10.834942758083344
+      },
+      {
+        "subspace_id": 58,
+        "score": -11.640958845615387
+      },
+      {
+        "subspace_id": 160,
+        "score": -12.566317319869995
+      }
+    ]
+  },
+  "candidate_subspaces": [
+    148,
+    10,
+    164,
+    146,
+    166,
+    1,
+    153,
+    19,
+    151,
+    16,
+    150,
+    157,
+    21,
+    3,
+    69,
+    49,
+    58,
+    160
+  ],
+  "selection_weights": {
+    "collision_flag_weight": 1000000.0,
+    "collision_frame_weight": 10000.0,
+    "collision_violation_weight": 100.0,
+    "accuracy_violation_weight": 1000.0,
+    "joint_path_weight": 1.0,
+    "max_joint_step_weight": 0.25,
+    "clearance_reward_weight": 0.1,
+    "clearance_reward_cap_mm": 100.0,
+    "pos_tol_mm": 1.0,
+    "ori_tol_rad": 0.01
+  },
+  "evaluated_candidates": [
+    {
+      "candidate_rank": 2,
+      "subspace_id": 10,
+      "q0_deg": [
+        -124.44316101074219,
+        11.350802421569824,
+        -200.0,
+        0.7787132859230042,
+        112.76004028320312,
+        -77.21479797363281
+      ],
+      "q_goal_deg": [
+        -116.61246793338795,
+        16.759946109549837,
+        -191.72103132597465,
+        -0.13430618175701423,
+        105.52254078627024,
+        -55.932870244627225
+      ],
+      "initial_pos_err_mm": 84.75724536318987,
+      "initial_e_max_mm": 508.542724609375,
+      "nr_iters": 4,
+      "nr_converged": true,
+      "final_pose6": [
+        99.99963708072099,
+        199.9996142028135,
+        799.9999844681413,
+        0.10000010302299606,
+        -0.20000075026679656,
+        0.2999994501645449
+      ],
+      "final_pos_err_mm": 0.0005298972644139101,
+      "final_ori_err_rad": 9.281880558966396e-07,
+      "trajectory_summary": {
+        "trajectory_steps": 120,
+        "collision": false,
+        "collision_frame_count": 0,
+        "first_collision_frame": -1,
+        "min_clearance_mm": 109.06928717009711,
+        "joint_path_length_deg": 486.6831625815669,
+        "max_joint_step_deg": 1.6111011035796423,
+        "colliding_links": [],
+        "colliding_obstacles": []
+      },
+      "selection": {
+        "accurate": true,
+        "collision_free": true,
+        "feasible": true,
+        "selection_cost": 477.0859378574618,
+        "rank_key": [
+          0,
+          0,
+          477.0859378574618,
+          0.0005298972644139101,
+          9.281880558966396e-07
+        ]
+      }
+    },
+    {
+      "candidate_rank": 8,
+      "subspace_id": 19,
+      "q0_deg": [
+        -109.0700912475586,
+        14.42021656036377,
+        -200.0,
+        166.79714965820312,
+        -108.2332992553711,
+        124.51998901367188
+      ],
+      "q_goal_deg": [
+        -116.6124929532096,
+        16.75987057861639,
+        -191.7209768742842,
+        179.86574343408873,
+        -105.52257510022689,
+        124.06713309695566
+      ],
+      "initial_pos_err_mm": 78.26132766297219,
+      "initial_e_max_mm": 823.9888305664062,
+      "nr_iters": 4,
+      "nr_converged": true,
+      "final_pose6": [
+        99.99997375184334,
+        199.99991537158533,
+        799.9999810316891,
+        0.09999966755981352,
+        -0.20000016238273285,
+        0.30000010878684014
+      ],
+      "final_pos_err_mm": 9.061308467914204e-05,
+      "final_ori_err_rad": 3.656102462525775e-07,
+      "trajectory_summary": {
+        "trajectory_steps": 120,
+        "collision": false,
+        "collision_frame_count": 0,
+        "first_collision_frame": -1,
+        "min_clearance_mm": 109.06919313993211,
+        "joint_path_length_deg": 734.5487920373814,
+        "max_joint_step_deg": 1.611100646002427,
+        "colliding_links": [],
+        "colliding_obstacles": []
+      },
+      "selection": {
+        "accurate": true,
+        "collision_free": true,
+        "feasible": true,
+        "selection_cost": 724.951567198882,
+        "rank_key": [
+          0,
+          0,
+          724.951567198882,
+          9.061308467914204e-05,
+          3.656102462525775e-07
+        ]
+      }
+    },
+    {
+      "candidate_rank": 6,
+      "subspace_id": 1,
+      "q0_deg": [
+        -92.8126220703125,
+        6.177158832550049,
+        -192.94032287597656,
+        -176.33877563476562,
+        -108.98600769042969,
+        109.51417541503906
+      ],
+      "q_goal_deg": [
+        -116.61248621170556,
+        16.759857748723128,
+        -191.7209654421134,
+        -180.13424780915426,
+        -105.52256711929645,
+        124.06714432109332
+      ],
+      "initial_pos_err_mm": 131.98307399794578,
+      "initial_e_max_mm": 515.9373168945312,
+      "nr_iters": 5,
+      "nr_converged": true,
+      "final_pose6": [
+        100.00000013365846,
+        199.9999998191565,
+        799.9999997543239,
+        0.10000000079562836,
+        -0.20000000405584772,
+        0.3000000128605105
+      ],
+      "final_pos_err_mm": 3.3305511740881274e-07,
+      "final_ori_err_rad": 0.0,
+      "trajectory_summary": {
+        "trajectory_steps": 120,
+        "collision": false,
+        "collision_frame_count": 0,
+        "first_collision_frame": -1,
+        "min_clearance_mm": 109.06920242379556,
+        "joint_path_length_deg": 734.8172686520861,
+        "max_joint_step_deg": 1.6111005499337523,
+        "colliding_links": [],
+        "colliding_obstacles": []
+      },
+      "selection": {
+        "accurate": true,
+        "collision_free": true,
+        "feasible": true,
+        "selection_cost": 725.2200437895696,
+        "rank_key": [
+          0,
+          0,
+          725.2200437895696,
+          3.3305511740881274e-07,
+          0.0
+        ]
+      }
+    },
+    {
+      "candidate_rank": 7,
+      "subspace_id": 153,
+      "q0_deg": [
+        66.76526641845703,
+        102.19341278076172,
+        -187.72628784179688,
+        -33.0344123840332,
+        -18.803157806396484,
+        151.42689514160156
+      ],
+      "q_goal_deg": [
+        63.38751274200309,
+        92.57801073681642,
+        -191.7209654949648,
+        -0.6533574256590213,
+        -11.419265843322954,
+        124.74349774584428
+      ],
+      "initial_pos_err_mm": 101.7529400645255,
+      "initial_e_max_mm": 803.02783203125,
+      "nr_iters": 5,
+      "nr_converged": true,
+      "final_pose6": [
+        100.00000212901209,
+        200.0000024204223,
+        800.0000004874712,
+        0.09999999876691162,
+        -0.20000002190274505,
+        0.29999995251467027
+      ],
+      "final_pos_err_mm": 3.260178641859082e-06,
+      "final_ori_err_rad": 6.322027276634106e-08,
+      "trajectory_summary": {
+        "trajectory_steps": 120,
+        "collision": true,
+        "collision_frame_count": 45,
+        "first_collision_frame": 75,
+        "min_clearance_mm": -40.0,
+        "joint_path_length_deg": 484.50260998861063,
+        "max_joint_step_deg": 1.6111005503778983,
+        "colliding_links": [
+          "joint1_to_joint2",
+          "joint2_to_joint3",
+          "joint3_to_joint4"
+        ],
+        "colliding_obstacles": [
+          "demo_box_1"
+        ]
+      },
+      "selection": {
+        "accurate": true,
+        "collision_free": false,
+        "feasible": false,
+        "selection_cost": 1454484.9053851264,
+        "rank_key": [
+          1,
+          1,
+          1454484.9053851264,
+          3.260178641859082e-06,
+          6.322027276634106e-08
+        ]
+      }
+    },
+    {
+      "candidate_rank": 3,
+      "subspace_id": 164,
+      "q0_deg": [
+        69.2541732788086,
+        99.33446502685547,
+        -198.62179565429688,
+        198.32774353027344,
+        11.147384643554688,
+        -77.87554931640625
+      ],
+      "q_goal_deg": [
+        63.38750884869562,
+        92.57801299464103,
+        -191.72096699390892,
+        179.34658706676467,
+        11.419219739145976,
+        -55.25643970952676
+      ],
+      "initial_pos_err_mm": 44.826365820498395,
+      "initial_e_max_mm": 668.9664306640625,
+      "nr_iters": 4,
+      "nr_converged": true,
+      "final_pose6": [
+        100.00003226345119,
+        200.00006210786407,
+        800.0000115811591,
+        0.10000016225125927,
+        -0.19999976924840235,
+        0.29999912505040904
+      ],
+      "final_pos_err_mm": 7.093969487127623e-05,
+      "final_ori_err_rad": 9.002570788260535e-07,
+      "trajectory_summary": {
+        "trajectory_steps": 120,
+        "collision": true,
+        "collision_frame_count": 45,
+        "first_collision_frame": 75,
+        "min_clearance_mm": -40.0,
+        "joint_path_length_deg": 593.708735352683,
+        "max_joint_step_deg": 1.6111005629740447,
+        "colliding_links": [
+          "joint1_to_joint2",
+          "joint2_to_joint3",
+          "joint3_to_joint4"
+        ],
+        "colliding_obstacles": [
+          "demo_box_1"
+        ]
+      },
+      "selection": {
+        "accurate": true,
+        "collision_free": false,
+        "feasible": false,
+        "selection_cost": 1454594.1115104933,
+        "rank_key": [
+          1,
+          1,
+          1454594.1115104933,
+          7.093969487127623e-05,
+          9.002570788260535e-07
+        ]
+      }
+    },
+    {
+      "candidate_rank": 1,
+      "subspace_id": 148,
+      "q0_deg": [
+        75.11412811279297,
+        90.12899017333984,
+        -179.17913818359375,
+        -164.55055236816406,
+        81.6733627319336,
+        -63.48480987548828
+      ],
+      "q_goal_deg": [
+        63.38750119161447,
+        92.57803102997556,
+        -191.72097819462562,
+        -180.6526222477155,
+        11.418884585953952,
+        -55.257192123682444
+      ],
+      "initial_pos_err_mm": 46.93322442227053,
+      "initial_e_max_mm": 716.5097045898438,
+      "nr_iters": 5,
+      "nr_converged": true,
+      "final_pose6": [
+        100.00048415135139,
+        200.0003852376225,
+        800.0000846122091,
+        0.10000211600964301,
+        -0.19999449254823234,
+        0.2999953620071289
+      ],
+      "final_pos_err_mm": 0.0006244756062282832,
+      "final_ori_err_rad": 7.249196683676574e-06,
+      "trajectory_summary": {
+        "trajectory_steps": 120,
+        "collision": true,
+        "collision_frame_count": 45,
+        "first_collision_frame": 75,
+        "min_clearance_mm": -40.0,
+        "joint_path_length_deg": 595.0152093735676,
+        "max_joint_step_deg": 1.6111006570977224,
+        "colliding_links": [
+          "joint1_to_joint2",
+          "joint2_to_joint3",
+          "joint3_to_joint4"
+        ],
+        "colliding_obstacles": [
+          "demo_box_1"
+        ]
+      },
+      "selection": {
+        "accurate": true,
+        "collision_free": false,
+        "feasible": false,
+        "selection_cost": 1454595.4179845378,
+        "rank_key": [
+          1,
+          1,
+          1454595.4179845378,
+          0.0006244756062282832,
+          7.249196683676574e-06
+        ]
+      }
+    },
+    {
+      "candidate_rank": 15,
+      "subspace_id": 69,
+      "q0_deg": [
+        -71.03816223144531,
+        51.72563552856445,
+        -200.0,
+        219.5945587158203,
+        -19.915189743041992,
+        65.60153198242188
+      ],
+      "q_goal_deg": [
+        47.47043562807481,
+        85.15191393313184,
+        -200.0,
+        -270.0,
+        48.5238251397137,
+        180.0
+      ],
+      "initial_pos_err_mm": 154.42688162791086,
+      "initial_e_max_mm": 952.0343627929688,
+      "nr_iters": 40,
+      "nr_converged": false,
+      "final_pose6": [
+        49.577116709586065,
+        144.9349454792014,
+        778.8188116284102,
+        1.9555668842695795,
+        0.7475869983707624,
+        -0.6101863847251787
+      ],
+      "final_pos_err_mm": 77.60972960608738,
+      "final_ori_err_rad": 2.3530385713470596,
+      "trajectory_summary": {
+        "trajectory_steps": 120,
+        "collision": true,
+        "collision_frame_count": 28,
+        "first_collision_frame": 92,
+        "min_clearance_mm": -40.0,
+        "joint_path_length_deg": 831.1461747009203,
+        "max_joint_step_deg": 2.2689075630252376,
+        "colliding_links": [
+          "joint1_to_joint2",
+          "joint2_to_joint3",
+          "joint3_to_joint4"
+        ],
+        "colliding_obstacles": [
+          "demo_box_1"
+        ]
+      },
+      "selection": {
+        "accurate": false,
+        "collision_free": false,
+        "feasible": false,
+        "selection_cost": 1595745.300142385,
+        "rank_key": [
+          1,
+          1,
+          1595745.300142385,
+          77.60972960608738,
+          2.3530385713470596
+        ]
+      }
+    }
+  ],
+  "selected_solution": {
+    "candidate_rank": 2,
+    "subspace_id": 10,
+    "q0_deg": [
+      -124.44316101074219,
+      11.350802421569824,
+      -200.0,
+      0.7787132859230042,
+      112.76004028320312,
+      -77.21479797363281
+    ],
+    "q_goal_deg": [
+      -116.61246793338795,
+      16.759946109549837,
+      -191.72103132597465,
+      -0.13430618175701423,
+      105.52254078627024,
+      -55.932870244627225
+    ],
+    "initial_pos_err_mm": 84.75724536318987,
+    "initial_e_max_mm": 508.542724609375,
+    "nr_iters": 4,
+    "nr_converged": true,
+    "final_pose6": [
+      99.99963708072099,
+      199.9996142028135,
+      799.9999844681413,
+      0.10000010302299606,
+      -0.20000075026679656,
+      0.2999994501645449
+    ],
+    "final_pos_err_mm": 0.0005298972644139101,
+    "final_ori_err_rad": 9.281880558966396e-07,
+    "trajectory_summary": {
+      "trajectory_steps": 120,
+      "collision": false,
+      "collision_frame_count": 0,
+      "first_collision_frame": -1,
+      "min_clearance_mm": 109.06928717009711,
+      "joint_path_length_deg": 486.6831625815669,
+      "max_joint_step_deg": 1.6111011035796423,
+      "colliding_links": [],
+      "colliding_obstacles": [],
+      "frames": [
+        {
+          "frame_index": 0,
+          "q_deg": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              2.1431318985078682e-14,
+              -2.1431318985078682e-14,
+              749.1
+            ],
+            [
+              2.4003077263288124e-14,
+              -2.4003077263288124e-14,
+              791.1
+            ],
+            [
+              351.0,
+              -2.5105259382520737e-15,
+              791.1
+            ],
+            [
+              351.0,
+              -2.5105259382520737e-15,
+              791.1
+            ],
+            [
+              433.0,
+              2.5105259382520745e-15,
+              791.1
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.40624117465467,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 1,
+          "q_deg": [
+            -0.9799367053225877,
+            0.14083988327352803,
+            -1.6111011035796188,
+            -0.001128623376109363,
+            0.8867440402207583,
+            -0.47002411970274977
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              0.8602151929961787,
+              -0.014713800071233173,
+              749.0989425888681
+            ],
+            [
+              -0.21726668495396806,
+              0.0037163009797493585,
+              791.08511523099
+            ],
+            [
+              350.6158575670313,
+              -5.997210549222037,
+              800.0911023800793
+            ],
+            [
+              350.6158575670313,
+              -5.997210549222037,
+              800.0911023800793
+            ],
+            [
+              432.5996123872187,
+              -7.3995504448743965,
+              800.9262002189329
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.16860847833226,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 2,
+          "q_deg": [
+            -1.9598734106451754,
+            0.28167976654705607,
+            -3.2222022071592376,
+            -0.002257246752218726,
+            1.7734880804415165,
+            -0.9400482394054995
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              1.7196702900094403,
+              -0.05884641464199916,
+              749.0957703618619
+            ],
+            [
+              -0.4336387463318494,
+              0.014838940708390105,
+              791.0404700349126
+            ],
+            [
+              349.8991521111588,
+              -11.973406011391086,
+              809.0465143803599
+            ],
+            [
+              349.8991521111588,
+              -11.973406011391086,
+              809.0465143803599
+            ],
+            [
+              431.83418109413776,
+              -14.777289260354188,
+              810.7166234440379
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 237.94378989684515,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 3,
+          "q_deg": [
+            -2.9398101159677634,
+            0.42251964982058415,
+            -4.833303310738857,
+            -0.00338587012832809,
+            2.660232120662275,
+            -1.4100723591082494
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              2.577605578319482,
+              -0.1323714908221667,
+              749.0904833381488
+            ],
+            [
+              -0.6482241798201454,
+              0.03328918970048014,
+              790.9660917386298
+            ],
+            [
+              348.85165664887097,
+              -17.915081444110164,
+              817.960337279524
+            ],
+            [
+              348.85165664887097,
+              -17.915081444110164,
+              817.960337279524
+            ],
+            [
+              430.7055108032967,
+              -22.118865482975608,
+              820.4652843489408
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 237.73202159298148,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 4,
+          "q_deg": [
+            -3.919746821290351,
+            0.5633595330941121,
+            -6.444404414318475,
+            -0.004514493504437452,
+            3.546976160883033,
+            -1.880096478810999
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              3.4332621115649595,
+              -0.23524512058798822,
+              749.0830815496752
+            ],
+            [
+              -0.8601362143084024,
+              0.058936032520028686,
+              790.8620258669332
+            ],
+            [
+              347.4757245176421,
+              -23.80883429791033,
+              826.8266983607151
+            ],
+            [
+              347.4757245176421,
+              -23.80883429791033,
+              826.8266983607151
+            ],
+            [
+              429.21600931623306,
+              -29.41003167197505,
+              830.1662236296735
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 237.5335311450308,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 5,
+          "q_deg": [
+            -4.899683526612939,
+            0.7041994163676402,
+            -8.055505517898094,
+            -0.005643116880546816,
+            4.4337202011037915,
+            -2.3501205985137488
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              4.2858820925071255,
+              -0.36740586096599437,
+              749.0735650411649
+            ],
+            [
+              -1.0684959151956521,
+              0.09159646793534093,
+              790.7283361125883
+            ],
+            [
+              345.7742840951642,
+              -29.64138905500362,
+              835.6397547784227
+            ],
+            [
+              345.7742840951642,
+              -29.64138905500362,
+              835.6397547784227
+            ],
+            [
+              427.3686822349573,
+              -36.636669167876306,
+              839.8135118805283
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 237.34853730542233,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 6,
+          "q_deg": [
+            -5.879620231935527,
+            0.8450392996411683,
+            -9.666606621477714,
+            -0.00677174025665618,
+            5.32046424132455,
+            -2.8201447182164987
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              5.134709255293605,
+              -0.5287747622785307,
+              749.0619338701201
+            ],
+            [
+              -1.2724347717717848,
+              0.13103592832734556,
+              790.5651042944263
+            ],
+            [
+              343.75083247037554,
+              -35.39962161151985,
+              844.3936974057079
+            ],
+            [
+              343.75083247037554,
+              -35.39962161151985,
+              844.3936974057079
+            ],
+            [
+              425.1671265783348,
+              -43.78481309335469,
+              849.4012534502518
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 237.17724976631354,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 7,
+          "q_deg": [
+            -6.859556937258114,
+            0.9858791829146962,
+            -11.277707725057333,
+            -0.007900363632765542,
+            6.2072082815453085,
+            -3.2901688379192486
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              5.978989247057659,
+              -0.7192554044392198,
+              749.0481881068207
+            ],
+            [
+              -1.4710972634101118,
+              0.17696881754453664,
+              790.372430303508
+            ],
+            [
+              341.4094280783914,
+              -41.07058335867094,
+              853.082754659236
+            ],
+            [
+              341.4094280783914,
+              -41.07058335867094,
+              853.082754659236
+            ],
+            [
+              422.6155233455172,
+              -50.84067705136146,
+              858.9235902760403
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 237.0085547716978,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 8,
+          "q_deg": [
+            -7.839493642580702,
+            1.1267190661882243,
+            -12.88880882863695,
+            -0.009028987008874905,
+            7.093952321766066,
+            -3.760192957621998
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              6.817970008686467,
+              -0.9387339412831425,
+              749.032327834323
+            ],
+            [
+              -1.663643399349363,
+              0.22905916616984234,
+              790.1504320373965
+            ],
+            [
+              338.7546823133314,
+              -46.64152491884758,
+              861.7011962995934
+            ],
+            [
+              338.7546823133314,
+              -46.64152491884758,
+              861.7011962995934
+            ],
+            [
+              419.7186290404685,
+              -57.790677476053695,
+              868.374705692817
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 236.85353972510939,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 9,
+          "q_deg": [
+            -8.819430347903289,
+            1.2675589494617523,
+            -14.49990993221657,
+            -0.01015761038498427,
+            7.9806963619868245,
+            -4.230217077324748
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              7.650902154592166,
+              -1.1870791529130633,
+              749.0143531484606
+            ],
+            [
+              -1.8492512268929753,
+              0.28692140293883384,
+              789.8992453225828
+            ],
+            [
+              335.7917501349075,
+              -52.099919493295616,
+              870.2433372043962
+            ],
+            [
+              335.7917501349075,
+              -52.099919493295616,
+              870.2433372043962
+            ],
+            [
+              416.4817661735105,
+              -64.62145759271932,
+              877.7488282152941
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 236.7140182052715,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 10,
+          "q_deg": [
+            -9.799367053225877,
+            1.4083988327352803,
+            -16.11101103579619,
+            -0.011286233761093632,
+            8.867440402207583,
+            -4.7002411970274975
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              8.477039351322572,
+              -1.464142506040022,
+              748.9942641578426
+            ],
+            [
+              -2.0271193029095933,
+              0.3501212408245862,
+              789.6190238251137
+            ],
+            [
+              332.5263196864772,
+              -57.433485778741506,
+              878.7035411116938
+            ],
+            [
+              332.5263196864772,
+              -57.433485778741506,
+              878.7035411116938
+            ],
+            [
+              412.91081275766896,
+              -71.3199109436106,
+              887.0402352903245
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 236.5901776907565,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 11,
+          "q_deg": [
+            -10.779303758548465,
+            1.5492387160088084,
+            -17.722112139375806,
+            -0.012414857137202995,
+            9.754184442428341,
+            -5.170265316730247
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              9.295638694844598,
+              -1.7697582222927224,
+              748.9720609838539
+            ],
+            [
+              -2.1964691235924256,
+              0.41817667608417075,
+              789.3099389494818
+            ],
+            [
+              328.9646009440682,
+              -62.630210411134605,
+              887.0762243312134
+            ],
+            [
+              328.9646009440682,
+              -62.630210411134605,
+              887.0762243312134
+            ],
+            [
+              409.0121908194128,
+              -77.87320443739962,
+              896.2432570170869
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 236.48219453652206,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 12,
+          "q_deg": [
+            -11.759240463871054,
+            1.6900785992823366,
+            -19.333213242955427,
+            -0.01354348051331236,
+            10.6409284826491,
+            -5.640289436432997
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              10.105961086338723,
+              -2.103743354467459,
+              748.9477437606536
+            ],
+            [
+              -2.3565475075078055,
+              0.4905590983432311,
+              788.9721797258442
+            ],
+            [
+              325.1133134176543,
+              -67.6783698955513,
+              895.3558594209946
+            ],
+            [
+              325.1133134176543,
+              -67.6783698955513,
+              895.3558594209946
+            ],
+            [
+              404.79285394516637,
+              -84.26880088084977,
+              905.3522798326524
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 236.3902337663921,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 13,
+          "q_deg": [
+            -12.739177169193642,
+            1.8309184825558646,
+            -20.944314346535045,
+            -0.014672103889421723,
+            11.527672522869858,
+            -6.110313556135747
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              10.907271606339165,
+              -2.46589787068637,
+              748.9213126351751
+            ],
+            [
+              -2.5066289270557007,
+              0.5666945095815543,
+              788.6059526856446
+            ],
+            [
+              320.97967292769016,
+              -72.56655198225562,
+              903.5369788269979
+            ],
+            [
+              320.97967292769016,
+              -72.56655198225562,
+              903.5369788269979
+            ],
+            [
+              400.26027388671355,
+              -90.4944809522487,
+              914.3617501605175
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 236.31444887778002,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 14,
+          "q_deg": [
+            -13.719113874516228,
+            1.9717583658293925,
+            -22.555415450114666,
+            -0.015800727265531084,
+            12.414416563090617,
+            -6.580337675838497
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              11.698839887057833,
+              -2.856004746428869,
+              748.8927677671243
+            ],
+            [
+              -2.6460177835586745,
+              0.6459648496718562,
+              788.2114817257184
+            ],
+            [
+              316.5713774816028,
+              -77.28367644993536,
+              911.6141784832862
+            ],
+            [
+              316.5713774816028,
+              -77.28367644993536,
+              911.6141784832862
+            ],
+            [
+              395.4224262503167,
+              -96.53836457717684,
+              923.2661780196994
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 236.2549816591967,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 15,
+          "q_deg": [
+            -14.699050579838817,
+            2.1125982491029207,
+            -24.166516553694283,
+            -0.01692935064164045,
+            13.301160603311375,
+            -7.050361795541247
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              12.479940482730704,
+              -3.2738300643979157,
+              748.8621093289794
+            ],
+            [
+              -2.774050621301356,
+              0.727709425917916,
+              787.7890079609737
+            ],
+            [
+              311.89659227658063,
+              -81.81901525822805,
+              919.5821213704135
+            ],
+            [
+              311.89659227658063,
+              -81.81901525822805,
+              919.5821213704135
+            ],
+            [
+              390.28777529602723,
+              -102.38893166828333,
+              932.0601405920272
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 236.21196202105477,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 16,
+          "q_deg": [
+            -15.678987285161403,
+            2.2534381323764485,
+            -25.7776176572739,
+            -0.01805797401774981,
+            14.187904643532132,
+            -7.520385915243996
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              13.24985323782373,
+              -3.7191231221788934,
+              748.8293375059893
+            ],
+            [
+              -2.8900982759597778,
+              0.8112264438376844,
+              787.3387895657422
+            ],
+            [
+              306.9639338565935,
+              -86.16221203281457,
+              927.4355410296738
+            ],
+            [
+              306.9639338565935,
+              -86.16221203281457,
+              927.4355410296738
+            ],
+            [
+              384.8652578752693,
+              -108.03504219190938,
+              940.7382857452831
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 236.18550784024802,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 17,
+          "q_deg": [
+            -16.65892399048399,
+            2.3942780156499768,
+            -27.38871876085352,
+            -0.019186597393859174,
+            15.07464868375289,
+            -7.990410034946746
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              14.007863652939665,
+              -4.191616547646419,
+              748.794452496173
+            ],
+            [
+              -2.993567952979003,
+              0.8957746362399179,
+              786.8611016039075
+            ],
+            [
+              301.78245345312376,
+              -90.30330084759075,
+              935.1692450308999
+            ],
+            [
+              301.78245345312376,
+              -90.30330084759075,
+              935.1692450308999
+            ],
+            [
+              379.16426653633704,
+              -113.46595552563505,
+              949.2953355098794
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 236.17572481894393,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 18,
+          "q_deg": [
+            -17.638860695806578,
+            2.5351178989235046,
+            -28.99981986443314,
+            -0.02031522076996854,
+            15.961392723973649,
+            -8.460434154649496
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              14.753263248265739,
+              -4.691026422070586,
+              748.7574545103175
+            ],
+            [
+              -3.0839052315916042,
+              0.980574987452898,
+              786.3562358479178
+            ],
+            [
+              296.3616195405747,
+              -94.23272426972274,
+              942.7781183915231
+            ],
+            [
+              296.3616195405747,
+              -94.23272426972274,
+              942.7781183915231
+            ],
+            [
+              373.19463182894367,
+              -118.67134907212602,
+              957.7260895067848
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 236.18270635799178,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 19,
+          "q_deg": [
+            -18.618797401129168,
+            2.6759577821970324,
+            -30.610920968012756,
+            -0.0214438441460779,
+            16.848136764194408,
+            -8.930458274352246
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              15.485349924403,
+              -5.217052410870849,
+              748.7183437719781
+            ],
+            [
+              -3.1605959903089875,
+              1.0648125493790204,
+              785.824500586809
+            ],
+            [
+              290.7112996387555,
+              -97.94135063475045,
+              950.2571269446512
+            ],
+            [
+              290.7112996387555,
+              -97.94135063475045,
+              950.2571269446512
+            ],
+            [
+              366.9666038404063,
+              -123.6413360960194,
+              966.0254283244531
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 236.20653344530564,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 20,
+          "q_deg": [
+            -19.598734106451754,
+            2.8167976654705607,
+            -32.22202207159238,
+            -0.022572467522187264,
+            17.734880804415166,
+            -9.400482394054995
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              16.203428320421935,
+              -5.769377901963327,
+              748.677120517475
+            ],
+            [
+              -3.223168249862006,
+              1.1476383458694475,
+              785.2662204233575
+            ],
+            [
+              284.841741396218,
+              -101.420490520323,
+              957.6013206539371
+            ],
+            [
+              284.841741396218,
+              -101.420490520323,
+              957.6013206539371
+            ],
+            [
+              360.49083299743523,
+              -128.3664827520135,
+              974.1883168425279
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 236.24727455953672,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 21,
+          "q_deg": [
+            -20.57867081177434,
+            2.9576375487440885,
+            -33.83312317517199,
+            -0.023701090898296626,
+            18.621624844635924,
+            -9.870506513757745
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              16.906810168985896,
+              -6.347670151642878,
+              748.633784995894
+            ],
+            [
+              -3.271193929726625,
+              1.2281713617422172,
+              784.6817360605025
+            ],
+            [
+              278.76355298952467,
+              -104.66191238862511,
+              964.8058368730648
+            ],
+            [
+              278.76355298952467,
+              -104.66191238862511,
+              964.8058368730648
+            ],
+            [
+              353.7783501688154,
+              -132.83782427380555,
+              982.2098075001494
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 236.30498558930685,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 22,
+          "q_deg": [
+            -21.55860751709693,
+            3.0984774320176167,
+            -35.44422427875161,
+            -0.02482971427440599,
+            19.508368884856683,
+            -10.340530633460494
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              17.594814648389246,
+              -6.951580437939402,
+              748.5883374690832
+            ],
+            [
+              -3.3042905145283186,
+              1.3055006126004365,
+              784.0714040771728
+            ],
+            [
+              272.48768287478197,
+              -107.65785736908425,
+              971.8659035476983
+            ],
+            [
+              272.48768287478197,
+              -107.65785736908425,
+              971.8659035476983
+            ],
+            [
+              346.840546105532,
+              -137.04688029505934,
+              990.0850435067056
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 236.37970976822515,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 23,
+          "q_deg": [
+            -22.538544222419517,
+            3.2393173152911445,
+            -37.05532538233123,
+            -0.02595833765051535,
+            20.395112925077438,
+            -10.810554753163244
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              18.26676873135577,
+              -7.580744221383904,
+              748.5407782116522
+            ],
+            [
+              -3.322122626790442,
+              1.3786872914496389,
+              783.4355966936705
+            ],
+            [
+              266.02539892894697,
+              -110.40105315453229,
+              978.7768423577916
+            ],
+            [
+              266.02539892894697,
+              -110.40105315453229,
+              978.7768423577916
+            ],
+            [
+              339.6891502560759,
+              -140.9856692751735,
+              997.8092619929279
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 236.47147762586388,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 24,
+          "q_deg": [
+            -23.518480927742107,
+            3.3801571985646732,
+            -38.666426485910854,
+            -0.02708696102662472,
+            21.2818569652982,
+            -11.280578872865995
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              18.92200753044424,
+              -8.234781313116661,
+              748.4911075109711
+            ],
+            [
+              -3.324403502668112,
+              1.4467669879628087,
+              782.7747015267636
+            ],
+            [
+              259.3882670195272,
+              -112.88472698562359,
+              985.5340717981871
+            ],
+            [
+              259.3882670195272,
+              -112.88472698562359,
+              985.5340717981871
+            ],
+            [
+              332.3362089957909,
+              -144.64672200425684,
+              1005.3777971002563
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 236.58030695481955,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 25,
+          "q_deg": [
+            -24.498417633064694,
+            3.520997081838201,
+            -40.277527589490475,
+            -0.02821558440273408,
+            22.16860100551896,
+            -11.750602992568744
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              19.559874639911506,
+              -8.913296050267512,
+              748.4393256671674
+            ],
+            [
+              -3.31089636748872,
+              1.5087519760972885,
+              782.0891213346481
+            ],
+            [
+              252.58812904233775,
+              -115.1026176999931,
+              992.133110195475
+            ],
+            [
+              252.58812904233775,
+              -115.1026176999931,
+              992.133110195475
+            ],
+            [
+              324.7940633101757,
+              -148.02309416340404,
+              1012.786083006445
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 236.70620279393472,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 26,
+          "q_deg": [
+            -25.478354338387284,
+            3.6618369651117293,
+            -41.88862869307009,
+            -0.029344207778843445,
+            23.055345045739717,
+            -12.220627112271494
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              20.179722473882844,
+              -9.615877478534578,
+              748.385432993125
+            ],
+            [
+              -3.2814157081109094,
+              1.5636335656335376,
+              781.3792737519503
+            ],
+            [
+              245.63708046794264,
+              -117.04898682435581,
+              998.5695786591268
+            ],
+            [
+              245.63708046794264,
+              -117.04898682435581,
+              998.5695786591268
+            ],
+            [
+              317.0753259730306,
+              -151.1083779180915,
+              1020.0296568854227
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 236.8491574277079,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 27,
+          "q_deg": [
+            -26.45829104370987,
+            3.802676848385257,
+            -43.49972979664971,
+            -0.030472831154952806,
+            23.942089085960475,
+            -12.690651231974245
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              20.78091260068082,
+              -10.342099541884448,
+              748.3294298144826
+            ],
+            [
+              -3.235828439307582,
+              1.6103845130787278,
+              780.6455910149407
+            ],
+            [
+              238.54744743830088,
+              -118.71862868950834,
+              1004.8392039649618
+            ],
+            [
+              238.54744743830088,
+              -118.71862868950834,
+              1004.8392039649618
+            ],
+            [
+              309.19285826123945,
+              -153.89671252427792,
+              1027.104161799464
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 237.00915040186572,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 28,
+          "q_deg": [
+            -27.438227749032457,
+            3.943516731658785,
+            -45.11083090022933,
+            -0.03160145453106217,
+            24.828833126181234,
+            -13.160675351676995
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              21.362816073167924,
+              -11.091521279295158,
+              748.2713164696306
+            ],
+            [
+              -3.174054961575159,
+              1.6479614872582662,
+              779.8885196771421
+            ],
+            [
+              231.33176345596038,
+              -120.10687954999389,
+              1010.9378213690436
+            ],
+            [
+              231.33176345596038,
+              -120.10687954999389,
+              1010.9378213690436
+            ],
+            [
+              301.1597462488141,
+              -156.38279392860352,
+              1034.0053495217676
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 237.1736807867452,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 29,
+          "q_deg": [
+            -28.418164454355047,
+            4.084356614932313,
+            -46.721932003808945,
+            -0.032730077907171536,
+            25.715577166401992,
+            -13.630699471379744
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              21.924813754956062,
+              -11.863687028458436,
+              748.2110933097103
+            ],
+            [
+              -3.0960701079797275,
+              1.6753075848105397,
+              779.1085203155203
+            ],
+            [
+              224.00274570887098,
+              -121.2096256920166,
+              1016.8613773501602
+            ],
+            [
+              224.00274570887098,
+              -121.2096256920166,
+              1016.8613773501602
+            ],
+            [
+              292.98927672356206,
+              -158.56188334591386,
+              1040.7290832875967
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 237.35192475862743,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 30,
+          "q_deg": [
+            -29.398101159677633,
+            4.225196498205841,
+            -48.333033107388566,
+            -0.0338587012832809,
+            26.60232120662275,
+            -14.100723591082494
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              22.466296642341423,
+              -12.658126636356572,
+              748.1487606986111
+            ],
+            [
+              -3.0019039778551644,
+              1.6913548906969478,
+              778.306067227447
+            ],
+            [
+              216.57327107456126,
+              -122.0233105150553,
+              1022.6059322790745
+            ],
+            [
+              216.57327107456126,
+              -122.0233105150553,
+              1022.6059322790745
+            ],
+            [
+              284.69491277042596,
+              -160.42981479920599,
+              1047.2713404721644
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 237.54575107571253,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 31,
+          "q_deg": [
+            -30.378037865000216,
+            4.366036381479368,
+            -49.94413421096818,
+            -0.03498732465939026,
+            27.489065246843506,
+            -14.570747710785241
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              22.986666181822695,
+              -13.47435567662536,
+              748.0843190129683
+            ],
+            [
+              -2.891642655383979,
+              1.6950270787486126,
+              777.481648118639
+            ],
+            [
+              209.05635184799368,
+              -122.54494057451161,
+              1028.167663012795
+            ],
+            [
+              209.05635184799368,
+              -122.54494057451161,
+              1028.167663012795
+            ],
+            [
+              276.2902690661192,
+              -161.98300160898864,
+              1053.6282151935138
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 237.75509680426075,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 32,
+          "q_deg": [
+            -31.357974570322806,
+            4.506876264752897,
+            -51.5552353145478,
+            -0.03611594803549962,
+            28.375809287064264,
+            -15.040771830487992
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              23.48533458306209,
+              -14.31187567361132,
+              748.0177686421612
+            ],
+            [
+              -2.7654288113086025,
+              1.6852420471886855,
+              776.635763782276
+            ],
+            [
+              201.46511123791439,
+              -122.77209057463479,
+              1033.542865412152
+            ],
+            [
+              201.46511123791439,
+              -122.77209057463479,
+              1033.542865412152
+            ],
+            [
+              267.78908693019514,
+              -163.21844182096356,
+              1059.7959208386799
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 237.9798877265432,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 33,
+          "q_deg": [
+            -32.337911275645396,
+            4.647716148026426,
+            -53.16633641812743,
+            -0.03724457141160899,
+            29.262553327285026,
+            -15.510795950190744
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              23.96172512715385,
+              -15.170174333030504,
+              747.9491099883103
+            ],
+            [
+              -2.623462186237564,
+              1.6609145839936286,
+              775.7689277695093
+            ],
+            [
+              193.81275867693634,
+              -122.70290730289842,
+              1038.727956781026
+            ],
+            [
+              193.81275867693634,
+              -122.70290730289842,
+              1038.727956781026
+            ],
+            [
+              259.20520917811854,
+              -164.13372256287664,
+              1065.770792511474
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.19884908069008,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 34,
+          "q_deg": [
+            -33.31784798096798,
+            4.7885560312999536,
+            -54.77743752170704,
+            -0.03837319478771835,
+            30.14929736750578,
+            -15.980820069893491
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              24.4152724700607,
+              -16.04872577913003,
+              747.8783434662752
+            ],
+            [
+              -2.4659999542403455,
+              1.6209590568968757,
+              774.8816660515793
+            ],
+            [
+              186.11256499091598,
+              -122.33611249894427,
+              1043.7194782256213
+            ],
+            [
+              186.11256499091598,
+              -122.33611249894427,
+              1043.7194782256213
+            ],
+            [
+              250.55255482223723,
+              -164.7270233233374,
+              1071.5492894002873
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.34191627516032,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 35,
+          "q_deg": [
+            -34.297784686290576,
+            4.929395914573481,
+            -56.388538625286664,
+            -0.039501818163827716,
+            31.036041407726543,
+            -16.450844189596243
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              24.84542294108885,
+              -16.94699079825532,
+              747.8054695036519
+            ],
+            [
+              -2.2933569656423494,
+              1.5642921227788804,
+              773.9745166737617
+            ],
+            [
+              178.37783747344935,
+              -121.67100465317108,
+              1048.5140969322292
+            ],
+            [
+              178.37783747344935,
+              -121.67100465317108,
+              1048.5140969322292
+            ],
+            [
+              241.84509366682738,
+              -164.99711814737645,
+              1077.1279970643566
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.40355167961246,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 36,
+          "q_deg": [
+            -35.277721391613156,
+            5.070235797847009,
+            -57.99963972886628,
+            -0.04063044153993708,
+            31.922785447947298,
+            -16.920868309298992
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              25.25163483626581,
+              -17.864417088718454,
+              747.7304885407704
+            ],
+            [
+              -2.1059058681675005,
+              1.4898354511484193,
+              773.0480294013739
+            ],
+            [
+              170.621894911466,
+              -120.70745973200751,
+              1053.1086083619837
+            ],
+            [
+              170.621894911466,
+              -120.70745973200751,
+              1053.1086083619837
+            ],
+            [
+              233.09682084354654,
+              -164.94337674548206,
+              1082.5036296369894
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.42559957795777,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 37,
+          "q_deg": [
+            -36.25765809693575,
+            5.211075681120538,
+            -59.6107408324459,
+            -0.04175906491604644,
+            32.80952948816806,
+            -17.39089242900174
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              25.633378706493254,
+              -18.800439516863868,
+              747.6534010306918
+            ],
+            [
+              -1.9040771058001305,
+              1.3965184563817097,
+              772.1027653580715
+            ],
+            [
+              162.8580426079891,
+              -119.44593082888215,
+              1057.4999383611644
+            ],
+            [
+              162.8580426079891,
+              -119.44593082888215,
+              1057.4999383611644
+            ],
+            [
+              224.3217313337253,
+              -164.5657645148399,
+              1087.6730319443109
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.4488664545027,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 38,
+          "q_deg": [
+            -37.237594802258336,
+            5.351915564394065,
+            -61.22184193602551,
+            -0.0428876882921558,
+            33.696273528388815,
+            -17.86091654870449
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              25.99013764034752,
+              -19.75448037922398,
+              747.5742074392058
+            ],
+            [
+              -1.688358794970192,
+              1.2832810333620834,
+              771.1392966566734
+            ],
+            [
+              155.0995474481276,
+              -117.88744674187818,
+              1061.6851451856537
+            ],
+            [
+              155.0995474481276,
+              -117.88744674187818,
+              1061.6851451856537
+            ],
+            [
+              215.53379452393597,
+              -163.86484147348546,
+              1092.6331815381288
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.47334439043715,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 39,
+          "q_deg": [
+            -38.21753150758092,
+            5.4927554476675935,
+            -62.83294303960514,
+            -0.04401631166826517,
+            34.58301756860958,
+            -18.33094066840724
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              26.3214075414009,
+              -20.725949670653637,
+              747.4929082448278
+            ],
+            [
+              -1.4592964778996382,
+              1.1490762911495693,
+              770.1582060227626
+            ],
+            [
+              147.35961305427335,
+              -116.03360948102662,
+              1065.66142143822
+            ],
+            [
+              147.35961305427335,
+              -116.03360948102662,
+              1065.66142143822
+            ],
+            [
+              206.74692884118903,
+              -162.8417601100541,
+              1097.3811906415958
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 40,
+          "q_deg": [
+            -39.19746821290351,
+            5.633595330941121,
+            -64.44404414318475,
+            -0.04514493504437453,
+            35.46976160883033,
+            -18.80096478810999
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              26.626697399942035,
+              -21.714245358331695,
+              747.409503938796
+            ],
+            [
+              -1.2174927531772255,
+              0.9928732793026676,
+              769.1600864113032
+            ],
+            [
+              139.65135507631425,
+              -113.88659071016394,
+              1069.4260959173484
+            ],
+            [
+              139.65135507631425,
+              -113.88659071016394,
+              1069.4260959173484
+            ],
+            [
+              197.97497651395494,
+              -161.49826215379792,
+              1101.9143080063852
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 41,
+          "q_deg": [
+            -40.1774049182261,
+            5.77443521421465,
+            -66.05514524676437,
+            -0.04627355842048389,
+            36.356505649051094,
+            -19.27098890781274
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              26.905529558973903,
+              -22.718753661514103,
+              747.3239950250681
+            ],
+            [
+              -0.9636067838633693,
+              0.8136597014814448,
+              768.1455406165331
+            ],
+            [
+              131.9877766624113,
+              -111.44912713023058,
+              1072.9766353764005
+            ],
+            [
+              131.9877766624113,
+              -111.44912713023058,
+              1072.9766353764005
+            ],
+            [
+              189.23167850495238,
+              -159.83667427149658,
+              1106.2299206801608
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 42,
+          "q_deg": [
+            -41.15734162354868,
+            5.915275097488177,
+            -67.66624635034398,
+            -0.04740218179659325,
+            37.24324968927185,
+            -19.74101302751549
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              27.157439974370384,
+              -23.73884933692045,
+              747.236382020319
+            ],
+            [
+              -0.6983536836589224,
+              0.6104446109761135,
+              767.1151808753862
+            ],
+            [
+              124.38174415555355,
+              -108.72451481283342,
+              1076.3106461919508
+            ],
+            [
+              124.38174415555355,
+              -108.72451481283342,
+              1076.3106461919508
+            ],
+            [
+              180.5306496613161,
+              -157.8599026998509,
+              1110.3255556831914
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 43,
+          "q_deg": [
+            -42.137278328871275,
+            6.056114980761706,
+            -69.27734745392361,
+            -0.04853080517270262,
+            38.129993729492604,
+            -20.211037147218242
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              27.38197846907626,
+              -24.773895969634804,
+              747.146665453937
+            ],
+            [
+              -0.422503781901149,
+              0.38226108282922056,
+              766.0696284647038
+            ],
+            [
+              116.84596306068326,
+              -105.7166024948237,
+              1079.4258759401935
+            ],
+            [
+              116.84596306068326,
+              -105.7166024948237,
+              1079.4258759401935
+            ],
+            [
+              171.8853541273432,
+              -155.57142682388377,
+              1114.198881592996
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 44,
+          "q_deg": [
+            -43.11721503419386,
+            6.196954864035233,
+            -70.88844855750322,
+            -0.04965942854881198,
+            39.016737769713366,
+            -20.681061266920988
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              27.578708981236478,
+              -25.823246269398012,
+              747.0548458680211
+            ],
+            [
+              -0.13688176838176247,
+              0.12816885725568739,
+              765.0095132925034
+            ],
+            [
+              109.39295432667964,
+              -102.4297838465462,
+              1082.320214880385
+            ],
+            [
+              109.39295432667964,
+              -102.4297838465462,
+              1082.320214880385
+            ],
+            [
+              163.30908106451858,
+              -152.9752917137901,
+              1117.847710035992
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 45,
+          "q_deg": [
+            -44.09715173951645,
+            6.337794747308762,
+            -72.49954966108285,
+            -0.05078805192492134,
+            39.90348180993412,
+            -21.15108538662374
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              27.7472098061428,
+              -26.88624237216615,
+              746.9609238173771
+            ],
+            [
+              0.15763428078927433,
+              -0.15274305088957263,
+              763.935473483572
+            ],
+            [
+              102.03503098690257,
+              -98.86898872830133,
+              1084.99169734435
+            ],
+            [
+              102.03503098690257,
+              -98.86898872830133,
+              1084.99169734435
+            ],
+            [
+              154.81492072293787,
+              -150.0760996345748,
+              1121.269997085167
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 46,
+          "q_deg": [
+            -45.077088444839035,
+            6.478634630582289,
+            -74.11065076466247,
+            -0.0519166753010307,
+            40.790225850154876,
+            -21.621109506326487
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              27.887073831890714,
+              -27.962216146809777,
+              746.8648998695149
+            ],
+            [
+              0.4601139948270365,
+              -0.4613537817945428,
+              762.848154959658
+            ],
+            [
+              94.78427520134092,
+              -95.0396734514222,
+              1087.4385030311269
+            ],
+            [
+              94.78427520134092,
+              -95.0396734514222,
+              1087.4385030311269
+            ],
+            [
+              146.41574090759735,
+              -146.87900054468878,
+              1124.4638445628532
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 47,
+          "q_deg": [
+            -46.05702515016162,
+            6.619474513855818,
+            -75.72175186824208,
+            -0.05304529867714007,
+            41.67696989037564,
+            -22.09113362602924
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              27.997908768638695,
+              -29.050489506822853,
+              746.766774604645
+            ],
+            [
+              0.7695759157470441,
+              -0.7985081046537275,
+              761.7482110145368
+            ],
+            [
+              87.65251574265542,
+              -90.94781006218852,
+              1089.6589582059075
+            ],
+            [
+              87.65251574265542,
+              -90.94781006218852,
+              1089.6589582059075
+            ],
+            [
+              138.12416388226796,
+              -143.38968160170538,
+              1127.427501247756
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 48,
+          "q_deg": [
+            -47.036961855484215,
+            6.7603143971293465,
+            -77.33285297182171,
+            -0.05417392205324944,
+            42.5637139305964,
+            -22.56115774573199
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              28.079337371367767,
+              -30.150374726911746,
+              746.6665486156741
+            ],
+            [
+              1.0849888197807402,
+              -1.1650139409720133,
+              760.6363018842303
+            ],
+            [
+              80.65130596759661,
+              -86.5998746686023,
+              1091.6515368024793
+            ],
+            [
+              80.65130596759661,
+              -86.5998746686023,
+              1091.6515368024793
+            ],
+            [
+              129.95254375286802,
+              -139.61435569489348,
+              1130.1593639854448
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 49,
+          "q_deg": [
+            -48.0168985608068,
+            6.901154280402873,
+            -78.94395407540132,
+            -0.05530254542935879,
+            43.450457970817155,
+            -23.03118186543474
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              28.130997656040023,
+              -31.261174764330114,
+              746.5642225082029
+            ],
+            [
+              1.4052731506191734,
+              -1.5616399421829747,
+              759.5130943126659
+            ],
+            [
+              73.79190231437377,
+              -82.00283483180037,
+              1093.4148614284445
+            ],
+            [
+              73.79190231437377,
+              -82.00283483180037,
+              1093.4148614284445
+            ],
+            [
+              121.91294437134854,
+              -135.55974902630643,
+              1132.6579787015814
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 50,
+          "q_deg": [
+            -48.99683526612939,
+            7.041994163676402,
+            -80.55505517898095,
+            -0.05643116880546816,
+            44.33720201103792,
+            -23.50120598513749
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              28.152543109057376,
+              -32.38218358482389,
+              746.4597969005213
+            ],
+            [
+              1.7293025621591411,
+              -1.9891131264631134,
+              758.3792611130549
+            ],
+            [
+              67.08524336558116,
+              -77.16413604559696,
+              1094.9477042725514
+            ],
+            [
+              67.08524336558116,
+              -77.16413604559696,
+              1094.9477042725514
+            ],
+            [
+              114.0171178001387,
+              -131.23308776373545,
+              1134.922041317217
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 51,
+          "q_deg": [
+            -49.976771971451974,
+            7.18283404694993,
+            -82.16615628256056,
+            -0.05755979218157752,
+            45.22394605125867,
+            -23.971230104840238
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              28.143642889926635,
+              -33.512686493050204,
+              746.3532724236056
+            ],
+            [
+              2.0559055682185097,
+              -2.4481165795237168,
+              757.235480725287
+            ],
+            [
+              60.54192951524854,
+              -72.09168732932835,
+              1096.248987913547
+            ],
+            [
+              60.54192951524854,
+              -72.09168732932835,
+              1096.248987913547
+            ],
+            [
+              106.27648337616532,
+              -126.64208379056743,
+              1136.950398565569
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 52,
+          "q_deg": [
+            -50.95670867677457,
+            7.323673930223459,
+            -83.77725738614018,
+            -0.05868841555768689,
+            46.110690091479434,
+            -24.441254224542988
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              28.103982027036626,
+              -34.651960467329225,
+              746.2446497211135
+            ],
+            [
+              2.383867296478961,
+              -2.9392872240482006,
+              756.0824367696239
+            ],
+            [
+              54.1722032774611,
+              -66.79384596079029,
+              1097.3177860300088
+            ],
+            [
+              54.1722032774611,
+              -66.79384596079029,
+              1097.3177860300088
+            ],
+            [
+              98.7021074123399,
+              -121.79491957921812,
+              1138.742048709733
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 53,
+          "q_deg": [
+            -51.93664538209715,
+            7.4645138134969855,
+            -85.38835848971979,
+            -0.059817038933796245,
+            46.99743413170019,
+            -24.911278344245737
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              28.033261606458943,
+              -35.799274498589085,
+              746.1339294493819
+            ],
+            [
+              2.711931343717083,
+              -3.463213662326318,
+              754.9208175969951
+            ],
+            [
+              47.98593027281828,
+              -61.27940137764693,
+              1098.153324010701
+            ],
+            [
+              47.98593027281828,
+              -61.27940137764693,
+              1098.153324010701
+            ],
+            [
+              91.30468357323628,
+              -116.70023221641125,
+              1140.2961421608745
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 54,
+          "q_deg": [
+            -52.91658208741974,
+            7.605353696770514,
+            -86.99945959329942,
+            -0.06094566230990561,
+            47.88417817192095,
+            -25.38130246394849
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              27.93119895368518,
+              -36.9538899333607,
+              746.0211122774207
+            ],
+            [
+              3.038801729188183,
+              -4.020434096507387,
+              753.751315836182
+            ],
+            [
+              41.9925809277473,
+              -55.55755827721014,
+              1098.7549794650379
+            ],
+            [
+              41.9925809277473,
+              -55.55755827721014,
+              1098.7549794650379
+            ],
+            [
+              84.09451396042903,
+              -111.3670966101079,
+              1141.6119819964842
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 55,
+          "q_deg": [
+            -53.89651879274233,
+            7.746193580044042,
+            -88.61056069687903,
+            -0.062074285686014974,
+            48.770922212141706,
+            -25.851326583651236
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              27.79752780821529,
+              -38.115060820675716,
+              745.906198886911
+            ],
+            [
+              3.3631449428363425,
+              -4.611434330756275,
+              752.5746279381978
+            ],
+            [
+              36.201212920372335,
+              -49.63791894595869,
+              1099.1222826333344
+            ],
+            [
+              36.201212920372335,
+              -49.63791894595869,
+              1099.1222826333344
+            ],
+            [
+              77.08149094165243,
+              -105.80500790937212,
+              1142.6890243783726
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 56,
+          "q_deg": [
+            -54.876455498064914,
+            7.88703346331757,
+            -90.22166180045866,
+            -0.06320290906212434,
+            49.65766625236247,
+            -26.32135070335399
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              27.631998490918917,
+              -39.28203426272497,
+              745.7891899721997
+            ],
+            [
+              3.6835920848253387,
+              -5.236645859457724,
+              751.3914537181556
+            ],
+            [
+              30.62045440527231,
+              -43.5304648515893,
+              1099.2549166965591
+            ],
+            [
+              30.62045440527231,
+              -43.5304648515893,
+              1099.2549166965591
+            ],
+            [
+              70.27507975657237,
+              -100.02386316989563,
+              1143.52687887012
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 57,
+          "q_deg": [
+            -55.8563922033875,
+            8.027873346591099,
+            -91.83276290403828,
+            -0.0643315324382337,
+            50.54441029258322,
+            -26.791374823056735
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              27.434378064088072,
+              -40.45405076912468,
+              745.6700862402954
+            ],
+            [
+              3.9987410927011204,
+              -5.896444045453684,
+              750.2024958949328
+            ],
+            [
+              25.258488048014915,
+              -37.24553753173226,
+              1099.1527179853974
+            ],
+            [
+              25.258488048014915,
+              -37.24553753173226,
+              1099.1527179853974
+            ],
+            [
+              63.684301930521016,
+              -94.0339422992553,
+              1144.125308653792
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 58,
+          "q_deg": [
+            -56.836328908710094,
+            8.168713229864625,
+            -93.44386400761789,
+            -0.06546015581434307,
+            51.431154332803985,
+            -27.261398942759488
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              27.204450484109042,
+              -41.63034461464429,
+              745.5488884108645
+            ],
+            [
+              4.3071590523324765,
+              -6.591146392147358,
+              749.0084596289289
+            ],
+            [
+              20.12303589887361,
+              -30.793818814767484,
+              1098.8156760884788
+            ],
+            [
+              20.12303589887361,
+              -30.793818814767484,
+              1098.8156760884788
+            ],
+            [
+              57.31771952606418,
+              -87.84588831729566,
+              1144.4842306457658
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 59,
+          "q_deg": [
+            -57.81626561403267,
+            8.309553113138154,
+            -95.0549651111975,
+            -0.06658877919045243,
+            52.31789837302474,
+            -27.731423062462234
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              26.94201674668004,
+              -42.81014420024314,
+              745.4255972162266
+            ],
+            [
+              4.6073845886086815,
+              -7.321010913135218,
+              747.8100520582258
+            ],
+            [
+              15.221345133583084,
+              -24.186310409396462,
+              1098.243933859702
+            ],
+            [
+              15.221345133583084,
+              -24.186310409396462,
+              1098.243933859702
+            ],
+            [
+              51.18342026072153,
+              -81.47068696825886,
+              1144.6037155116092
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 60,
+          "q_deg": [
+            -58.79620231935527,
+            8.450392996411683,
+            -96.66606621477713,
+            -0.0677174025665618,
+            53.2046424132455,
+            -28.201447182164987
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              26.64689502450548,
+              -43.99267241726274,
+              745.3002134013502
+            ],
+            [
+              4.897930331717571,
+              -8.086234602855981,
+              746.6079818334534
+            ],
+            [
+              10.560174687393681,
+              -17.4343129007843,
+              1097.4377873246522
+            ],
+            [
+              10.560174687393681,
+              -17.4343129007843,
+              1097.4377873246522
+            ],
+            [
+              45.28900351756492,
+              -74.919645722457,
+              1144.483987579999
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 61,
+          "q_deg": [
+            -59.77613902467785,
+            8.59123287968521,
+            -98.27716731835675,
+            -0.06884602594267115,
+            54.09138645346626,
+            -28.671471301867733
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              26.318920797401905,
+              -45.1771470146218,
+              745.1727377238481
+            ],
+            [
+              5.1772854546798825,
+              -8.886952011566763,
+              745.4029586516681
+            ],
+            [
+              6.145782807043979,
+              -10.549404192179868,
+              1096.3976854861687
+            ],
+            [
+              6.145782807043979,
+              -10.549404192179868,
+              1096.3976854861687
+            ],
+            [
+              39.641567273780524,
+              -68.20437220638782,
+              1144.1254246557396
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 62,
+          "q_deg": [
+            -60.75607573000043,
+            8.732072762958737,
+            -99.88826842193636,
+            -0.06997464931878052,
+            54.97813049368701,
+            -29.141495421570482
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              25.957946974752126,
+              -46.36278096885783,
+              745.0431709539728
+            ],
+            [
+              5.4439182776729105,
+              -9.723233927767964,
+              744.1956927895496
+            ],
+            [
+              1.983915543577489,
+              -3.543417431935593,
+              1095.124230029196
+            ],
+            [
+              1.983915543577489,
+              -3.543417431935593,
+              1095.124230029196
+            ],
+            [
+              34.247695970585454,
+              -61.336752101221634,
+              1143.5285577320133
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 63,
+          "q_deg": [
+            -61.73601243532303,
+            8.872912646232267,
+            -101.49936952551599,
+            -0.07110327269488989,
+            55.86487453390777,
+            -29.611519541273235
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              25.563844010247784,
+              -47.548782856858075,
+              744.9115138746122
+            ],
+            [
+              5.69627893454431,
+              -10.595086171006471,
+              742.9868946362255
+            ],
+            [
+              -1.9202037927992706,
+              3.571581533204716,
+              1093.6181749251105
+            ],
+            [
+              -1.9202037927992706,
+              3.571581533204716,
+              1093.6181749251105
+            ],
+            [
+              29.11344934616235,
+              -54.32892655054608,
+              1142.6940706020528
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 64,
+          "q_deg": [
+            -62.71594914064561,
+            9.013752529505794,
+            -103.1104706290956,
+            -0.07223189607099924,
+            56.75161857412853,
+            -30.081543660975985
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              25.13650000886497,
+              -48.734357231123155,
+              744.7777672812841
+            ],
+            [
+              5.932802096793015,
+              -11.502448497790034,
+              741.7772742260286
+            ],
+            [
+              -5.561884196389876,
+              10.783317136809323,
+              1091.8804259357798
+            ],
+            [
+              -5.561884196389876,
+              10.783317136809323,
+              1091.8804259357798
+            ],
+            [
+              24.244352251504143,
+              -47.19326911914119,
+              1141.622799370494
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 65,
+          "q_deg": [
+            -63.6958858459682,
+            9.154592412779321,
+            -104.72157173267522,
+            -0.0733605194471086,
+            57.63836261434928,
+            -30.551567780678734
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              24.675820826018004,
+              -49.91870499740271,
+              744.6419319821323
+            ],
+            [
+              6.1519097501763405,
+              -12.445193623139772,
+              740.5675407714978
+            ],
+            [
+              -8.936975530593498,
+              18.079327460925402,
+              1089.9120400176892
+            ],
+            [
+              -8.936975530593498,
+              18.079327460925402,
+              1089.9120400176892
+            ],
+            [
+              19.64538546725101,
+              -39.94236234535657,
+              1140.3157318647402
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 66,
+          "q_deg": [
+            -64.67582255129079,
+            9.295432296052851,
+            -106.33267283625486,
+            -0.07448914282321797,
+            58.52510665457005,
+            -31.021591900381488
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              24.18173015884301,
+              -51.101023794544076,
+              744.5040087979211
+            ],
+            [
+              6.352014018997018,
+              -13.423126360102238,
+              739.3584021969268
+            ],
+            [
+              -12.041876077618191,
+              25.446987950458485,
+              1087.714224626519
+            ],
+            [
+              -12.041876077618191,
+              25.446987950458485,
+              1087.714224626519
+            ],
+            [
+              15.320977537767664,
+              -32.5889739303982,
+              1138.7740069467238
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 67,
+          "q_deg": [
+            -65.65575925661338,
+            9.436272179326378,
+            -107.94377393983447,
+            -0.07561776619932734,
+            59.41185069479081,
+            -31.491616020084237
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              23.65416962956346,
+              -52.280508376392405,
+              744.3639985620305
+            ],
+            [
+              6.531520033024368,
+              -14.435982879328321,
+              738.1505646727703
+            ],
+            [
+              -14.873539059405928,
+              32.873535429880995,
+              1085.2883369226367
+            ],
+            [
+              -14.873539059405928,
+              32.873535429880995,
+              1085.2883369226367
+            ],
+            [
+              11.274997636837014,
+              -25.14603260847838,
+              1136.9989137255252
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 68,
+          "q_deg": [
+            -66.63569596193597,
+            9.577112062599907,
+            -109.55487504341409,
+            -0.0767463895754367,
+            60.29859473501156,
+            -31.961640139786983
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              23.09309886089437,
+              -53.456350995579236,
+              744.2219021204513
+            ],
+            [
+              6.688828831914616,
+              -15.483430090608934,
+              736.9447321512129
+            ],
+            [
+              -17.429478117748847,
+              40.34609237783621,
+              1082.6358828780244
+            ],
+            [
+              -17.429478117748847,
+              40.34609237783621,
+              1082.6358828780244
+            ],
+            [
+              7.510749477450165,
+              -17.62660374234362,
+              1134.9918906713708
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 69,
+          "q_deg": [
+            -67.61563266725855,
+            9.717951945873434,
+            -111.1659761469937,
+            -0.07787501295154606,
+            61.18533877523232,
+            -32.43166425948973
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              22.498495543445294,
+              -54.62774178903819,
+              744.0777203317799
+            ],
+            [
+              6.82234030191661,
+              -16.565065148039608,
+              735.7416059032063
+            ],
+            [
+              -19.707771743483143,
+              47.85169141471559,
+              1079.75851628523
+            ],
+            [
+              -19.707771743483143,
+              47.85169141471559,
+              1079.75851628523
+            ],
+            [
+              4.030966276262539,
+              -10.043864689198102,
+              1132.7545246315995
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 70,
+          "q_deg": [
+            -68.59556937258115,
+            9.858791829146963,
+            -112.77707725057333,
+            -0.07900363632765543,
+            62.072082815453086,
+            -32.901688379192485
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              21.87035549508455,
+              -55.79386916508165,
+              743.9314540672129
+            ],
+            [
+              6.9304561395772915,
+              -17.680415080258776,
+              734.5418840572811
+            ],
+            [
+              -21.707066646588775,
+              55.37729995791259,
+              1076.658037668994
+            ],
+            [
+              -21.707066646588775,
+              55.37729995791259,
+              1076.658037668994
+            ],
+            [
+              0.8378067813418575,
+              -2.411079982425818,
+              1130.2885497492425
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 71,
+          "q_deg": [
+            -69.57550607790373,
+            9.999631712420491,
+            -114.38817835415294,
+            -0.0801322597037648,
+            62.95882685567384,
+            -33.371712498895235
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              21.20869271223181,
+              -56.95392019187583,
+              743.7831042105423
+            ],
+            [
+              7.011582837102136,
+              -18.828936546981524,
+              733.3462611404356
+            ],
+            [
+              -23.426580060964334,
+              62.90984499913324,
+              1073.3363931012725
+            ],
+            [
+              -23.426580060964334,
+              62.90984499913324,
+              1073.3363931012725
+            ],
+            [
+              -2.0671476301104157,
+              5.258423625148524,
+              1127.595846284944
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 72,
+          "q_deg": [
+            -70.55544278322631,
+            10.140471595694018,
+            -115.99927945773256,
+            -0.08126088307987415,
+            63.845570895894596,
+            -33.841736618597984
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              20.51353941304814,
+              -58.10708098714788,
+              743.6326716581497
+            ],
+            [
+              7.064134683973423,
+              -20.01001572281921,
+              732.1554276214035
+            ],
+            [
+              -24.86610097961011,
+              70.43623795792828,
+              1069.7956729204288
+            ],
+            [
+              -24.86610097961011,
+              70.43623795792828,
+              1069.7956729204288
+            ],
+            [
+              -4.6828947793503595,
+              12.951282210493908,
+              1124.6784393429891
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 73,
+          "q_deg": [
+            -71.5353794885489,
+            10.281311478967545,
+            -117.61038056131217,
+            -0.0823895064559835,
+            64.73231493611534,
+            -34.311760738300734
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              19.784946072496727,
+              -59.25253710895845,
+              743.4801573190011
+            ],
+            [
+              7.086536779388636,
+              -21.222968309144193,
+              730.9700694566038
+            ],
+            [
+              -26.025990317917234,
+              77.94339956546456,
+              1066.0381103554457
+            ],
+            [
+              -26.025990317917234,
+              77.94339956546456,
+              1066.0381103554457
+            ],
+            [
+              -7.0090124362491615,
+              20.654119775975424,
+              1121.5384975022916
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 74,
+          "q_deg": [
+            -72.5153161938715,
+            10.422151362241076,
+            -119.2214816648918,
+            -0.08351812983209288,
+            65.61905897633612,
+            -34.78178485800348
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              19.02298144925098,
+              -60.38947394737462,
+              743.3255621146413
+            ],
+            [
+              7.077228050050243,
+              -22.46703967452836,
+              729.7908676390671
+            ],
+            [
+              -26.90718000473379,
+              85.4182847325001,
+              1062.0660800560577
+            ],
+            [
+              -26.90718000473379,
+              85.4182847325001,
+              1062.0660800560577
+            ],
+            [
+              -9.045657991248746,
+              28.353573345133597,
+              1118.178331353242
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 75,
+          "q_deg": [
+            -73.49525289919409,
+            10.562991245514603,
+            -120.83258276847141,
+            -0.08464675320820224,
+            66.50580301655687,
+            -35.25180897770623
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              18.227732604429576,
+              -61.5170771168754,
+              743.1688869791889
+            ],
+            [
+              7.03466426781625,
+              -23.741405124047994,
+              728.6184977506417
+            ],
+            [
+              -27.511171002849647,
+              92.84790735555157,
+              1057.8820965297755
+            ],
+            [
+              -27.511171002849647,
+              92.84790735555157,
+              1057.8820965297755
+            ],
+            [
+              -10.793567050321748,
+              36.0363180124612,
+              1114.600391941384
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 76,
+          "q_deg": [
+            -74.47518960451667,
+            10.70383112878813,
+            -122.44368387205103,
+            -0.0857753765843116,
+            67.39254705677763,
+            -35.72183309740898
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              17.39930491214138,
+              -62.634532849321445,
+              743.0101328593294
+            ],
+            [
+              6.957321061709692,
+              -25.04517029751284,
+              727.4536295177679
+            ],
+            [
+              -27.840030262512897,
+              100.21936501536116,
+              1053.4888124868278
+            ],
+            [
+              -27.840030262512897,
+              100.21936501536116,
+              1053.4888124868278
+            ],
+            [
+              -12.254050956118299,
+              43.689091901104234,
+              1110.8072691189473
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 77,
+          "q_deg": [
+            -75.45512630983924,
+            10.844671012061658,
+            -124.05478497563064,
+            -0.08690399996042096,
+            68.27929109699838,
+            -36.19185721711173
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              16.537822061827487,
+              -63.741028387323745,
+              742.8493007143109
+            ],
+            [
+              6.843696918784708,
+              -26.377371696445287,
+              726.2969263711177
+            ],
+            [
+              -27.89638661355069,
+              107.5198635219563,
+              1048.889017094115
+            ],
+            [
+              -27.89638661355069,
+              107.5198635219563,
+              1048.889017094115
+            ],
+            [
+              -13.428993240446983,
+              51.29872098258919,
+              1106.8016898053277
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 78,
+          "q_deg": [
+            -76.43506301516184,
+            10.985510895335187,
+            -125.66588607921028,
+            -0.08803262333653034,
+            69.16603513721915,
+            -36.66188133681448
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              15.643426052389342,
+              -64.83575237783947,
+              742.6863915159372
+            ],
+            [
+              6.692316168354122,
+              -27.736977339394706,
+              725.1490450093874
+            ],
+            [
+              -27.68342560362255,
+              114.73674126088662,
+              1044.085634139318
+            ],
+            [
+              -27.68342560362255,
+              114.73674126088662,
+              1044.085634139318
+            ],
+            [
+              -14.320845015197845,
+              58.85214371295736,
+              1102.586516157659
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 79,
+          "q_deg": [
+            -77.41499972048443,
+            11.126350778608716,
+            -127.2769871827899,
+            -0.0891612467126397,
+            70.0527791774399,
+            -37.13190545651723
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              14.7162771780975,
+              -65.91789526583034,
+              742.5214062485629
+            ],
+            [
+              6.501731944104295,
+              -29.122887544944803,
+              724.0106349675316
+            ],
+            [
+              -27.20488329207079,
+              121.85749329557615,
+              1039.0817201063803
+            ],
+            [
+              -27.20488329207079,
+              121.85749329557615,
+              1039.0817201063803
+            ],
+            [
+              -14.93261931075763,
+              66.3364354400299,
+              1098.1647436526923
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 80,
+          "q_deg": [
+            -78.39493642580702,
+            11.267190661882243,
+            -128.8880882863695,
+            -0.09028987008874906,
+            70.93952321766066,
+            -37.60192957621998
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              13.756554006276735,
+              -66.98664968781299,
+              742.3543459090863
+            ],
+            [
+              6.270529118649846,
+              -30.533935841532355,
+              722.8823381897213
+            ],
+            [
+              -26.465039010754808,
+              128.86979518118062,
+              1033.8804621636186
+            ],
+            [
+              -26.465039010754808,
+              128.86979518118062,
+              1033.8804621636186
+            ],
+            [
+              -15.267884372895674,
+              73.73883253696644,
+              1093.5394990812401
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 81,
+          "q_deg": [
+            -79.37487313112962,
+            11.408030545155771,
+            -130.49918938994912,
+            -0.09141849346485842,
+            71.82626725788143,
+            -38.07195369592274
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              12.764453346768065,
+              -68.04121086513247,
+              742.1852115069444
+            ],
+            [
+              5.997327205120758,
+              -31.96889000296587,
+              721.7647886073095
+            ],
+            [
+              -25.468707105157268,
+              135.7615264458678,
+              1028.4851760657978
+            ],
+            [
+              -25.468707105157268,
+              135.7615264458678,
+              1028.4851760657978
+            ],
+            [
+              -15.330755931006403,
+              81.04675621779936,
+              1088.714038456517
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 82,
+          "q_deg": [
+            -80.3548098364522,
+            11.5488704284293,
+            -132.11029049352874,
+            -0.09254711684096778,
+            72.71301129810219,
+            -38.54197781562548
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              11.74019021317164,
+              -69.08077699679238,
+              742.0140040641065
+            ],
+            [
+              5.680783220423117,
+              -33.42645320830396,
+              720.6586117220806
+            ],
+            [
+              -24.22122767092486,
+              142.52079369603914,
+              1022.8993039715457
+            ],
+            [
+              -24.22122767092486,
+              142.52079369603914,
+              1022.8993039715457
+            ],
+            [
+              -15.125888452475191,
+              88.24783599121261,
+              1083.6917448377542
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 83,
+          "q_deg": [
+            -81.33474654177478,
+            11.689710311702827,
+            -133.72139159710835,
+            -0.09367574021707714,
+            73.59975533832294,
+            -39.01200193532823
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              10.68399777587671,
+              -70.10454965167037,
+              741.8407246150675
+            ],
+            [
+              5.319594504872265,
+              -34.90526532452122,
+              719.5644241950573
+            ],
+            [
+              -22.728456302856898,
+              149.13595330271383,
+              1017.1264121775437
+            ],
+            [
+              -22.728456302856898,
+              149.13595330271383,
+              1017.1264121775437
+            ],
+            [
+              -14.658465399792702,
+              95.32993270952801,
+              1078.4761260705206
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 84,
+          "q_deg": [
+            -82.31468324709736,
+            11.830550194976354,
+            -135.33249270068796,
+            -0.0948043635931865,
+            74.4864993785437,
+            -39.48202605503098
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              9.596127306889729,
+              -71.11173415995299,
+              741.6653742068427
+            ],
+            [
+              4.912501492966442,
+              -36.403904310167846,
+              718.482833441139
+            ],
+            [
+              -20.996752875169992,
+              155.5956336270467,
+              1011.1701887709914
+            ],
+            [
+              -20.996752875169992,
+              155.5956336270467,
+              1011.1701887709914
+            ],
+            [
+              -13.934188508864185,
+              102.28116117060057,
+              1073.0708124452538
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 85,
+          "q_deg": [
+            -83.29461995241996,
+            11.971390078249884,
+            -136.9435938042676,
+            -0.09593298696929588,
+            75.37324341876446,
+            -39.952050174733735
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              8.476848116474299,
+              -72.10154000362066,
+              741.4879538989603
+            ],
+            [
+              4.458290430146098,
+              -37.92088773800473,
+              717.4144372298341
+            ],
+            [
+              -19.032969373652925,
+              161.88875674380833,
+              1005.0344412018839
+            ],
+            [
+              -19.032969373652925,
+              161.88875674380833,
+              1005.0344412018839
+            ],
+            [
+              -12.959266108753823,
+              109.08991223117167,
+              1067.4795542755294
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 86,
+          "q_deg": [
+            -84.27455665774255,
+            12.112229961523411,
+            -138.55469490784722,
+            -0.09706161034540524,
+            76.25998745898521,
+            -40.422074294436484
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              7.326447481619714,
+              -73.07318120581401,
+              741.3084647634557
+            ],
+            [
+              3.955796030471121,
+              -39.45467443437556,
+              716.3598232923532
+            ],
+            [
+              -16.844436802067975,
+              168.0045596225678,
+              998.7230937767038
+            ],
+            [
+              -16.844436802067975,
+              168.0045596225678,
+              998.7230937767038
+            ],
+            [
+              -11.740400504854506,
+              115.74487439113018,
+              1061.7062193976808
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 87,
+          "q_deg": [
+            -85.25449336306514,
+            12.253069844796938,
+            -140.16579601142683,
+            -0.0981902337215146,
+            77.14673149920597,
+            -40.89209841413923
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              6.145230566359278,
+              -74.02587671891627,
+              741.1269078848652
+            ],
+            [
+              3.4039040702454364,
+              -41.00366623286674,
+              715.3195689353194
+            ],
+            [
+              -14.438951186861965,
+              173.93261472731515,
+              992.2401850751794
+            ],
+            [
+              -14.438951186861965,
+              173.93261472731515,
+              992.2401850751794
+            ],
+            [
+              -10.284774449187879,
+              122.2350548091188,
+              1055.7547905934116
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 88,
+          "q_deg": [
+            -86.23443006838772,
+            12.393909728070467,
+            -141.77689711500645,
+            -0.09931885709762396,
+            78.03347553942673,
+            -41.362122533841976
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              4.933520333962064,
+              -74.95885081118156,
+              740.9432843602187
+            ],
+            [
+              2.8015539127232785,
+              -42.56620983958867,
+              714.2942406613504
+            ],
+            [
+              -11.824758705908815,
+              179.6628499963227,
+              985.5898652918058
+            ],
+            [
+              -11.824758705908815,
+              179.6628499963227,
+              985.5898652918058
+            ],
+            [
+              -8.60003672320666,
+              128.54979971097484,
+              1049.6293629371012
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 89,
+          "q_deg": [
+            -87.21436677371031,
+            12.534749611343996,
+            -143.3879982185861,
+            -0.10044748047373334,
+            78.9202195796475,
+            -41.83214665354473
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              3.691657451025722,
+              -75.87133345174479,
+              740.7575952990339
+            ],
+            [
+              2.147740959146576,
+              -44.140598807211816,
+              713.2843937967638
+            ],
+            [
+              -9.010539968619973,
+              185.18556816518446,
+              978.7763935038843
+            ],
+            [
+              -9.010539968619973,
+              185.18556816518446,
+              978.7763935038843
+            ],
+            [
+              -6.694286860094314,
+              134.6788141536259,
+              1043.3341410695573
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 90,
+          "q_deg": [
+            -88.1943034790329,
+            12.675589494617524,
+            -144.9990993221657,
+            -0.10157610384984268,
+            79.80696361986824,
+            -42.30217077324748
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              2.420000183500795,
+              -76.76256069384587,
+              740.5698418233087
+            ],
+            [
+              1.441519021485664,
+              -45.72507561468569,
+              712.2905721266477
+            ],
+            [
+              -6.005393476320629,
+              190.49146539716853,
+              971.8041348678751
+            ],
+            [
+              -6.005393476320629,
+              190.49146539716853,
+              971.8041348678751
+            ],
+            [
+              -4.576059035127689,
+              140.6121811082459,
+              1036.873436400011
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 91,
+          "q_deg": [
+            -89.17424018435548,
+            12.816429377891051,
+            -146.61020042574532,
+            -0.10270472722595204,
+            80.693707660089,
+            -42.772194892950225
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              1.1189242846810008,
+              -77.63177505610211,
+              740.3800250675154
+            ],
+            [
+              0.6820026123878163,
+              -47.31783384937418,
+              711.3133075375409
+            ],
+            [
+              -2.8188182933022854,
+              195.57164918629925,
+              964.6775577459111
+            ],
+            [
+              -2.8188182933022854,
+              195.57164918629925,
+              964.6775577459111
+            ],
+            [
+              -2.254305154189689,
+              146.34037982775234,
+              1030.2516642381995
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 92,
+          "q_deg": [
+            -90.15417688967807,
+            12.957269261164578,
+            -148.22130152932493,
+            -0.1038333506020614,
+            81.58045170030975,
+            -43.242219012652974
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              -0.21117712480325332,
+              -78.478225901665,
+              740.188146178593
+            ],
+            [
+              -0.1316308520222408,
+              -48.91702048815107,
+              710.3531196679542
+            ],
+            [
+              0.5393040395855189,
+              200.41765549990095,
+              957.4012307643645
+            ],
+            [
+              0.5393040395855189,
+              200.41765549990095,
+              957.4012307643645
+            ],
+            [
+              0.2616228280191578,
+              151.85430346502852,
+              1023.4733408584261
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 93,
+          "q_deg": [
+            -91.13411359500067,
+            13.098109144438109,
+            -149.83240263290455,
+            -0.10496197397817078,
+            82.46719574053053,
+            -43.71224313235573
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              -1.5698936849471672,
+              -79.3011698150965,
+              739.9942063159408
+            ],
+            [
+              -1.0001389406973513,
+              -50.52073827381507,
+              709.4105155669645
+            ],
+            [
+              4.058728315543165,
+              205.02146512874612,
+              949.9798198064036
+            ],
+            [
+              4.058728315543165,
+              205.02146512874612,
+              949.9798198064036
+            ],
+            [
+              2.9619913271135188,
+              157.14527590966009,
+              1016.5430804975422
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 94,
+          "q_deg": [
+            -92.11405030032324,
+            13.238949027711636,
+            -151.44350373648416,
+            -0.10609059735428014,
+            83.35393978075128,
+            -44.18226725205848
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              -2.956797932245643,
+              -80.09987097680099,
+              739.7982066514112
+            ],
+            [
+              -1.9242121916303532,
+              -52.127048183005044,
+              708.485989361108
+            ],
+            [
+              7.728865162033365,
+              209.37551921439126,
+              942.4180849405184
+            ],
+            [
+              7.728865162033365,
+              209.37551921439126,
+              942.4180849405184
+            ],
+            [
+              5.83670425119983,
+              162.2050678124058,
+              1009.4655922888192
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 95,
+          "q_deg": [
+            -93.09398700564583,
+            13.379788910985162,
+            -153.05460484006377,
+            -0.1072192207303895,
+            84.24068382097204,
+            -44.65229137176123
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              -4.371445443431747,
+              -80.8736015348514,
+              739.6001483693028
+            ],
+            [
+              -2.904472195112405,
+              -53.73397198162767,
+              707.5800219297882
+            ],
+            [
+              11.538801194730102,
+              213.47273392479778,
+              934.7208772870385
+            ],
+            [
+              11.538801194730102,
+              213.47273392479778,
+              934.7208772870385
+            ],
+            [
+              8.875322790513275,
+              167.02591176812848,
+              1002.2456771337394
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 96,
+          "q_deg": [
+            -94.07392371096843,
+            13.520628794258693,
+            -154.66570594364342,
+            -0.10834784410649888,
+            85.1274278611928,
+            -45.12231549146398
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              -5.8133749870284905,
+              -81.62164197404712,
+              739.4000326663527
+            ],
+            [
+              -3.9414697800050105,
+              -55.33949486364318,
+              706.6930805894165
+            ],
+            [
+              15.477319788128714,
+              217.30651425089124,
+              926.8931358247086
+            ],
+            [
+              15.477319788128714,
+              217.30651425089124,
+              926.8931358247086
+            ],
+            [
+              12.067085837714332,
+              171.60051662946145,
+              994.8882245137697
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 97,
+          "q_deg": [
+            -95.05386041629102,
+            13.66146867753222,
+            -156.27680704722303,
+            -0.10947646748260824,
+            86.01417190141356,
+            -45.59233961116673
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              -7.28210868266012,
+              -82.34328148204226,
+              739.1978607517299
+            ],
+            [
+              -5.035683306566494,
+              -56.94156816889945,
+              705.8256187864896
+            ],
+            [
+              19.532922424604962,
+              220.8707668983326,
+              918.9398841394177
+            ],
+            [
+              19.532922424604962,
+              220.8707668983326,
+              918.9398841394177
+            ],
+            [
+              15.400931000896467,
+              175.9220809250977,
+              987.3982092442135
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 98,
+          "q_deg": [
+            -96.0337971216136,
+            13.802308560805747,
+            -157.88790815080264,
+            -0.11060509085871759,
+            86.90091594163431,
+            -46.06236373086948
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              -8.777152168066037,
+              -83.03781831238783,
+              738.9936338470279
+            ],
+            [
+              -6.187517069189978,
+              -58.53811217555842,
+              704.9780757998097
+            ],
+            [
+              23.69385058264144,
+              224.15991225041813,
+              910.8662271172327
+            ],
+            [
+              23.69385058264144,
+              224.15991225041813,
+              910.8662271172327
+            ],
+            [
+              18.865516170276464,
+              179.98430535822493,
+              979.7806881722884
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 99,
+          "q_deg": [
+            -97.01373382693619,
+            13.943148444079275,
+            -159.49900925438226,
+            -0.11173371423482695,
+            87.78765998185507,
+            -46.53238785057223
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              -10.297994773755919,
+              -83.70456014432453,
+              738.787353186257
+            ],
+            [
+              -7.397299812218765,
+              -60.12701896251145,
+              704.150876452039
+            ],
+            [
+              27.948108123941633,
+              227.1688953797493,
+              902.6773475839029
+            ],
+            [
+              27.948108123941633,
+              227.1688953797493,
+              902.6773475839029
+            ],
+            [
+              22.449241598530506,
+              183.78140436234835,
+              972.0407968216007
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 100,
+          "q_deg": [
+            -97.99367053225878,
+            14.083988327352804,
+            -161.1101103579619,
+            -0.11286233761093632,
+            88.67440402207583,
+            -47.00241197027498
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              -11.844109705243197,
+              -84.34282443917374,
+              738.5790200158367
+            ],
+            [
+              -8.665283361810374,
+              -61.70615533705566,
+              703.3444308307829
+            ],
+            [
+              32.28348413823086,
+              229.89319608803405,
+              894.3785028930583
+            ],
+            [
+              32.28348413823086,
+              229.89319608803405,
+              894.3785028930583
+            ],
+            [
+              26.14027245380624,
+              187.30811669345576,
+              964.1837459852345
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 101,
+          "q_deg": [
+            -98.97360723758136,
+            14.224828210626331,
+            -162.72121146154151,
+            -0.11399096098704568,
+            89.5611480622966,
+            -47.47243608997773
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              -13.414954232789514,
+              -84.95193879316724,
+              738.3686355945893
+            ],
+            [
+              -9.99164137661791,
+              -63.27336582297231,
+              702.5591340193829
+            ],
+            [
+              36.68757620369476,
+              232.32883795518245,
+              885.9750214653403
+            ],
+            [
+              36.68757620369476,
+              232.32883795518245,
+              885.9750214653403
+            ],
+            [
+              29.9265618035819,
+              190.55971503927503,
+              956.2148182696968
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 102,
+          "q_deg": [
+            -99.95354394290395,
+            14.36566809389986,
+            -164.33231256512113,
+            -0.11511958436315504,
+            90.44789210251734,
+            -47.942460209680476
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              -15.009969888590138,
+              -85.53124128656292,
+              738.1562011937303
+            ],
+            [
+              -11.376468219851196,
+              -64.82647570403645,
+              701.7953658375961
+            ],
+            [
+              41.14781402023505,
+              234.47239638066463,
+              877.4722992807477
+            ],
+            [
+              41.14781402023505,
+              234.47239638066463,
+              877.4722992807477
+            ],
+            [
+              33.79587398676091,
+              193.53201462817344,
+              948.1393645919978
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 103,
+          "q_deg": [
+            -100.93348064822653,
+            14.506507977173387,
+            -165.94341366870074,
+            -0.1162482077392644,
+            91.3346361427381,
+            -48.412484329383226
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              -16.628582671327514,
+              -86.08008082889273,
+              737.9417180968633
+            ],
+            [
+              -12.819777955068815,
+              -66.3632941178794,
+              701.0534905923353
+            ],
+            [
+              45.65148337203109,
+              236.321005601951,
+              868.8757963265072
+            ],
+            [
+              45.65148337203109,
+              236.321005601951,
+              868.8757963265072
+            ],
+            [
+              37.735808330687796,
+              196.2213808220944,
+              939.9628006321788
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 238.49272652081953,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 104,
+          "q_deg": [
+            -101.91341735354914,
+            14.647347860446917,
+            -167.55451477228036,
+            -0.11737683111537378,
+            92.22138018295887,
+            -48.882508449085975
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              -18.27020325801598,
+              -86.59781750019019,
+              737.7251875999696
+            ],
+            [
+              -14.321503467835525,
+              -67.88161719502622,
+              700.3338568386285
+            ],
+            [
+              50.185750375281955,
+              237.87236467673094,
+              860.1910330028059
+            ],
+            [
+              50.185750375281955,
+              237.87236467673094,
+              860.1910330028059
+            ],
+            [
+              41.733823169145744,
+              198.62473567979816,
+              931.6906032436212
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 236.3996018072939,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 105,
+          "q_deg": [
+            -102.89335405887171,
+            14.788187743720444,
+            -169.16561587585997,
+            -0.11850545449148314,
+            93.10812422317962,
+            -49.352532568788725
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              -19.93422722305881,
+              -87.08382288804879,
+              737.5066110114021
+            ],
+            [
+              -15.881495715160648,
+              -69.37923123784569,
+              699.6367971509611
+            ],
+            [
+              54.737685966472775,
+              239.1247424175049,
+              851.4235864887528
+            ],
+            [
+              54.737685966472775,
+              239.1247424175049,
+              851.4235864887528
+            ],
+            [
+              45.77726011685335,
+              200.7395634785672,
+              923.3283068235069
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 229.88772101315277,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 106,
+          "q_deg": [
+            -103.8732907641943,
+            14.929027626993971,
+            -170.77671697943958,
+            -0.11963407786759249,
+            93.99486826340038,
+            -49.822556688491474
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              -21.620035264434975,
+              -87.53748042036074,
+              737.2859896518771
+            ],
+            [
+              -17.499523104408745,
+              -70.85391593406658,
+              698.962627905147
+            ],
+            [
+              59.29429058605931,
+              240.07698126906834,
+              842.5790870709656
+            ],
+            [
+              59.29429058605931,
+              240.07698126906834,
+              842.5790870709656
+            ],
+            [
+              49.85336855551617,
+              202.5639151844548,
+              914.881499645821
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 223.14116748359044,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 107,
+          "q_deg": [
+            -104.85322746951688,
+            15.0698675102675,
+            -172.3878180830192,
+            -0.12076270124370185,
+            94.88161230362113,
+            -50.292580808194224
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              -23.326993436930074,
+              -87.95818569359047,
+              737.0633248544659
+            ],
+            [
+              -19.175271003147486,
+              -72.30344759944913,
+              698.3116490708735
+            ],
+            [
+              63.8425190120965,
+              240.7285001213422,
+              833.6632144371914
+            ],
+            [
+              63.8425190120965,
+              240.7285001213422,
+              833.6632144371914
+            ],
+            [
+              53.94933028610887,
+              204.09641186308937,
+              906.3558201593112
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 215.90447119130144,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 108,
+          "q_deg": [
+            -105.83316417483948,
+            15.210707393541028,
+            -173.99891918659884,
+            -0.12189132461981123,
+            95.7683563438419,
+            -50.76260492789698
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              -25.054453392323165,
+              -88.3453467964367,
+              736.838617964587
+            ],
+            [
+              -20.90834138116808,
+              -73.7256024441372,
+              697.6841440150578
+            ],
+            [
+              68.36930529805284,
+              241.07929605196122,
+              824.6816939374139
+            ],
+            [
+              68.36930529805284,
+              241.07929605196122,
+              824.6816939374139
+            ],
+            [
+              58.05228430176694,
+              205.33624702499662,
+              897.7569532528498
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 208.45175849636752,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 109,
+          "q_deg": [
+            -106.81310088016207,
+            15.351547276814555,
+            -175.61002029017845,
+            -0.12301994799592059,
+            96.65510038406265,
+            -51.23262904759972
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              -26.801752626437825,
+              -88.69838462873913,
+              736.6118703399978
+            ],
+            [
+              -22.698252585681423,
+              -75.11815985716854,
+              697.0803793161427
+            ],
+            [
+              72.86158776885287,
+              241.1299449949927,
+              815.6402928148981
+            ],
+            [
+              72.86158776885287,
+              241.1299449949927,
+              815.6402928148981
+            ],
+            [
+              62.14935163545603,
+              206.28318790136265,
+              889.090626490654
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 200.76370480218048,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 110,
+          "q_deg": [
+            -107.79303758548465,
+            15.492387160088084,
+            -177.22112139375807,
+            -0.12414857137202995,
+            97.54184442428341,
+            -51.70265316730247
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              -28.5682147329635,
+              -89.01673321548888,
+              736.3830833507868
+            ],
+            [
+              -24.544439250459842,
+              -76.47890570358061,
+              696.5006045894555
+            ],
+            [
+              77.30633402907291,
+              240.88160133412737,
+              806.5448164096604
+            ],
+            [
+              77.30633402907291,
+              240.88160133412737,
+              806.5448164096604
+            ],
+            [
+              66.22766023645627,
+              206.93757564812438,
+              880.3626063198491
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 192.6304193279981,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 111,
+          "q_deg": [
+            -108.77297429080723,
+            15.633227043361611,
+            -178.83222249733768,
+            -0.1252771947481393,
+            98.42858846450416,
+            -52.17267728700522
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              -30.3531496639498,
+              -89.29984001580195,
+              736.1522583793648
+            ],
+            [
+              -26.446252339458336,
+              -77.80563562851819,
+              695.945052323743
+            ],
+            [
+              81.69056593718395,
+              240.3359964206618,
+              797.4011043368614
+            ],
+            [
+              81.69056593718395,
+              240.3359964206618,
+              797.4011043368614
+            ],
+            [
+              70.27436982965641,
+              207.30032447824982,
+              871.5786942528719
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 184.3559499105316,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 112,
+          "q_deg": [
+            -109.75291099612983,
+            15.77406692663514,
+            -180.44332360091732,
+            -0.12640581812424867,
+            99.31533250472494,
+            -52.64270140670798
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              -32.15585399687346,
+              -89.54716622671744,
+              735.9193968204569
+            ],
+            [
+              -28.402959325212606,
+              -79.09615836272937,
+              695.4139377289927
+            ],
+            [
+              86.00138449978827,
+              239.49543601856058,
+              788.2150266426396
+            ],
+            [
+              86.00138449978827,
+              239.49543601856058,
+              788.2150266426396
+            ],
+            [
+              74.27669671169176,
+              207.3729197240358,
+              862.7447230272328
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 175.71459979985573,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 113,
+          "q_deg": [
+            -110.73284770145241,
+            15.914906809908668,
+            -182.05442470449694,
+            -0.12753444150035803,
+            100.20207654494568,
+            -53.11272552641072
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              -33.97561120817551,
+              -89.75818708168583,
+              735.684500081094
+            ],
+            [
+              -30.413744502074586,
+              -80.3482990238279,
+              694.9074585956386
+            ],
+            [
+              90.225994639932,
+              238.36279668085768,
+              778.9924799399146
+            ],
+            [
+              90.225994639932,
+              238.36279668085768,
+              778.9924799399146
+            ],
+            [
+              78.2219384380836,
+              207.1574148332215,
+              853.8665527451659
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 166.84176672220863,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 114,
+          "q_deg": [
+            -111.712784406775,
+            16.055746693182197,
+            -183.66552580807655,
+            -0.1286630648764674,
+            101.08882058516645,
+            -53.58274964611347
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              -35.8116919531628,
+              -89.9323921436113,
+              735.4475695806044
+            ],
+            [
+              -32.477709434107936,
+              -81.55990240769681,
+              694.425795165245
+            ],
+            [
+              94.35172979380091,
+              236.94152106361906,
+              769.7393835267067
+            ],
+            [
+              94.35172979380091,
+              236.94152106361906,
+              769.7393835267067
+            ],
+            [
+              82.0974983557495,
+              206.65642730467428,
+              844.9500669957099
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 157.7515351745989,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 115,
+          "q_deg": [
+            -112.6927211120976,
+            16.196586576455726,
+            -185.27662691165617,
+            -0.12979168825257678,
+            101.97556462538721,
+            -54.05277376581623
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              -37.663354352165705,
+              -90.0692855923179,
+              735.2086067506048
+            ],
+            [
+              -34.593873537229236,
+              -82.72883626442217,
+              693.9691100127525
+            ],
+            [
+              98.36607629040532,
+              235.2356121856364,
+              760.4616754895253
+            ],
+            [
+              98.36607629040532,
+              235.2356121856364,
+              760.4616754895253
+            ],
+            [
+              85.89090993554066,
+              205.87313357135355,
+              836.0011689617762
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 148.33826109224015,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 116,
+          "q_deg": [
+            -113.67265781742019,
+            16.33742645972925,
+            -186.88772801523578,
+            -0.13092031162868614,
+            102.86230866560797,
+            -54.522797885518976
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              -39.52984428284091,
+              -90.16838650630922,
+              734.9676130349922
+            ],
+            [
+              -36.761174794943436,
+              -83.8529945531633,
+              693.5375479403664
+            ],
+            [
+              102.2566974692545,
+              233.24962664395895,
+              751.165308794399
+            ],
+            [
+              102.2566974692545,
+              233.24962664395895,
+              751.165308794399
+            ],
+            [
+              89.58986085984307,
+              204.811262840191,
+              827.0257775147742
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 138.8023537954931,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 117,
+          "q_deg": [
+            -114.65259452274276,
+            16.47826634300278,
+            -188.4988291188154,
+            -0.1320489350047955,
+            103.74905270582872,
+            -54.992822005221726
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              -41.41039567850566,
+              -90.2292291386936,
+              734.7245898899346
+            ],
+            [
+              -38.978470606786736,
+              -84.93030067039699,
+              693.1312358831534
+            ],
+            [
+              106.0114574914864,
+              230.98866679728826,
+              741.8562473681106
+            ],
+            [
+              106.0114574914864,
+              230.98866679728826,
+              741.8562473681106
+            ],
+            [
+              93.18221682073296,
+              203.4750899004457,
+              818.0298232993574
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 128.91996400865358,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 118,
+          "q_deg": [
+            -115.63253122806535,
+            16.61910622627631,
+            -190.109930222395,
+            -0.13317755838090486,
+            104.63579674604948,
+            -55.46284612492447
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              -43.30423083238695,
+              -90.25136318714952,
+              734.4795387838628
+            ],
+            [
+              -41.244538768355476,
+              -85.95871064601333,
+              692.750282826412
+            ],
+            [
+              109.61844480047438,
+              228.45837193115665,
+              732.5404621722261
+            ],
+            [
+              109.61844480047438,
+              228.45837193115665,
+              732.5404621722261
+            ],
+            [
+              96.65604498471932,
+              201.86942691398568,
+              809.0192448108793
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 118.9499084724657,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        },
+        {
+          "frame_index": 119,
+          "q_deg": [
+            -116.61246793338795,
+            16.759946109549837,
+            -191.72103132597465,
+            -0.13430618175701423,
+            105.52254078627024,
+            -55.932870244627225
+          ],
+          "joint_points_mm": [
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              399.1
+            ],
+            [
+              -45.2105607076677,
+              -90.23435405781045,
+              734.2324611974614
+            ],
+            [
+              -43.55807858156823,
+              -86.93621630179334,
+              692.3947797348701
+            ],
+            [
+              113.06599518855995,
+              225.6649084206754,
+              723.2239272725005
+            ],
+            [
+              113.06599518855995,
+              225.6649084206754,
+              723.2239272725005
+            ],
+            [
+              99.99963708072099,
+              199.9996142028135,
+              799.9999844681413
+            ]
+          ],
+          "collision": false,
+          "min_clearance_mm": 109.06928717009711,
+          "colliding_links": [],
+          "colliding_obstacles": []
+        }
+      ]
+    },
+    "selection": {
+      "accurate": true,
+      "collision_free": true,
+      "feasible": true,
+      "selection_cost": 477.0859378574618,
+      "rank_key": [
+        0,
+        0,
+        477.0859378574618,
+        0.0005298972644139101,
+        9.281880558966396e-07
+      ]
+    }
+  },
+  "planning_time_ms": 2179.5622999999996,
+  "timing_breakdown_ms": {
+    "candidate_generation_ms": 16.578599999999888,
+    "classification_ms": 16.578599999999888,
+    "branch_classification_ms": 3.7794999999998247,
+    "fine_classification_ms": 12.799100000000063,
+    "candidate_evaluation_ms": 1817.4366999999995,
+    "total_ms": 2179.5622999999996
+  }
+}

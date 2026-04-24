@@ -2082,3 +2082,160 @@ python -X utf8 .\scripts\export_unity_method_comparison.py --pose "100,200,800,0
 1. Python 到 Unity 的“多方法对比回放”链路已经打通
 2. 末端轨迹线已经具备三方法同时显示能力
 3. 现阶段已经可以在 Unity 中直观看到不同逆解方法的运动路径差异
+
+## 2026-04-24 - 固定障碍物场景下的轨迹碰撞检测与换解
+
+### 本轮目标
+
+1. 在 Python 侧建立固定 `AABB` 障碍物场景
+2. 对关节空间轨迹做逐帧环境碰撞检测
+3. 对同一目标位姿的多候选逆解进行“碰撞则换解”重选
+4. 暂时不接入 Unity，仅完成接入前的计算链路
+
+### 本轮新增文件
+
+1. `obstacle_avoidance/collision.py`
+   - `AABB` 障碍物定义
+   - 线段与膨胀 `AABB` 相交检测
+   - 单帧机械臂环境碰撞判断
+2. `obstacle_avoidance/planning.py`
+   - 关节空间插值轨迹生成
+   - 轨迹逐帧碰撞评估
+   - 轨迹代价计算与候选排序
+3. `scripts/plan_collision_free_ik.py`
+   - 基于现有 `hierarchical + prediction + NR` 多候选链路做无碰撞重选
+4. `data/obstacles/open_space_reselect_demo.json`
+   - 当前标准示例障碍物场景
+5. `artifacts/obstacle_avoidance/open_space_reselect_demo_plan.json`
+   - 当前标准示例规划结果
+
+### 当前实现要点
+
+1. 将每根连杆近似为“带半径的线段胶囊体”
+2. 将障碍物表示为固定 `AABB`
+3. 通过“线段与膨胀后的 `AABB` 是否相交”判定碰撞
+4. 对每条候选轨迹统计：
+   - `collision`
+   - `collision_frame_count`
+   - `first_collision_frame`
+   - `min_clearance_mm`
+   - `joint_path_length_deg`
+   - `max_joint_step_deg`
+5. 用大罚项把碰撞轨迹压到排序后部，从而优先选择无碰撞且精度达标的解
+
+### 本轮已执行命令
+
+```powershell
+conda activate arm_nn
+cd E:\CSU\毕业设计\ABB_Arm_Control
+python -X utf8 .\scripts\plan_collision_free_ik.py --pose "100,200,800,0.1,-0.2,0.3" --q_start "0,0,0,0,0,0" --scene_json data\obstacles\open_space_reselect_demo.json --pred_meta artifacts\prediction_system_formal\metadata.json --branch_meta artifacts\branch_classification_system\metadata.json --fine_meta artifacts\fine_classification_system\metadata.json --topk_shoulder 2 --topk_elbow 1 --topk_wrist 2 --max_branch_candidates 6 --fine_topk_per_branch 3 --max_subspace_candidates 18 --max_evaluated_candidates 18 --trajectory_steps 120 --save_selected_frames --out_json artifacts\obstacle_avoidance\open_space_reselect_demo_plan.json
+```
+
+### 当前结果摘要
+
+1. 当前示例目标位姿：
+   - `target_pose6 = [100, 200, 800, 0.1, -0.2, 0.3]`
+2. 当前最终选中的无碰撞子空间：
+   - `selected_subspace = 10`
+3. 当前最终轨迹指标：
+   - `collision = False`
+   - `min_clearance_mm = 109.069`
+   - `joint_path_length_deg = 486.683`
+   - `final_pos_err_mm = 5.30e-04`
+   - `final_ori_err_rad = 9.28e-07`
+4. 当前碰撞候选示例：
+   - `subspace 148 / 164 / 153` 在该场景下发生碰撞
+5. 当前无碰撞候选示例：
+   - `subspace 10 / 19 / 1` 在该场景下可行
+
+### 本轮结论
+
+1. 当前工程已经不只是“能求逆解”，而是已经能判断“这条运动轨迹是否可执行”
+2. 对同一目标位姿，的确存在“某些逆解分支碰撞、某些逆解分支不碰撞”的情况
+3. 当前多候选重选机制已经能够自动避开碰撞候选，选出无碰撞解
+4. 下一步可以直接把这套结果接入 Unity 做障碍物场景回放与碰撞/无碰撞对比演示
+
+## 2026-04-24 - Unity 第一版避障演示接入
+
+### 本轮目标
+
+1. 不直接让 Unity 读取原始规划结果 JSON
+2. 先导出一份 Unity 友好版 JSON
+3. 在 Unity 中显示：
+   - 障碍物盒子
+   - 目标点
+   - 选中轨迹线
+   - 选中的无碰撞轨迹播放
+
+### 本轮新增文件
+
+1. `scripts/export_unity_obstacle_avoidance_demo.py`
+   - 将 `plan_collision_free_ik.py` 的结果转换为 Unity 友好版 JSON
+2. `Assets/Scripts/AbbObstacleAvoidanceDemo.cs`
+   - 读取 Unity 友好版 JSON
+   - 生成障碍物与目标点
+   - 绘制选中轨迹线
+   - 播放选中轨迹
+
+### 本轮已生成的 Unity 数据文件
+
+1. `Assets/PlanningData/open_space_reselect_demo_unity.json`
+
+### Unity 当前操作顺序
+
+1. 选中 `ObstacleAvoidanceDemo`
+2. `Add Component -> AbbObstacleAvoidanceDemo`
+3. 在组件中填写：
+   - `jointPosePlayer -> abb_irb1200_7_70_unity` 上的 `AbbJointPosePlayer`
+   - `demoJson -> Assets/PlanningData/open_space_reselect_demo_unity.json`
+4. 进入 `Play`
+5. 依次点击：
+   - `Load Demo Json`
+   - `Rebuild Scene Objects`
+   - `Print Demo Summary`
+   - `Apply Selected First Frame`
+   - `Play Selected Trajectory`
+
+### 当前阶段结论
+
+1. Unity 第一版已经具备读取固定障碍物规划结果并显示的最小能力
+2. 当前这一步只显示最终选中的无碰撞轨迹，不做碰撞轨迹对比
+3. 下一步可继续扩展碰撞候选轨迹与无碰撞轨迹的双轨迹对比回放
+
+## 2026-04-24 - Unity 第二版避障演示：双轨迹对比
+
+### 本轮目标
+
+1. 保留第一版的无碰撞轨迹播放
+2. 增加一条碰撞候选轨迹作为对比
+3. 在 Unity 中直观看到“为什么需要换解”
+
+### 本轮更新
+
+1. `scripts/export_unity_obstacle_avoidance_demo.py`
+   - 默认导出 `abb_unity_obstacle_demo_v2`
+   - 新增 `comparison_collision_solution`
+2. `Assets/Scripts/AbbObstacleAvoidanceDemo.cs`
+   - 新增红色碰撞对比轨迹线
+   - 新增：
+     - `Apply Collision First Frame`
+     - `Apply Collision Last Frame`
+     - `Play Collision Trajectory`
+   - `Print Demo Summary` 可同时打印选中解与碰撞对比解
+
+### 当前核对结果
+
+1. `selected_subspace = 10`
+2. `nr_converged = True`
+3. `final_pos_err_mm = 0.000530`
+4. `final_ori_err_rad = 0.000000928`
+5. `collision = False`
+6. `collision_frame_count = 0`
+7. `min_clearance_mm = 109.069300`
+8. `trajectory_steps = 120`
+
+### 本轮结论
+
+1. Python 规划结果与 Unity 中显示的选中轨迹指标是一致的
+2. 当前固定障碍物演示已经可以从“单轨迹回放”升级到“无碰撞轨迹 vs 碰撞轨迹”对比回放
+3. 这一步已经足以支撑后续论文中的避障可执行性展示
