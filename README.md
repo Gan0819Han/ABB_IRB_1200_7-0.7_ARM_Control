@@ -299,7 +299,7 @@ $$
 第二层再通过映射
 
 $$
-(\text{branch\_label},\ \text{fine\_label}) \rightarrow \text{subspace\_id}
+(\text{branch label},\ \text{fine label}) \rightarrow \text{subspace id}
 $$
 
 恢复到全局 `192` 个子空间之一。
@@ -526,10 +526,13 @@ $$
 损失函数为三个交叉熵之和：
 
 $$
-\mathcal{L}_{\text{branch}} =
-\mathrm{CE}\!\left(\hat y_{\text{shoulder}},\, y_{\text{shoulder}}\right)
-+ \mathrm{CE}\!\left(\hat y_{\text{elbow}},\, y_{\text{elbow}}\right)
-+ \mathrm{CE}\!\left(\hat y_{\text{wrist}},\, y_{\text{wrist}}\right).
+\begin{aligned}
+\mathcal{L}_{\text{branch}}
+&=
+\mathrm{CE}\!\left(\hat y_{\text{shoulder}},\, y_{\text{shoulder}}\right) \\
+&\quad + \mathrm{CE}\!\left(\hat y_{\text{elbow}},\, y_{\text{elbow}}\right) \\
+&\quad + \mathrm{CE}\!\left(\hat y_{\text{wrist}},\, y_{\text{wrist}}\right).
+\end{aligned}
 $$
 
 ### 8.4 第二层细分类器
@@ -537,7 +540,7 @@ $$
 第二层输入不是单纯位姿，而是条件输入：
 
 $$
-\mathbf{z} = [\tilde{\mathbf{x}},\ \text{onehot}(\text{branch\_label})].
+\mathbf{z} = [\tilde{\mathbf{x}},\ \mathrm{onehot}\!\left(\text{branch label}\right)].
 $$
 
 在当前 `abb_strict` 设置下，输入维度为：
@@ -862,11 +865,7 @@ $$
 对于局部迭代数值法，先定义加权位姿误差向量：
 
 $$
-\tilde{\mathbf{e}}(\mathbf{q})=
-\begin{bmatrix}
-\mathbf{p}^{*}-\mathbf{p}(\mathbf{q}) \\
-w_o\,\mathrm{wrap}\!\left(\boldsymbol{\eta}^{*}-\boldsymbol{\eta}(\mathbf{q})\right)
-\end{bmatrix},
+\tilde{\mathbf{e}}(\mathbf{q}) = \left[\mathbf{p}^{*}-\mathbf{p}(\mathbf{q}),\ w_o\,\mathrm{wrap}\!\left(\boldsymbol{\eta}^{*}-\boldsymbol{\eta}(\mathbf{q})\right)\right]^{\top}.
 $$
 
 其中：
@@ -878,11 +877,7 @@ $$
 对应加权雅可比记为：
 
 $$
-\tilde{\mathbf{J}}(\mathbf{q})=
-\begin{bmatrix}
-\mathbf{J}_{p}(\mathbf{q}) \\
-w_o\,\mathbf{J}_{o}(\mathbf{q})
-\end{bmatrix}.
+\tilde{\mathbf{J}}(\mathbf{q}) = \left[\mathbf{J}_{p}(\mathbf{q}),\ w_o\,\mathbf{J}_{o}(\mathbf{q})\right]^{\top}.
 $$
 
 `DLS` 更新公式为：
@@ -1866,7 +1861,7 @@ $$
 
 1. 先由分层分类器生成若干候选子空间
 2. 每个子空间的回归器给出一个逆解初值 $\mathbf{q}_0$
-3. 再对每个 $\mathbf{q}_0$ 做 `NR` 修正，得到候选终解 $\mathbf{q}_{\text{goal}}^{(i)}$
+3. 再对每个 $\mathbf{q}_0$ 进行阻尼 Newton-Raphson 修正，得到候选终解 $\mathbf{q}_{\text{goal}}^{(i)}$
 
 对每个候选轨迹，定义代价函数：
 
