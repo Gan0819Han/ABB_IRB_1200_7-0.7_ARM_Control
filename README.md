@@ -862,10 +862,18 @@ $$
 
 ### 12.3 数值法与 benchmark 指标定义
 
-对于局部迭代数值法，先定义加权位姿误差向量：
+对于局部迭代数值法，先定义：
 
 $$
-\tilde{\mathbf{e}}(\mathbf{q}) = \left[\mathbf{p}^{*}-\mathbf{p}(\mathbf{q}),\ w_o\,\mathrm{wrap}\!\left(\mathbf{r}^{*}-\mathbf{r}(\mathbf{q})\right)\right]^{\mathsf{T}}.
+\Delta \mathbf{p}(\mathbf{q}) = \mathbf{p}^{*}-\mathbf{p}(\mathbf{q}),
+\qquad
+\Delta \mathbf{r}(\mathbf{q}) = \mathrm{wrap}\!\left(\mathbf{r}^{*}-\mathbf{r}(\mathbf{q})\right).
+$$
+
+再定义加权位姿误差向量：
+
+$$
+\tilde{\mathbf{e}}(\mathbf{q}) = [\,\Delta \mathbf{p}(\mathbf{q}),\ w_o\,\Delta \mathbf{r}(\mathbf{q})\,].
 $$
 
 其中：
@@ -1833,10 +1841,10 @@ $$
 
 ### 18.5 轨迹级碰撞检测
 
-对于起始关节角 $\mathbf{q}_{\text{start}}$ 与某个候选终点关节角 $\mathbf{q}_{\text{goal}}$，当前先采用关节空间线性插值：
+对于起始关节角 `q_start` 与某个候选终点关节角 `q_goal`，当前先采用关节空间线性插值：
 
 $$
-\mathbf{q}(t) = (1-t)\mathbf{q}_{\text{start}} + t\mathbf{q}_{\text{goal}},
+\mathbf{q}(t) = (1-t)\mathbf{q}_{\mathrm{start}} + t\mathbf{q}_{\mathrm{goal}},
 \quad t \in [0,1].
 $$
 
