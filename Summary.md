@@ -1720,3 +1720,365 @@ python -X utf8 figure/scripts/run_ik_benchmark_six_methods.py --n_samples 100 --
 2. `NN + NR` 在当前 6 组方法中体现出最优的“速度-精度”折中
 3. 多初值数值法成功率最高，但时间成本远高于 `NN + NR`
 4. 单初值数值法在 `cold-start` 条件下明显受初值影响
+
+## 2026-04-24 - Unity 联调、位姿校验与轨迹播放
+
+### 本轮目标
+
+建立 Python 后端与 Unity 前端之间的最小可用回放链路，使当前 ABB 工程能够完成如下闭环：
+
+1. Python 给出一组关节角 `q_deg`
+2. Python 计算对应 `FK` 参考结果
+3. Unity 读取同一组关节角并驱动机械臂
+4. Unity 读取 `tool0` 的末端位置与姿态
+5. 将 Unity 结果与 Python 参考结果进行逐项对比
+6. 将整段关节轨迹导出为 `JSON` 并在 Unity 中连续播放
+
+### 本轮新增文件
+
+#### Python 侧
+
+1. `scripts/export_unity_fk_reference.py`
+   - 导出单组关节角的 `FK` 参考 `JSON`
+   - 包含：
+     - `python_position_mm`
+     - `python_rotation_matrix`
+     - `unity_expected_world_position_m`
+     - `unity_expected_world_rotation_matrix`
+     - `joint_points_mm`
+2. `scripts/export_unity_trajectory.py`
+   - 导出关节空间线性插值轨迹 `JSON`
+   - 每一帧保存：
+     - `q_deg`
+     - `python_tool_position_mm`
+     - `unity_expected_tool_world_position_m`
+     - `joint_points_mm`
+
+#### Unity 侧
+
+1. `Assets/Scripts/AbbScaleSanityCheck.cs`
+   - 检查模型尺度和关键连杆长度是否与 Python 建模一致
+2. `Assets/Scripts/AbbPlaybackPreparation.cs`
+   - 将导入模型整理为播放模式
+   - 固定底座
+   - 关闭重力和自碰撞干扰
+3. `Assets/Scripts/AbbJointPosePlayer.cs`
+   - 输入 `q_deg` 驱动 6 个关节
+   - 支持起终点插值播放
+4. `Assets/Scripts/AbbPoseVerifier.cs`
+   - 读取参考 `JSON`
+   - 校验位置误差、姿态误差、关节跟踪误差
+5. `Assets/Scripts/AbbTrajectoryJsonPlayer.cs`
+   - 读取整段轨迹 `JSON` 并连续播放
+
+#### Unity 数据目录
+
+1. `Assets/ReferenceData/`
+   - 保存单姿态校验 `JSON`
+2. `Assets/TrajectoryData/`
+   - 保存整段轨迹播放 `JSON`
+
+### 本轮关键技术结论
+
+#### 1. Python 与 Unity 的位置映射
+
+当前验证通过的位置映射关系为：
+
+```text
+Unity(m) = [-Python_y, Python_z, Python_x] / 1000
+```
+
+对应线性变换矩阵：
+
+$$
+\mathbf{p}_{\text{unity}} =
+\frac{1}{1000}
+\begin{bmatrix}
+0 & -1 & 0\\
+0 & 0 & 1\\
+1 & 0 & 0
+\end{bmatrix}
+\mathbf{p}_{\text{python}}
+$$
+
+#### 2. Python 与 Unity 的姿态映射
+
+当前采用的旋转映射为：
+
+$$
+\mathbf{R}_{\text{unity}} = \mathbf{S}\,\mathbf{R}_{\text{python}}\,\mathbf{S}^{\top},
+\quad
+\mathbf{S} =
+\begin{bmatrix}
+0 & -1 & 0\\
+0 & 0 & 1\\
+1 & 0 & 0
+\end{bmatrix}
+$$
+
+#### 3. tool0 固定姿态补偿
+
+在 Unity 中实际导入的 `tool0` 参考轴，与 Python 侧参考工具轴之间还存在一个固定补偿：
+
+```text
+toolOrientationCorrectionEulerDeg = (0, 180, 0)
+```
+
+工程中以 `AbbPoseVerifier.cs` 的参数实现：
+
+1. `applyToolOrientationCorrection = true`
+2. `toolOrientationCorrectionEulerDeg = (0, 180, 0)`
+
+### 本轮已完成的验证结果
+
+#### 1. 模型尺度校验
+
+`AbbScaleSanityCheck` 输出全部 `PASS`，验证了：
+
+1. 根节点 `lossyScale ≈ (1,1,1)`
+2. `base_link -> link_1 = 0.3991 m`
+3. `link_2 -> link_3 = 0.3500 m`
+4. `link_3 -> link_4 = 0.0420 m`
+5. `link_4 -> link_5 = 0.3510 m`
+6. `link_5 -> link_6 = 0.0820 m`
+
+结论：Unity 导入后的模型量纲与 Python 工程中的 `mm` 制长度参数一致。
+
+#### 2. 零位姿验证
+
+测试关节角：
+
+```text
+q = [0, 0, 0, 0, 0, 0]
+```
+
+验证结论：
+
+1. 末端位置与 Python `FK` 一致
+2. 关节跟踪误差为 `0.000 deg`
+3. 可确认当前 Unity 机械臂已能被程序驱动
+
+#### 3. 非零位姿验证一
+
+测试关节角：
+
+```text
+q = [20, 30, -40, 10, 20, 0]
+```
+
+验证结论：
+
+1. `position compare result = PASS`
+2. `orientation compare result = PASS`
+3. `joint tracking result = PASS`
+
+说明：
+
+- Python `FK` 末端位置、姿态与 Unity `tool0` 完全一致
+- Unity 已通过单组非零姿态的完整位姿校验
+
+#### 4. 非零位姿验证二
+
+测试关节角：
+
+```text
+q = [-45, 40, -60, 90, -20, 45]
+```
+
+验证结论：
+
+1. 位置校验通过
+2. 关节跟踪通过
+3. 进一步说明底座旋转、腕部旋转和末端旋转链路是正确的
+
+### 本轮轨迹播放验证
+
+#### 1. 已生成的示例轨迹
+
+当前已生成并在 Unity 中成功播放：
+
+1. `Assets/TrajectoryData/abb_demo_zero_to_pose1.json`
+
+对应参数为：
+
+```text
+q_start = [0, 0, 0, 0, 0, 0]
+q_goal  = [20, 30, -40, 10, 20, 0]
+steps   = 120
+duration = 3.0 s
+```
+
+#### 2. 当前轨迹插值方式
+
+当前轨迹采用关节空间线性插值：
+
+$$
+\mathbf{q}(t) = (1-t)\mathbf{q}_{\text{start}} + t\mathbf{q}_{\text{goal}},
+\quad t \in [0, 1]
+$$
+
+该实现当前用于：
+
+1. Unity 前端回放演示
+2. Python 结果导入 Unity 的最小验证闭环
+3. 后续三类逆解方法轨迹对比播放的基础模板
+
+### Unity 实际操作顺序记录
+
+#### 1. 一次性场景准备
+
+在 Unity 场景中选中根对象：
+
+1. `abb_irb1200_7_70_unity`
+
+然后挂载组件：
+
+1. `AbbPlaybackPreparation`
+2. `AbbScaleSanityCheck`
+3. `AbbJointPosePlayer`
+4. `AbbPoseVerifier`
+5. `AbbTrajectoryJsonPlayer`
+
+推荐执行顺序：
+
+1. `Prepare ABB For Playback`
+2. `Run Scale Check`
+3. `Auto Find Links`
+4. `Auto Find References`
+
+#### 2. 单姿态一致性验证顺序
+
+进入 `Play` 模式后：
+
+1. 在 `AbbJointPosePlayer` 中填写目标 `jointAnglesDeg`
+2. 点击 `Apply Current Joint Angles`
+3. 在 `AbbPoseVerifier` 中将 `referenceJson` 指向对应的参考 `JSON`
+4. 确认参数：
+   - `compareWithExpectedPythonPosition = true`
+   - `compareWithExpectedOrientation = true`
+   - `applyToolOrientationCorrection = true`
+   - `toolOrientationCorrectionEulerDeg = (0, 180, 0)`
+5. 点击 `Compare With Reference Json`
+
+通过标准：
+
+1. `position compare result = PASS`
+2. `orientation compare result = PASS`
+3. `joint tracking result = PASS`
+
+#### 3. 轨迹播放顺序
+
+进入 `Play` 模式后：
+
+1. 选中根对象 `abb_irb1200_7_70_unity`
+2. 在 `AbbTrajectoryJsonPlayer` 中：
+   - 将 `jointPosePlayer` 指向同一对象上的 `AbbJointPosePlayer`
+   - 将 `trajectoryJson` 指向 `Assets/TrajectoryData/` 下的轨迹文件
+3. 点击 `Load Trajectory Json`
+4. 点击 `Apply First Frame`
+5. 点击 `Apply Last Frame`
+6. 点击 `Play Loaded Trajectory`
+
+若需要逐帧检查，则点击：
+
+1. `Step Next Frame`
+2. `Step Previous Frame`
+3. `Stop Playback`
+
+### 本轮正式命令记录
+
+#### 1. 导出单姿态参考 JSON
+
+```powershell
+conda activate arm_nn
+cd E:\CSU\毕业设计\ABB_Arm_Control
+python -X utf8 .\scripts\export_unity_fk_reference.py --q="20,30,-40,10,20,0" --out_json "E:\Software\Unity\Project\ABB_IRB_Demo1\Assets\ReferenceData\fk_ref_q_20_30_-40_10_20_0.json"
+python -X utf8 .\scripts\export_unity_fk_reference.py --q="-45,40,-60,90,-20,45" --out_json "E:\Software\Unity\Project\ABB_IRB_Demo1\Assets\ReferenceData\fk_ref_q_-45_40_-60_90_-20_45.json"
+```
+
+#### 2. 导出轨迹 JSON
+
+```powershell
+conda activate arm_nn
+cd E:\CSU\毕业设计\ABB_Arm_Control
+python -X utf8 .\scripts\export_unity_trajectory.py --q_start="0,0,0,0,0,0" --q_goal="20,30,-40,10,20,0" --steps 120 --duration 3.0 --name "abb_demo_zero_to_pose1" --out_json "E:\Software\Unity\Project\ABB_IRB_Demo1\Assets\TrajectoryData\abb_demo_zero_to_pose1.json"
+```
+
+### 本轮阶段性结论
+
+截至本轮，`ABB_IRB` 工程不仅完成了神经网络逆运动学与数值法 benchmark，还额外完成了 Unity 回放链路的搭建与校验，当前已经可以稳定支持：
+
+1. Python 输出关节角到 Unity 的直接控制
+2. Python `FK` 位姿到 Unity `tool0` 位姿的一致性验证
+3. 单姿态位置与姿态联合校验
+4. 整段关节轨迹 `JSON` 的导出与连续播放
+
+这意味着后续可直接基于现有结构继续扩展：
+
+1. `NN + NR / DLS / L-BFGS-B` 三种方法的轨迹对比回放
+2. 末端轨迹线绘制
+3. 障碍物场景中的运动可视化与碰撞演示
+
+## 2026-04-24 - 三方法 Unity 对比轨迹与末端轨迹线
+
+### 本轮目标
+
+1. 将 `NN + NR / DLS / L-BFGS-B` 三种方法统一导出为一个 Unity 可直接读取的轨迹 `JSON`
+2. 在 Unity 侧增加末端轨迹线显示
+3. 保持旧版单轨迹 `JSON` 回放兼容
+
+### 本轮新增文件
+
+#### Python
+
+1. `scripts/export_unity_method_comparison.py`
+   - 输入目标位姿与起始关节角
+   - 调用 `NN + NR / DLS / L-BFGS-B`
+   - 统一导出多方法轨迹 `JSON`
+
+#### Unity
+
+1. `Assets/Scripts/AbbTrajectoryJsonPlayer.cs`
+   - 从“单轨迹播放器”扩展为“兼容单轨迹 + 多方法对比轨迹”
+   - 新增方法切换：
+     - `Select Next Method`
+     - `Select Previous Method`
+     - `Print Current Method Summary`
+2. `Assets/Scripts/AbbTrajectoryLineRenderer.cs`
+   - 基于 `unity_expected_tool_world_position_m` 绘制末端轨迹线
+   - 支持：
+     - `Redraw All Methods`
+     - `Redraw Current Method Only`
+     - `Clear Trajectory Lines`
+
+### 本轮已执行的示例命令
+
+```powershell
+conda activate arm_nn
+cd E:\CSU\毕业设计\ABB_Arm_Control
+python -X utf8 .\scripts\export_unity_method_comparison.py --pose "100,200,800,0.1,-0.2,0.3" --q_start "0,0,0,0,0,0" --steps 120 --duration 3.0 --name "abb_ik_compare_pose001" --pred_meta artifacts/prediction_system_formal/metadata.json --branch_meta artifacts/branch_classification_system/metadata.json --fine_meta artifacts/fine_classification_system/metadata.json --topk_shoulder 2 --topk_elbow 1 --topk_wrist 2 --max_branch_candidates 4 --fine_topk_per_branch 3 --max_subspace_candidates 15 --out_json "E:\Software\Unity\Project\ABB_IRB_Demo1\Assets\TrajectoryData\abb_ik_compare_pose001.json"
+```
+
+### 当前导出结果摘要
+
+1. `NN + NR`
+   - `solve_time_ms = 343.814`
+   - `final_pos_err_mm = 7.09e-05`
+   - `final_ori_err_rad = 9.00e-07`
+   - `iters = 4`
+2. `DLS`
+   - `solve_time_ms = 20.887`
+   - `final_pos_err_mm = 0.5335`
+   - `final_ori_err_rad = 0.00658`
+   - `iters = 34`
+3. `L-BFGS-B`
+   - `solve_time_ms = 75.726`
+   - `final_pos_err_mm = 3.60e-07`
+   - `final_ori_err_rad = 0.0`
+   - `iters = 55`
+
+### 本轮结论
+
+1. Python 到 Unity 的“多方法对比回放”链路已经打通
+2. 末端轨迹线已经具备三方法同时显示能力
+3. 现阶段已经可以在 Unity 中直观看到不同逆解方法的运动路径差异

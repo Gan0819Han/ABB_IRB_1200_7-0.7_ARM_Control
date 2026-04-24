@@ -25,6 +25,9 @@
    - 时间统计输出
 7. 工作空间参考样本导出、图表生成与 `100` 样本 benchmark。
 8. `NN only / NN + NR / DLS / Multi-start DLS / L-BFGS-B / Multi-start L-BFGS-B` 六组逆解对比实验。
+9. Unity 侧 `ABB_IRB_Demo1` 模型导入、尺度校验与播放模式整理。
+10. Python `FK` 结果到 Unity 末端位置/姿态的映射验证。
+11. Unity 侧关节轨迹 `JSON` 导出与连续播放工具链。
 
 ## 2. 项目主流程
 
@@ -79,6 +82,37 @@
 | `docs/` | 参数资料、说明文档 |
 | `figure/` | 绘图脚本、图表数据与最终 PNG 图像 |
 | `scripts/` | 独立验证脚本 |
+
+### 3.3 Unity 联调相关脚本与目录
+
+当前 Python 后端与 Unity 前端采用双工程协同方式：
+
+- Python 主工程：`E:\CSU\毕业设计\ABB_Arm_Control`
+- Unity 可视化工程：`E:\Software\Unity\Project\ABB_IRB_Demo1`
+
+Python 侧新增的 Unity 联调脚本如下：
+
+| 文件 | 作用 |
+|---|---|
+| `scripts/export_unity_fk_reference.py` | 导出单组关节角的 `FK` 参考结果，供 Unity 做位置/姿态一致性验证 |
+| `scripts/export_unity_trajectory.py` | 导出关节空间线性插值轨迹 `JSON`，供 Unity 连续播放 |
+
+Unity 侧当前使用的核心脚本如下：
+
+| Unity 脚本 | 作用 |
+|---|---|
+| `Assets/Scripts/AbbScaleSanityCheck.cs` | 校验导入模型尺度与关键连杆长度 |
+| `Assets/Scripts/AbbPlaybackPreparation.cs` | 将导入模型整理为播放模式，固定底座、关闭重力与自碰撞干扰 |
+| `Assets/Scripts/AbbJointPosePlayer.cs` | 输入 `q_deg` 驱动 `6` 个关节，支持起终点插值播放 |
+| `Assets/Scripts/AbbPoseVerifier.cs` | 对照 Python 导出的参考 `JSON`，校验末端位置、姿态与关节跟踪误差 |
+| `Assets/Scripts/AbbTrajectoryJsonPlayer.cs` | 读取整段轨迹 `JSON` 并在 Unity 中连续播放 |
+
+Unity 工程内新增数据目录如下：
+
+| 目录 | 内容 |
+|---|---|
+| `Assets/ReferenceData/` | 单组位姿校验参考 `JSON` |
+| `Assets/TrajectoryData/` | 整段关节轨迹播放 `JSON` |
 
 ## 4. 机械臂运动学模型
 
@@ -1166,52 +1200,464 @@ $$
 4. 回归误差图。
 5. 基准测试图。
 
-## 14. 复现实验命令
+## 14. Unity 联调、位姿校验与轨迹播放
 
-### 14.1 环境
+### 14.1 当前完成状态
+
+截至目前，Unity 侧已经完成以下关键环节：
+
+1. `ABB IRB 1200-7/0.7` 模型导入 Unity。
+2. 导入模型关键长度校验全部 `PASS`。
+3. `q = [0,0,0,0,0,0]` 时，Unity 末端位置与 Python `FK` 一致。
+4. `q = [20,30,-40,10,20,0]` 时，Unity 末端位置、姿态与 Python `FK` 一致。
+5. `q = [-45,40,-60,90,-20,45]` 时，Unity 末端位置与关节跟踪结果与 Python `FK` 一致。
+6. `q_start -> q_goal` 关节空间线性插值轨迹已可导出为 `JSON` 并在 Unity 中连续播放。
+
+当前已经打通的最小闭环为：
+
+```text
+Python 关节角 q
+  -> Python FK 生成参考位姿
+  -> Unity 读取 q 并驱动 ABB 机械臂
+  -> Unity 读出 tool0 位姿
+  -> 与 Python 参考结果逐项对比
+  -> 导出/读取轨迹 JSON 并播放
+```
+
+### 14.2 Python 与 Unity 的坐标映射
+
+末端位置采用如下坐标映射：
+
+$$
+\mathbf{p}_{\text{unity}} =
+\frac{1}{1000}
+\begin{bmatrix}
+0 & -1 & 0\\
+0 & 0 & 1\\
+1 & 0 & 0
+\end{bmatrix}
+\mathbf{p}_{\text{python}},
+$$
+
+即：
+
+```text
+Unity(m) = [-Python_y, Python_z, Python_x] / 1000
+```
+
+末端姿态采用如下旋转映射：
+
+$$
+\mathbf{R}_{\text{unity}} = \mathbf{S}\,\mathbf{R}_{\text{python}}\,\mathbf{S}^{\top},
+\quad
+\mathbf{S} =
+\begin{bmatrix}
+0 & -1 & 0\\
+0 & 0 & 1\\
+1 & 0 & 0
+\end{bmatrix}.
+$$
+
+在当前 Unity 导入结果下，`tool0` 相对 Python 参考工具坐标还存在一个固定工具轴补偿：
+
+$$
+\mathbf{R}_{\text{unity,tool}} =
+\mathbf{R}_{\text{unity,ref}} \mathbf{R}_{y}(\pi).
+$$
+
+工程中以 `AbbPoseVerifier.cs` 中的参数形式实现：
+
+```text
+applyToolOrientationCorrection = true
+toolOrientationCorrectionEulerDeg = (0, 180, 0)
+```
+
+### 14.3 一次性场景准备
+
+在 Unity 场景中，选中根对象 `abb_irb1200_7_70_unity`，并挂载以下组件：
+
+1. `AbbPlaybackPreparation`
+2. `AbbScaleSanityCheck`
+3. `AbbJointPosePlayer`
+4. `AbbPoseVerifier`
+5. `AbbTrajectoryJsonPlayer`
+
+推荐的一次性准备顺序如下：
+
+1. 在 `AbbPlaybackPreparation` 上执行 `Prepare ABB For Playback`
+2. 在 `AbbScaleSanityCheck` 上执行 `Run Scale Check`
+3. 在 `AbbJointPosePlayer` 上执行 `Auto Find Links`
+4. 在 `AbbPoseVerifier` 上执行 `Auto Find References`
+
+若已经完成过上述整理并保存场景，后续可直接跳过这一步。
+
+### 14.4 尺度校验的判定标准
+
+`AbbScaleSanityCheck.cs` 会检查以下量：
+
+1. 根节点 `lossyScale` 是否接近 `(1,1,1)`
+2. `base_link -> link_1 = 0.3991 m`
+3. `link_2 -> link_3 = 0.3500 m`
+4. `link_3 -> link_4 = 0.0420 m`
+5. `link_4 -> link_5 = 0.3510 m`
+6. `link_5 -> link_6 = 0.0820 m`
+
+当全部输出为 `PASS` 时，说明 Unity 导入后的模型量纲与 Python 工程内部的 `mm` 制长度参数是一致的。
+
+### 14.5 单组位姿一致性验证
+
+#### 14.5.1 Python 导出参考 `JSON`
+
+示例命令如下：
+
+```powershell
+python -X utf8 .\scripts\export_unity_fk_reference.py --q="20,30,-40,10,20,0" --out_json "E:\Software\Unity\Project\ABB_IRB_Demo1\Assets\ReferenceData\fk_ref_q_20_30_-40_10_20_0.json"
+```
+
+该脚本会导出：
+
+1. `python_position_mm`
+2. `python_rotation_matrix`
+3. `unity_expected_world_position_m`
+4. `unity_expected_world_rotation_matrix`
+5. `joint_points_mm`
+
+#### 14.5.2 Unity 侧操作顺序
+
+进入 `Play` 模式后，按如下顺序操作：
+
+1. 在 `AbbJointPosePlayer` 中填入与 `--q` 一致的 `jointAnglesDeg`
+2. 点击 `Apply Current Joint Angles`
+3. 在 `AbbPoseVerifier` 中将 `referenceJson` 指向对应的参考 `JSON`
+4. 确认以下参数：
+   - `compareWithExpectedPythonPosition = true`
+   - `compareWithExpectedOrientation = true`
+   - `applyToolOrientationCorrection = true`
+   - `toolOrientationCorrectionEulerDeg = (0, 180, 0)`
+5. 点击 `Compare With Reference Json`
+
+#### 14.5.3 校验通过标准
+
+推荐将以下三项同时视为通过条件：
+
+1. `position compare result: PASS`
+2. `orientation compare result: PASS`
+3. `joint tracking result: PASS`
+
+#### 14.5.4 当前已验证的典型姿态
+
+| 关节角 $q$ (deg) | 校验内容 | 当前结果 |
+|---|---|---|
+| `[0, 0, 0, 0, 0, 0]` | 位置 + 关节跟踪 | `PASS` |
+| `[20, 30, -40, 10, 20, 0]` | 位置 + 姿态 + 关节跟踪 | `PASS` |
+| `[-45, 40, -60, 90, -20, 45]` | 位置 + 关节跟踪 | `PASS` |
+
+### 14.6 轨迹 `JSON` 导出与 Unity 播放
+
+#### 14.6.1 Python 导出轨迹
+
+示例命令如下：
+
+```powershell
+python -X utf8 .\scripts\export_unity_trajectory.py --q_start="0,0,0,0,0,0" --q_goal="20,30,-40,10,20,0" --steps 120 --duration 3.0 --name "abb_demo_zero_to_pose1" --out_json "E:\Software\Unity\Project\ABB_IRB_Demo1\Assets\TrajectoryData\abb_demo_zero_to_pose1.json"
+```
+
+该脚本当前采用关节空间线性插值：
+
+$$
+\mathbf{q}(t) = (1-t)\mathbf{q}_{\text{start}} + t\mathbf{q}_{\text{goal}},
+\quad t \in [0,1].
+$$
+
+每一帧包含：
+
+1. `q_deg`
+2. `python_tool_position_mm`
+3. `unity_expected_tool_world_position_m`
+4. `joint_points_mm`
+
+#### 14.6.2 Unity 侧操作顺序
+
+进入 `Play` 模式后，选中根对象 `abb_irb1200_7_70_unity`，并在 `AbbTrajectoryJsonPlayer` 中按以下顺序操作：
+
+1. 将 `jointPosePlayer` 指向同一对象上的 `AbbJointPosePlayer`
+2. 将 `trajectoryJson` 指向 `Assets/TrajectoryData/` 下的轨迹文件
+3. 点击 `Load Trajectory Json`
+4. 点击 `Apply First Frame`
+5. 点击 `Apply Last Frame`
+6. 点击 `Play Loaded Trajectory`
+
+若需要逐帧检查，可使用：
+
+1. `Step Next Frame`
+2. `Step Previous Frame`
+3. `Stop Playback`
+
+#### 14.6.3 当前已验证的示例轨迹
+
+当前已生成并验证可播放的示例轨迹为：
+
+```text
+Assets/TrajectoryData/abb_demo_zero_to_pose1.json
+```
+
+其参数为：
+
+- `q_start = [0,0,0,0,0,0]`
+- `q_goal = [20,30,-40,10,20,0]`
+- `steps = 120`
+- `duration = 3.0 s`
+
+### 14.7 三方法对比轨迹导出与 Unity 播放
+
+#### 14.7.1 新增 Python 导出脚本
+
+当前新增脚本如下：
+
+```text
+scripts/export_unity_method_comparison.py
+```
+
+该脚本用于将以下三种逆解方法统一导出为一个 `JSON` 文件：
+
+1. `NN + NR`
+2. `DLS`
+3. `L-BFGS-B`
+
+三种方法共用同一个目标位姿 `target_pose6` 与同一个起始关节角 `q_start_deg`，并对各自求得的终解构造关节空间线性插值轨迹：
+
+$$
+\mathbf{q}_m(t) = (1-t)\mathbf{q}_{\text{start}} + t\mathbf{q}_{m,\text{goal}},
+\quad t \in [0,1],
+$$
+
+其中，$m \in \{\text{NN+NR}, \text{DLS}, \text{L-BFGS-B}\}$ 表示不同求解方法。
+
+#### 14.7.2 示例导出命令
+
+```powershell
+python -X utf8 .\scripts\export_unity_method_comparison.py --pose "100,200,800,0.1,-0.2,0.3" --q_start "0,0,0,0,0,0" --steps 120 --duration 3.0 --name "abb_ik_compare_pose001" --pred_meta artifacts/prediction_system_formal/metadata.json --branch_meta artifacts/branch_classification_system/metadata.json --fine_meta artifacts/fine_classification_system/metadata.json --topk_shoulder 2 --topk_elbow 1 --topk_wrist 2 --max_branch_candidates 4 --fine_topk_per_branch 3 --max_subspace_candidates 15 --out_json "E:\Software\Unity\Project\ABB_IRB_Demo1\Assets\TrajectoryData\abb_ik_compare_pose001.json"
+```
+
+#### 14.7.3 导出结果字段
+
+生成的 `JSON` 顶层包含：
+
+1. `target_pose6`
+2. `target_unity_world_position_m`
+3. `q_start_deg`
+4. `methods`
+
+其中 `methods` 数组中的每个方法对象至少包含：
+
+1. `method_id`
+2. `label`
+3. `solve_time_ms`
+4. `q_goal_deg`
+5. `final_pos_err_mm`
+6. `final_ori_err_rad`
+7. `converged`
+8. `iters`
+9. `frames`
+
+每一帧 `frames[k]` 中包含：
+
+1. `q_deg`
+2. `python_tool_position_mm`
+3. `unity_expected_tool_world_position_m`
+4. `python_tool_rotation_matrix`
+5. `unity_expected_tool_world_rotation_matrix`
+6. `joint_points_mm`
+
+#### 14.7.4 当前已验证的示例结果
+
+已实际生成并写入 Unity 工程的示例文件：
+
+```text
+E:\Software\Unity\Project\ABB_IRB_Demo1\Assets\TrajectoryData\abb_ik_compare_pose001.json
+```
+
+其目标位姿为：
+
+```text
+target_pose6 = [100, 200, 800, 0.1, -0.2, 0.3]
+q_start_deg  = [0, 0, 0, 0, 0, 0]
+```
+
+当前导出的三方法结果摘要如下：
+
+| 方法 | 求解时间 (ms) | 位置误差 (mm) | 姿态误差 (rad) | 迭代次数 | 收敛 |
+|---|---:|---:|---:|---:|---|
+| `NN + NR` | `343.814` | `7.09e-05` | `9.00e-07` | `4` | `True` |
+| `DLS` | `20.887` | `0.5335` | `0.00658` | `34` | `True` |
+| `L-BFGS-B` | `75.726` | `3.60e-07` | `0.0` | `55` | `True` |
+
+从这组结果看：
+
+1. `NN + NR` 与 `L-BFGS-B` 都达到了极高精度。
+2. `DLS` 也已经达到当前 `1 mm / 1e-2 rad` 的工程成功阈值。
+3. 该 `JSON` 已可直接作为 Unity 三方法回放与轨迹对比的输入。
+
+#### 14.7.5 Unity 侧操作顺序
+
+进入 `Play` 模式后，选中根对象 `abb_irb1200_7_70_unity`，并在 `AbbTrajectoryJsonPlayer` 中按以下顺序操作：
+
+1. 将 `jointPosePlayer` 指向同对象上的 `AbbJointPosePlayer`
+2. 将 `trajectoryJson` 指向 `Assets/TrajectoryData/abb_ik_compare_pose001.json`
+3. 点击 `Load Trajectory Json`
+4. 点击 `Print Current Method Summary`
+5. 点击 `Apply First Frame`
+6. 点击 `Play Loaded Trajectory`
+
+若要切换方法，则继续点击：
+
+1. `Select Next Method`
+2. `Select Previous Method`
+
+切换后建议再次点击：
+
+1. `Apply First Frame`
+2. `Play Loaded Trajectory`
+
+#### 14.7.6 Unity 播放器的兼容性更新
+
+`AbbTrajectoryJsonPlayer.cs` 当前已经兼容两种输入：
+
+1. 旧版单轨迹 `JSON`
+2. 新版多方法对比 `JSON`
+
+因此，之前的单轨迹回放流程仍然可以继续使用，不需要回退旧脚本。
+
+### 14.8 末端轨迹线显示
+
+#### 14.8.1 新增 Unity 脚本
+
+当前新增脚本如下：
+
+```text
+Assets/Scripts/AbbTrajectoryLineRenderer.cs
+```
+
+该脚本会从 `AbbTrajectoryJsonPlayer` 读取当前加载的轨迹数据，并基于每一帧中的：
+
+```text
+unity_expected_tool_world_position_m
+```
+
+绘制末端执行器在世界坐标系中的轨迹线。
+
+默认颜色约定如下：
+
+1. `NN + NR`: 绿色
+2. `DLS`: 蓝色
+3. `L-BFGS-B`: 橙色
+
+#### 14.8.2 Unity 侧挂载方式
+
+在根对象 `abb_irb1200_7_70_unity` 上，确保存在以下两个组件：
+
+1. `AbbTrajectoryJsonPlayer`
+2. `AbbTrajectoryLineRenderer`
+
+在 `AbbTrajectoryLineRenderer` 中建议填写：
+
+1. `trajectoryPlayer` 指向同对象上的 `AbbTrajectoryJsonPlayer`
+2. `autoRefreshWhenMethodChanges = true`
+3. `drawAllLoadedMethods = true`
+4. `lineWidth = 0.01`
+
+#### 14.8.3 Unity 侧操作顺序
+
+进入 `Play` 模式后：
+
+1. 在 `AbbTrajectoryJsonPlayer` 中点击 `Load Trajectory Json`
+2. 在 `AbbTrajectoryLineRenderer` 中点击 `Redraw All Methods`
+3. 若只想看当前选中方法，则点击 `Redraw Current Method Only`
+4. 若切换了方法且希望自动只显示当前方法，可保持 `autoRefreshWhenMethodChanges = true`
+5. 若要清除轨迹线，则点击 `Clear Trajectory Lines`
+
+#### 14.8.4 当前实现效果
+
+当前轨迹线功能已经可以支持：
+
+1. 同一目标位姿下三种方法的末端轨迹同时显示
+2. 根据当前方法切换，仅显示某一条轨迹
+3. 播放关节运动的同时保留对应轨迹线，便于观察路径差异
+
+这一步为后续加入：
+
+1. 目标点标记
+2. 障碍物模型
+3. 轨迹碰撞可视化
+
+提供了直接的图形基础。
+
+### 14.9 当前阶段结论
+
+截至当前，Unity 联调部分已经能够支持：
+
+1. 模型尺度校验
+2. 静态关节角驱动
+3. Python `FK` 与 Unity `tool0` 的位置对齐
+4. Python `FK` 与 Unity `tool0` 的姿态对齐
+5. 整段关节轨迹 `JSON` 的导出与播放
+6. `NN + NR / DLS / L-BFGS-B` 三方法统一导出与切换播放
+7. 末端轨迹线绘制与三方法路径对比
+
+因此，当前工程已经具备“Python 求解结果导入 Unity 进行可靠回放”的基础能力，可作为后续：
+
+1. `NN + NR / DLS / L-BFGS-B` 三种方法的轨迹对比播放
+2. 末端轨迹线绘制
+3. 障碍物场景中的轨迹可视化与碰撞演示
+
+的直接基础。
+
+## 15. 复现实验命令
+
+### 15.1 环境
 
 ```powershell
 conda activate arm_nn
 cd E:\CSU\毕业设计\ABB_Arm_Control
 ```
 
-### 14.2 训练 `192` 子空间回归器
+### 15.2 训练 `192` 子空间回归器
 
 ```powershell
 python -X utf8 train_prediction_models.py --segment_profile abb_strict --samples_per_subspace 100000 --epochs 400 --batch_size 4096 --hidden_layers 3 --neurons_per_layer 20 --train_ratio 0.7 --val_ratio 0.15 --test_ratio 0.15 --normalizer_samples 200000 --feature_batch_size 8192 --out_dir artifacts/prediction_system_formal
 ```
 
-### 14.3 训练单层 `192` 类分类器基线
+### 15.3 训练单层 `192` 类分类器基线
 
 ```powershell
 python -X utf8 train_classification_models.py --segment_profile abb_strict --trainset_v1 400000 --trainset_v2 600000 --trainset_v3 500000 --val_samples 5000 --epochs 80 --batch_size 4096 --feature_batch_size 8192 --out_dir artifacts/classification_system_formal
 ```
 
-### 14.4 训练第一层粗分类器
+### 15.4 训练第一层粗分类器
 
 ```powershell
 python -X utf8 train_branch_classification_models.py --segment_profile abb_strict --trainset_v1 250000 --trainset_v2 400000 --trainset_v3 320000 --val_samples 4000 --epochs 60 --batch_size 4096 --feature_batch_size 8192 --out_dir artifacts/branch_classification_system
 ```
 
-### 14.5 训练第二层细分类器
+### 15.5 训练第二层细分类器
 
 ```powershell
 python -X utf8 train_fine_classification_models.py --segment_profile abb_strict --trainset_v1 250000 --trainset_v2 400000 --trainset_v3 320000 --val_samples 4000 --epochs 60 --batch_size 4096 --feature_batch_size 8192 --out_dir artifacts/fine_classification_system
 ```
 
-### 14.6 完整逆解推理
+### 15.6 完整逆解推理
 
 ```powershell
 python -X utf8 predict_ik.py --candidate_mode hierarchical --pose "100,200,800,0.1,-0.2,0.3" --pred_meta artifacts/prediction_system_formal/metadata.json --branch_meta artifacts/branch_classification_system/metadata.json --fine_meta artifacts/fine_classification_system/metadata.json --topk_shoulder 2 --topk_elbow 1 --topk_wrist 2 --max_branch_candidates 4 --fine_topk_per_branch 3 --max_subspace_candidates 15 --enable_nr --out_json artifacts/fine_classification_system/test_pose_001_full_ik.json
 ```
 
-### 14.7 参考样本导出
+### 15.7 参考样本导出
 
 ```powershell
 python -X utf8 export_subspace_reference_data.py --segment_profile abb_strict --samples_per_subspace 512 --out_dir data/subspace_reference_abb_strict_samples512_seed2026 --seed 2026 --overwrite
 ```
 
-### 14.8 图表生成
+### 15.8 图表生成
 
 ```powershell
 python -X utf8 figure/scripts/generate_core_figures.py
@@ -1220,9 +1666,27 @@ python -X utf8 figure/scripts/run_ik_benchmark.py --n_samples 100 --seed 2026 --
 python -X utf8 figure/scripts/run_ik_benchmark_six_methods.py --n_samples 100 --seed 2026 --tag n100
 ```
 
-## 15. 当前阶段结论与下一步优化方向
+### 15.9 导出 Unity 单姿态参考 `JSON`
 
-### 15.1 当前结论
+```powershell
+python -X utf8 .\scripts\export_unity_fk_reference.py --q="20,30,-40,10,20,0" --out_json "E:\Software\Unity\Project\ABB_IRB_Demo1\Assets\ReferenceData\fk_ref_q_20_30_-40_10_20_0.json"
+```
+
+### 15.10 导出 Unity 轨迹 `JSON`
+
+```powershell
+python -X utf8 .\scripts\export_unity_trajectory.py --q_start="0,0,0,0,0,0" --q_goal="20,30,-40,10,20,0" --steps 120 --duration 3.0 --name "abb_demo_zero_to_pose1" --out_json "E:\Software\Unity\Project\ABB_IRB_Demo1\Assets\TrajectoryData\abb_demo_zero_to_pose1.json"
+```
+
+### 15.11 导出 Unity 三方法对比轨迹 `JSON`
+
+```powershell
+python -X utf8 .\scripts\export_unity_method_comparison.py --pose "100,200,800,0.1,-0.2,0.3" --q_start "0,0,0,0,0,0" --steps 120 --duration 3.0 --name "abb_ik_compare_pose001" --pred_meta artifacts/prediction_system_formal/metadata.json --branch_meta artifacts/branch_classification_system/metadata.json --fine_meta artifacts/fine_classification_system/metadata.json --topk_shoulder 2 --topk_elbow 1 --topk_wrist 2 --max_branch_candidates 4 --fine_topk_per_branch 3 --max_subspace_candidates 15 --out_json "E:\Software\Unity\Project\ABB_IRB_Demo1\Assets\TrajectoryData\abb_ik_compare_pose001.json"
+```
+
+## 16. 当前阶段结论与下一步优化方向
+
+### 16.1 当前结论
 
 1. `ABB_IRB` 的 `FK` 建模已经稳定，`theta2_offset = -90°` 有明确数值验证支撑。
 2. `192` 个子空间回归器已经全部训练完成，能够稳定提供局部逆解初值。
@@ -1230,16 +1694,18 @@ python -X utf8 figure/scripts/run_ik_benchmark_six_methods.py --n_samples 100 --
 4. 两层分层分类器更符合 ABB 机械臂的构型特征。
 5. `NN + NR` 已经能够在单样本和随机样本 benchmark 中达到高精度逆解。
 6. 当前工程中真正的瓶颈已经从“局部修正精度”转移到“候选子空间召回率与速度权衡”。
+7. Python 到 Unity 的关节角、末端位置、末端姿态与轨迹播放链路已经打通。
 
-### 15.2 下一步可优化方向
+### 16.2 下一步可优化方向
 
 1. 调整分层候选参数，提高 `hierarchical + NR` 的召回率。
 2. 研究常驻模型加载，消除脚本级启动耗时。
 3. 对候选初值的排序准则加入姿态误差项，而不是只看位置误差。
-4. 继续推进受限空间、障碍物建模与轨迹级碰撞检测。
-5. 将当前图表、公式和 benchmark 结果进一步整理为论文章节内容。
+4. 将 `NN + NR / DLS / L-BFGS-B` 三种方法统一导出到 Unity 做轨迹对比播放。
+5. 继续推进受限空间、障碍物建模与轨迹级碰撞检测。
+6. 将当前图表、公式和 benchmark 结果进一步整理为论文章节内容。
 
-## 16. 文档导航
+## 17. 文档导航
 
 - 项目总说明：`README.md`
 - 时间顺序记录：`Summary.md`
@@ -1247,3 +1713,4 @@ python -X utf8 figure/scripts/run_ik_benchmark_six_methods.py --n_samples 100 --
 - 图表结果：`figure/figures/`
 - 图表数据：`figure/data/`
 - 正式模型工件：`artifacts/`
+- Unity 可视化工程：`E:\Software\Unity\Project\ABB_IRB_Demo1`
