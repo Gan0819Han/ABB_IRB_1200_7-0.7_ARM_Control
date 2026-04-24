@@ -431,7 +431,7 @@ $$
 对测试样本 $(\mathbf{x}_i, \mathbf{q}_i)$，回归器输出关节角后再通过 `FK` 回代，计算位置误差：
 
 $$
-e_{p,i}^{(s)} = \lVert \mathbf{p}(\hat{\mathbf{q}}_i^{(s)}) - \mathbf{p}_i^* \rVert_2.
+e_{p,i}^{(s)} = \lVert \mathbf{p}(\hat{\mathbf{q}}_i^{(s)}) - \mathbf{p}_{i,\mathrm{tar}} \rVert_2.
 $$
 
 测试集平均位置误差为：
@@ -445,7 +445,7 @@ $$
 #### 3. 验证集最大位置误差 `e_max`
 
 $$
-e_{\max}^{(s)} = \max_{i \in \text{val}} \lVert \mathbf{p}(\hat{\mathbf{q}}_i^{(s)}) - \mathbf{p}_i^* \rVert_2.
+e_{\max}^{(s)} = \max_{i \in \text{val}} \lVert \mathbf{p}(\hat{\mathbf{q}}_i^{(s)}) - \mathbf{p}_{i,\mathrm{tar}} \rVert_2.
 $$
 
 这不是关节角误差，而是**末端位置误差上界估计**，单位为 `mm`。当前推理阶段用它作为候选筛选失败时的回退阈值。
@@ -640,7 +640,7 @@ $$
 对于候选子空间集合 $\mathcal{C}$，逐个调用对应回归器得到初值 $\hat{\mathbf{q}}^{(s)}$，再通过 `FK` 计算位置误差：
 
 $$
-e_p^{(s)} = \lVert \mathbf{p}(\hat{\mathbf{q}}^{(s)}) - \mathbf{p}^* \rVert_2.
+e_p^{(s)} = \lVert \mathbf{p}(\hat{\mathbf{q}}^{(s)}) - \mathbf{p}_{\mathrm{tar}} \rVert_2.
 $$
 
 选择初始误差最小的候选：
@@ -670,7 +670,7 @@ $$
 其中：
 
 $$
-\mathbf{e}_k = \mathbf{x}^* - \mathbf{x}(\mathbf{q}_k).
+\mathbf{e}_k = \mathbf{x}_{\mathrm{tar}} - \mathbf{x}(\mathbf{q}_k).
 $$
 
 姿态误差部分使用角度回绕处理：
@@ -865,9 +865,9 @@ $$
 对于局部迭代数值法，先定义：
 
 $$
-\Delta \mathbf{p}(\mathbf{q}) = \mathbf{p}^{*}-\mathbf{p}(\mathbf{q}),
+\Delta \mathbf{p}(\mathbf{q}) = \mathbf{p}_{\mathrm{tar}}-\mathbf{p}(\mathbf{q}),
 \qquad
-\Delta \mathbf{r}(\mathbf{q}) = \mathrm{wrap}\!\left(\mathbf{r}^{*}-\mathbf{r}(\mathbf{q})\right).
+\Delta \mathbf{r}(\mathbf{q}) = \mathrm{wrap}\!\left(\mathbf{r}_{\mathrm{tar}}-\mathbf{r}(\mathbf{q})\right).
 $$
 
 再定义加权位姿误差向量：
@@ -917,7 +917,7 @@ $$
 多初值方法的最终输出定义为：
 
 $$
-\mathbf{q}^{*}=
+\mathbf{q}_{\mathrm{best}}=
 \arg\min_{\mathbf{q}_j \in \mathcal{S}}
 F(\mathbf{q}_j),
 $$
@@ -929,7 +929,7 @@ $$
 位置误差：
 
 $$
-e_p = \|\mathbf{p}(\mathbf{q})-\mathbf{p}^{*}\|_2.
+e_p = \|\mathbf{p}(\mathbf{q})-\mathbf{p}_{\mathrm{tar}}\|_2.
 $$
 
 姿态误差：
@@ -1433,11 +1433,11 @@ scripts/export_unity_method_comparison.py
 三种方法共用同一个目标位姿 `target_pose6` 与同一个起始关节角 `q_start_deg`，并对各自求得的终解构造关节空间线性插值轨迹：
 
 $$
-\mathbf{q}_m(t) = (1-t)\mathbf{q}_{\text{start}} + t\mathbf{q}_{m,\text{goal}},
-\quad t \in [0,1],
+\mathbf{q}_m(t) = (1-t)\mathbf{q}_{\mathrm{start}} + t\mathbf{q}_{m,\mathrm{goal}},
+\quad t \in [0,1].
 $$
 
-其中，$m \in \{\text{NN+NR}, \text{DLS}, \text{L-BFGS-B}\}$ 表示不同求解方法。
+其中，`m` 表示不同求解方法，分别对应 `NN+NR`、`DLS` 和 `L-BFGS-B`。
 
 #### 14.7.2 示例导出命令
 
