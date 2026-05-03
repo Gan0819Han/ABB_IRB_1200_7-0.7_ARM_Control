@@ -28,6 +28,7 @@
 9. Unity 侧 `ABB_IRB_Demo1` 模型导入、尺度校验与播放模式整理。
 10. Python `FK` 结果到 Unity 末端位置/姿态的映射验证。
 11. Unity 侧关节轨迹 `JSON` 导出与连续播放工具链。
+12. `gui/app.py` 图形界面封装：统一调度推理、避障、Unity 数据导出与图表生成。
 
 ## 2. 项目主流程
 
@@ -70,6 +71,7 @@
 | `predict_ik.py` | 当前正式在线推理入口 |
 | `generate_dataset.py` | 全局随机采样并生成 `FK` 数据 |
 | `export_subspace_reference_data.py` | 导出每个子空间的参考样本 |
+| `gui/app.py` | 图形界面入口，封装常用命令行流程 |
 | `Summary.md` | 时间顺序的记录页 |
 
 ### 3.2 子目录说明
@@ -81,6 +83,7 @@
 | `data/` | 数据集与子空间参考样本 |
 | `docs/` | 参数资料、说明文档 |
 | `figure/` | 绘图脚本、图表数据与最终 PNG 图像 |
+| `gui/` | `tkinter` 图形界面与使用说明 |
 | `scripts/` | 独立验证脚本 |
 
 ### 3.3 Unity 联调相关脚本与目录
@@ -96,6 +99,7 @@ Python 侧新增的 Unity 联调脚本如下：
 |---|---|
 | `scripts/export_unity_fk_reference.py` | 导出单组关节角的 `FK` 参考结果，供 Unity 做位置/姿态一致性验证 |
 | `scripts/export_unity_trajectory.py` | 导出关节空间线性插值轨迹 `JSON`，供 Unity 连续播放 |
+| `scripts/export_unity_obstacle_avoidance_demo.py` | 将避障规划结果转为 Unity 友好版回放 `JSON` |
 
 Unity 侧当前使用的核心脚本如下：
 
@@ -113,6 +117,82 @@ Unity 工程内新增数据目录如下：
 |---|---|
 | `Assets/ReferenceData/` | 单组位姿校验参考 `JSON` |
 | `Assets/TrajectoryData/` | 整段关节轨迹播放 `JSON` |
+| `Assets/PlanningData/` | 固定障碍物规划结果与避障演示 `JSON` |
+
+### 3.4 Unity 挂载清单
+
+为避免 Python 导出的不同 `JSON` 文件在 Unity 中“拖错位置”，当前按如下固定对应关系使用：
+
+| Python 导出类型 | 典型输出目录 | Unity 脚本 | Unity 参数 | 推荐挂载对象 |
+|---|---|---|---|---|
+| `FK参考导出` | `Assets/ReferenceData/*.json` | `AbbPoseVerifier.cs` | `referenceJson` | 机械臂根对象 `abb_irb1200_7_70_unity` |
+| `轨迹导出` | `Assets/TrajectoryData/*.json` | `AbbTrajectoryJsonPlayer.cs` | `trajectoryJson` | 机械臂根对象 `abb_irb1200_7_70_unity` |
+| `避障结果转 Unity 回放` | `Assets/PlanningData/*.json` | `AbbObstacleAvoidanceDemo.cs` | `demoJson` | 独立空对象 `ObstacleAvoidanceDemo` |
+
+进一步的引用关系如下：
+
+1. `AbbPoseVerifier`
+   - `referenceJson`：拖入 `Assets/ReferenceData/` 下的参考 `JSON`
+   - `jointPosePlayer`：指向同机械臂对象上的 `AbbJointPosePlayer`
+   - `tool0 / baseLink / robotRoot`：用于做位置和姿态校验
+
+2. `AbbTrajectoryJsonPlayer`
+   - `trajectoryJson`：拖入 `Assets/TrajectoryData/` 下的轨迹 `JSON`
+   - `jointPosePlayer`：指向同机械臂对象上的 `AbbJointPosePlayer`
+
+3. `AbbObstacleAvoidanceDemo`
+   - `demoJson`：拖入 `Assets/PlanningData/` 下的避障演示 `JSON`
+   - `jointPosePlayer`：指向机械臂对象上的 `AbbJointPosePlayer`
+
+因此，当前最实用的快速记忆方式是：
+
+1. `gui_fk_reference.json` -> `AbbPoseVerifier.referenceJson`
+2. `abb_gui_demo_traj.json` -> `AbbTrajectoryJsonPlayer.trajectoryJson`
+3. `gui_obstacle_demo_unity.json` -> `AbbObstacleAvoidanceDemo.demoJson`
+
+### 3.5 GUI 封装入口
+
+当前工程提供一个轻量级 `GUI` 入口：
+
+```text
+gui/app.py
+```
+
+启动命令：
+
+```powershell
+conda activate arm_nn
+cd E:\CSU\毕业设计\ABB_Arm_Control
+python gui\app.py
+```
+
+当前 `GUI` 的作用不是替代原始算法脚本，而是对常用流程做统一封装，降低命令行操作成本。  
+当前界面包括四个页面：
+
+1. `推理`
+2. `避障`
+3. `Unity`
+4. `图表`
+
+右侧输出区分为两部分：
+
+1. `结果总结`
+   - 展示收敛情况、误差、碰撞情况、输出文件等摘要
+2. `原始日志`
+   - 展示完整命令、标准输出、错误输出和退出码
+
+当前所有涉及 `JSON` 文件的常用路径输入框，均已加入 `选择...` 按钮；默认路径仍保留，便于快速复现。
+
+另外，当前 `GUI` 已加入一个实用联动：
+
+1. 当 `推理` 页运行成功后
+2. 或当 `避障` 页运行成功后
+3. 系统会自动从结果 `JSON` 中提取最终关节解
+4. 并写入：
+   - `Unity -> 轨迹导出 -> q_goal`
+   - `Unity -> FK参考导出 -> q`
+
+这样可以避免人工从结果里抄写关节角。
 
 ## 4. 机械臂运动学模型
 
@@ -1672,6 +1752,40 @@ python -X utf8 figure/scripts/run_ik_benchmark.py --n_samples 100 --seed 2026 --
 python -X utf8 figure/scripts/run_ik_benchmark_six_methods.py --n_samples 100 --seed 2026 --tag n100
 ```
 
+若使用 `GUI`，图表页当前三个按钮的含义如下：
+
+1. `生成核心图表`
+   - 调用 `figure/scripts/generate_core_figures.py`
+   - 用于生成当前工程的核心论文图表
+   - 包括：
+     - `FK` 偏置验证图
+     - 子空间划分对比图
+     - 子空间预测误差分布图
+     - 分类器表现图
+     - 其它汇总性核心图表
+
+2. `生成工作空间图`
+   - 调用 `figure/scripts/generate_workspace_figures.py`
+   - 读取 `data/subspace_reference_abb_strict_samples512_seed2026/` 下的参考样本
+   - 生成：
+     - 三视图投影图
+     - 三维样本可达空间图
+
+3. `生成避障图`
+   - 调用 `figure/scripts/generate_obstacle_candidate_trajectory_figures.py`
+   - 读取 `artifacts/obstacle_avoidance/open_space_reselect_demo_plan.json`
+   - 生成固定障碍物场景下的：
+     - 碰撞/无碰撞轨迹对比图
+     - 候选重选示意图
+     - 论文风格避障配图
+
+图表输出主要写入：
+
+```text
+figure/figures/
+figure/data/
+```
+
 ### 15.9 导出 Unity 单姿态参考 `JSON`
 
 ```powershell
@@ -1703,6 +1817,41 @@ python -X utf8 .\scripts\export_unity_obstacle_avoidance_demo.py --plan_json art
 ```
 
 说明：当前脚本默认导出 `abb_unity_obstacle_demo_v2`，除最终选中的无碰撞轨迹外，还会附带一条碰撞候选轨迹，供 Unity 侧做蓝线/红线对比播放。
+
+### 15.14 GUI 当前推荐使用顺序
+
+若不想频繁使用命令行，当前可直接使用：
+
+```powershell
+python gui\app.py
+```
+
+推荐操作顺序如下：
+
+1. `推理` 页
+   - 输入目标位姿 `pose6`
+   - 检查三份 metadata 默认路径
+   - 点击 `运行 predict_ik`
+
+2. `避障` 页
+   - 输入目标位姿 `pose6`
+   - 输入起始关节 `q_start`
+   - 选择 `scene_json`
+   - 点击 `运行 plan_collision_free_ik`
+
+3. `Unity` 页
+   - 若做单姿态校验：使用 `FK参考导出`
+   - 若做普通轨迹播放：使用 `轨迹导出`
+   - 若做障碍物场景回放：使用 `避障结果转 Unity 回放`
+
+4. `图表` 页
+   - 根据需要生成核心图、工作空间图或避障图
+
+说明：
+
+1. 当前 `GUI` 只做命令调度和结果展示，不改原脚本算法逻辑
+2. 右侧 `结果总结` 用于快速看关键信息
+3. 右侧 `原始日志` 用于排查报错与核对命令
 
 ## 16. 当前阶段结论与下一步优化方向
 
