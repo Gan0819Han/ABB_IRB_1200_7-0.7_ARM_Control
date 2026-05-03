@@ -1,0 +1,4 @@
+﻿variant,train_samples,val_samples,best_val_loss,top1_acc,top1_acc_percent
+1,400000,5000,3.1939,0.1110,11.10%
+2,600000,5000,2.6861,0.1422,14.22%
+3,500000,5000,2.6723,0.1416,14.16%

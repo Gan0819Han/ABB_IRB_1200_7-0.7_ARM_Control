@@ -105,7 +105,7 @@ def plot_workspace_projections(df: pd.DataFrame) -> None:
         ax.set_ylabel(ylabel)
         ax.set_aspect("equal", adjustable="box")
 
-    fig.suptitle("ABB_IRB 子空间参考样本末端位置投影 / Workspace Projections of Reference Samples", fontsize=11)
+    fig.suptitle("子空间参考样本末端位置投影 / Workspace Projections of Reference Samples", fontsize=11)
     fig.savefig(FIGURES_DIR / "workspace_reference_projections.png", bbox_inches="tight", facecolor="white")
     plt.close(fig)
 
@@ -129,7 +129,7 @@ def plot_workspace_3d(df: pd.DataFrame, max_points: int = 12000) -> None:
         alpha=0.45,
         linewidths=0,
     )
-    ax.set_title("ABB_IRB 参考样本工作空间 / Workspace of Reference Samples")
+    ax.set_title("样本可达空间 / Reachable Workspace of Samples")
     ax.set_xlabel("X (mm)")
     ax.set_ylabel("Y (mm)")
     ax.set_zlabel("Z (mm)")

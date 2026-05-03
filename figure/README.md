@@ -9,11 +9,11 @@
 - `figures/prediction_subspace_error_rank.png`
 - `figures/classification_hierarchical_comparison.png`
 - `figures/single_case_ik_metrics.png`
+- `figures/obstacle_candidates_free_only.png`
+- `figures/obstacle_candidates_colliding_only.png`
+- `figures/obstacle_candidates_overview.png`
+- `figures/obstacle_candidates_free_only_thesis.png`
+- `figures/obstacle_candidates_colliding_only_thesis.png`
+- `figures/obstacle_candidates_overview_thesis.png`
 - `figures/workspace_reference_projections.png`
 - `figures/workspace_reference_3d.png`
-- `figures/ik_benchmark_summary_n100.png`
-- `figures/ik_benchmark_distribution_n100.png`
-- `figures/ik_benchmark_six_methods_summary_n100.png`
-- `figures/ik_benchmark_six_methods_distribution_n100.png`
-- `figures/ik_benchmark_six_methods_cdf_n100.png`
-- `figures/ik_benchmark_six_methods_iterations_n100.png`

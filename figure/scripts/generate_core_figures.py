@@ -288,7 +288,7 @@ def plot_classification_comparison(df: pd.DataFrame) -> None:
 
     flat_df = df[df["family"] == "flat_192"].copy()
     sns.barplot(data=flat_df, x="variant", y="value", color="#C95F46", ax=axes[0])
-    axes[0].set_title("旧版192类分类器 / Flat 192-Class Classifier")
+    axes[0].set_title("192类分类器 / 192-Class Classifier")
     axes[0].set_xlabel("模型变体 / Variant")
     axes[0].set_ylabel("验证准确率 / Validation Accuracy")
     axes[0].set_ylim(0.0, max(0.2, flat_df["value"].max() * 1.2))
@@ -301,7 +301,8 @@ def plot_classification_comparison(df: pd.DataFrame) -> None:
         "wrist_acc": "Wrist",
     }
     branch_df["metric_label"] = branch_df["metric"].map(branch_map)
-    sns.barplot(data=branch_df, x="metric_label", y="value", hue="variant", palette="Blues", ax=axes[1])
+    branch_palette = ["#1F5AA6", "#4C89C7", "#8FB7E3"]
+    sns.barplot(data=branch_df, x="metric_label", y="value", hue="variant", palette=branch_palette, ax=axes[1])
     axes[1].set_title("第一层粗分类器 / Branch Classifier")
     axes[1].set_xlabel("指标 / Metric")
     axes[1].set_ylabel("验证准确率 / Validation Accuracy")
@@ -310,7 +311,8 @@ def plot_classification_comparison(df: pd.DataFrame) -> None:
     fine_df = df[df["family"] == "fine_16"].copy()
     fine_map = {"top1_acc": "Top-1", "top3_acc": "Top-3"}
     fine_df["metric_label"] = fine_df["metric"].map(fine_map)
-    sns.barplot(data=fine_df, x="metric_label", y="value", hue="variant", palette="Greens", ax=axes[2])
+    fine_palette = ["#1B7F4B", "#58A96A", "#A7D5AE"]
+    sns.barplot(data=fine_df, x="metric_label", y="value", hue="variant", palette=fine_palette, ax=axes[2])
     axes[2].set_title("第二层细分类器 / Fine Classifier")
     axes[2].set_xlabel("指标 / Metric")
     axes[2].set_ylabel("验证准确率 / Validation Accuracy")
