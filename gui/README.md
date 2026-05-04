@@ -17,6 +17,8 @@
 - 图表页的图像输出目录与数据输出目录可自定义
 - 图表页可为三类绘图分别指定数据来源
 - 避障页内置首个 AABB 障碍物编辑器
+- 避障页障碍物编辑器已支持多障碍物切换、新增与删除
+- 避障页支持纵向滚动，参数较多时可直接滚动查看下半部分
 - 避障成功后自动生成避障图，并在图表页右侧显示预览
 
 启动命令：
@@ -100,6 +102,21 @@ python gui\app.py
 - `branch metadata`
 - `fine metadata`
 - 输出 `JSON`
+- 避障常用超参数：
+  - `topk_shoulder`
+  - `topk_elbow`
+  - `topk_wrist`
+  - `max_branch_candidates`
+  - `fine_topk_per_branch`
+  - `max_subspace_candidates`
+  - `max_evaluated_candidates`
+  - `nr_max_iters`
+  - `nr_tol_pos_mm`
+  - `nr_tol_ori_rad`
+  - `nr_damping`
+  - `nr_step_scale`
+  - `trajectory_steps`
+  - `dedupe_tol_deg`
 
 说明：
 - 本页会同时做候选逆解评估、轨迹碰撞检测与自动换解
@@ -107,19 +124,40 @@ python gui\app.py
 - `pose6` 已拆分为 `x / y / z / phi / theta / psi` 六个输入框
 - `q_start` 已拆分为 `q1 ~ q6` 六个输入框，并在下方显示项目关节限位范围
 - `q_start` 会参与整条运动轨迹的碰撞分析
+- 当前已开放避障阶段常用超参数调节
 - 场景文件、元数据和输出路径均支持通过“选择...”按钮指定
 - 运行成功后，GUI 会自动把选中的最终关节解同步到 Unity 页的 `q_goal` 与 `FK参考导出` 的 `q`
 
+避障超参数含义：
+
+- `topk_shoulder / topk_elbow / topk_wrist`
+  - 第一层粗分类三个头分别保留多少个候选
+- `max_branch_candidates`
+  - 粗分类组合后最多保留多少个 branch
+- `fine_topk_per_branch`
+  - 每个 branch 下第二层细分类最多保留多少个候选
+- `max_subspace_candidates`
+  - 最终进入子空间候选池的上限
+- `max_evaluated_candidates`
+  - 真正进入 `NR + 碰撞检测 + 代价排序` 的候选数量上限
+- `nr_max_iters / nr_tol_pos_mm / nr_tol_ori_rad / nr_damping / nr_step_scale`
+  - 控制 Newton-Raphson 修正过程
+- `trajectory_steps`
+  - 轨迹离散采样步数，越大碰撞检测越细，但耗时更高
+- `dedupe_tol_deg`
+  - 候选解去重容差，越小通常保留的不同候选更多
+
 #### 2.1 障碍物编辑器
-当前“避障”页新增一个“障碍物编辑（首个 AABB）”区域。
+当前“避障”页新增一个“障碍物编辑（AABB）”区域。
 
 可编辑项：
+- `当前障碍物`
 - `obstacle name`
 - `center_mm`
 - `size_mm`
 
 说明：
-- 当前仅编辑 `scene_json` 中第一个障碍物
+- 当前支持编辑 `scene_json` 中的多个障碍物
 - 障碍物默认按 `AABB` 长方体处理
 - `center_mm` 已拆分为 `x / y / z`
 - `size_mm` 已拆分为 `dx / dy / dz`
@@ -129,15 +167,23 @@ python gui\app.py
 
 按钮功能：
 - `从 scene_json 读取`
-  - 将当前 `scene_json` 中首个障碍物参数读入 GUI
+  - 将当前 `scene_json` 中所选障碍物参数读入 GUI
 - `写回 scene_json`
-  - 将当前 GUI 中的障碍物参数写回 `scene_json`
+  - 将当前 GUI 中所选障碍物参数写回 `scene_json`
 - `恢复默认值`
   - 将障碍物参数恢复为工程最初默认值
   - 当前默认值为：
     - `name = demo_box_1`
     - `center_mm = [221.7, 274.53, 493.57]`
     - `size_mm = [127.62, 90.45, 175.06]`
+- `新增障碍物`
+  - 在当前 `scene_json` 的 `obstacles` 列表末尾新增一个 AABB
+  - 当前默认新增参数为：
+    - `center_mm = [360.0, -180.0, 540.0]`
+    - `size_mm = [110.0, 90.0, 160.0]`
+- `删除当前障碍物`
+  - 删除当前选中的障碍物
+  - 当前程序要求至少保留 1 个障碍物，不支持通过 GUI 删除到空列表
 
 联动规则：
 - 点击 `运行 plan_collision_free_ik` 前，GUI 会先自动执行一次“写回 scene_json”

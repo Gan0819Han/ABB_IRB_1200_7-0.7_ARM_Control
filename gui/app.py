@@ -25,6 +25,8 @@ GUI_DEFAULTS_PATH = ROOT / "gui" / "gui_defaults.json"
 DEFAULT_OBSTACLE_NAME = "demo_box_1"
 DEFAULT_OBSTACLE_CENTER_MM = [221.7, 274.53, 493.57]
 DEFAULT_OBSTACLE_SIZE_MM = [127.62, 90.45, 175.06]
+NEW_OBSTACLE_CENTER_MM = [360.0, -180.0, 540.0]
+NEW_OBSTACLE_SIZE_MM = [110.0, 90.0, 160.0]
 
 
 class ScrollText(ttk.Frame):
@@ -49,6 +51,45 @@ class ScrollText(ttk.Frame):
 
     def clear(self) -> None:
         self.text.delete("1.0", "end")
+
+
+class ScrollableForm(ttk.Frame):
+    def __init__(self, master: tk.Widget) -> None:
+        super().__init__(master)
+        self.canvas = tk.Canvas(self, highlightthickness=0)
+        self.vbar = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
+        self.inner = ttk.Frame(self.canvas)
+        self.inner.bind(
+            "<Configure>",
+            lambda _event: self.canvas.configure(scrollregion=self.canvas.bbox("all")),
+        )
+        self.window_id = self.canvas.create_window((0, 0), window=self.inner, anchor="nw")
+        self.canvas.configure(yscrollcommand=self.vbar.set)
+        self.canvas.grid(row=0, column=0, sticky="nsew")
+        self.vbar.grid(row=0, column=1, sticky="ns")
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+        self.canvas.bind("<Configure>", self._sync_inner_width)
+        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel, add="+")
+
+    def _sync_inner_width(self, event: tk.Event) -> None:
+        self.canvas.itemconfigure(self.window_id, width=event.width)
+
+    def _on_mousewheel(self, event: tk.Event) -> None:
+        if self.winfo_exists() and self.canvas.winfo_exists():
+            try:
+                widget_under_pointer = self.winfo_containing(event.x_root, event.y_root)
+            except Exception:
+                widget_under_pointer = None
+            if widget_under_pointer is None:
+                return
+            parent = widget_under_pointer
+            while parent is not None:
+                if parent == self:
+                    delta = -1 if event.delta > 0 else 1
+                    self.canvas.yview_scroll(delta, "units")
+                    break
+                parent = parent.master
 
 
 class App(tk.Tk):
@@ -90,6 +131,23 @@ class App(tk.Tk):
         self.obstacle_size_var = tk.StringVar(value=self._format_q_deg(DEFAULT_OBSTACLE_SIZE_MM))
         self.obstacle_center_part_vars = self._create_component_vars(self.obstacle_center_var, 3)
         self.obstacle_size_part_vars = self._create_component_vars(self.obstacle_size_var, 3)
+        self.obstacle_selector_var = tk.StringVar(value="")
+        self.obstacle_selector_values: list[str] = []
+        self.current_obstacle_index = 0
+        self.obstacle_topk_shoulder_var = tk.StringVar(value="2")
+        self.obstacle_topk_elbow_var = tk.StringVar(value="1")
+        self.obstacle_topk_wrist_var = tk.StringVar(value="2")
+        self.obstacle_max_branch_candidates_var = tk.StringVar(value="6")
+        self.obstacle_fine_topk_per_branch_var = tk.StringVar(value="3")
+        self.obstacle_max_subspace_candidates_var = tk.StringVar(value="18")
+        self.obstacle_max_evaluated_candidates_var = tk.StringVar(value="18")
+        self.obstacle_nr_max_iters_var = tk.StringVar(value="40")
+        self.obstacle_nr_tol_pos_mm_var = tk.StringVar(value="1e-3")
+        self.obstacle_nr_tol_ori_rad_var = tk.StringVar(value="1e-3")
+        self.obstacle_nr_damping_var = tk.StringVar(value="1e-5")
+        self.obstacle_nr_step_scale_var = tk.StringVar(value="1.0")
+        self.obstacle_trajectory_steps_var = tk.StringVar(value="120")
+        self.obstacle_dedupe_tol_deg_var = tk.StringVar(value="0.5")
 
         self.fk_q_var = tk.StringVar(value="20,30,-40,10,20,0")
         self.fk_out_json_var = tk.StringVar(value=self._default_path_value("fk_out_json", UNITY_DIR / "Assets" / "ReferenceData" / "gui_fk_reference.json"))
@@ -411,34 +469,75 @@ class App(tk.Tk):
     def _build_obstacle_tab(self) -> None:
         tab = ttk.Frame(self.notebook, padding=10)
         self.notebook.add(tab, text="避障")
-        tab.columnconfigure(1, weight=1)
-        self._make_vector_entry(tab, 0, "目标位姿 pose6", ["x", "y", "z", "phi", "theta", "psi"], self.pose_part_vars, columns=3)
-        self._make_note(tab, 1, "范围说明：x/y/z 单位 mm，需位于机械臂可达空间；phi/theta/psi 单位 rad，通常建议填写在 [-3.1416, 3.1416]。")
-        self._make_vector_entry(tab, 2, "起始关节 q_start", ["q1", "q2", "q3", "q4", "q5", "q6"], self.q_start_part_vars, columns=3)
-        self._make_note(tab, 3, self._joint_limits_note_text())
-        self._make_labeled_path_entry(tab, 4, "scene_json", self.scene_var, save=False, default_key="scene_json")
-        self._make_labeled_path_entry(tab, 5, "prediction metadata", self.pred_meta_var, save=False, default_key="pred_meta")
-        self._make_labeled_path_entry(tab, 6, "branch metadata", self.branch_meta_var, save=False, default_key="branch_meta")
-        self._make_labeled_path_entry(tab, 7, "fine metadata", self.fine_meta_var, save=False, default_key="fine_meta")
-        self._make_labeled_path_entry(tab, 8, "输出 JSON", self.obstacle_out_json_var, save=True, default_key="obstacle_out_json")
-        self._make_note(tab, 9, "说明：本页会执行候选逆解评估、轨迹碰撞检测与自动换解。此处 pose6 与“推理”页共用同一输入，任一页面修改都会同步。q_start 会参与整条轨迹的碰撞分析。")
+        tab.rowconfigure(0, weight=1)
+        tab.columnconfigure(0, weight=1)
+        scroll = ScrollableForm(tab)
+        scroll.grid(row=0, column=0, sticky="nsew")
+        form = scroll.inner
+        form.columnconfigure(1, weight=1)
+        self._make_vector_entry(form, 0, "目标位姿 pose6", ["x", "y", "z", "phi", "theta", "psi"], self.pose_part_vars, columns=3)
+        self._make_note(form, 1, "范围说明：x/y/z 单位 mm，需位于机械臂可达空间；phi/theta/psi 单位 rad，通常建议填写在 [-3.1416, 3.1416]。")
+        self._make_vector_entry(form, 2, "起始关节 q_start", ["q1", "q2", "q3", "q4", "q5", "q6"], self.q_start_part_vars, columns=3)
+        self._make_note(form, 3, self._joint_limits_note_text())
+        self._make_labeled_path_entry(form, 4, "scene_json", self.scene_var, save=False, default_key="scene_json")
+        self._make_labeled_path_entry(form, 5, "prediction metadata", self.pred_meta_var, save=False, default_key="pred_meta")
+        self._make_labeled_path_entry(form, 6, "branch metadata", self.branch_meta_var, save=False, default_key="branch_meta")
+        self._make_labeled_path_entry(form, 7, "fine metadata", self.fine_meta_var, save=False, default_key="fine_meta")
+        self._make_labeled_path_entry(form, 8, "输出 JSON", self.obstacle_out_json_var, save=True, default_key="obstacle_out_json")
+        self._make_note(form, 9, "说明：本页会执行候选逆解评估、轨迹碰撞检测与自动换解。此处 pose6 与“推理”页共用同一输入，任一页面修改都会同步。q_start 会参与整条轨迹的碰撞分析。")
 
-        obstacle_editor = ttk.LabelFrame(tab, text="障碍物编辑（首个 AABB）", padding=8)
-        obstacle_editor.grid(row=10, column=0, columnspan=3, sticky="ew", pady=(10, 0))
+        obstacle_hyper_group = ttk.LabelFrame(form, text="避障常用超参数", padding=8)
+        obstacle_hyper_group.grid(row=10, column=0, columnspan=3, sticky="ew", pady=(10, 0))
+        obstacle_hyper_group.columnconfigure(1, weight=1)
+        obstacle_hyper_group.columnconfigure(3, weight=1)
+        self._make_labeled_entry(obstacle_hyper_group, 0, "topk_shoulder", self.obstacle_topk_shoulder_var)
+        self._make_labeled_entry(obstacle_hyper_group, 1, "topk_elbow", self.obstacle_topk_elbow_var)
+        self._make_labeled_entry(obstacle_hyper_group, 2, "topk_wrist", self.obstacle_topk_wrist_var)
+        self._make_labeled_entry(obstacle_hyper_group, 3, "max_branch_candidates", self.obstacle_max_branch_candidates_var)
+        self._make_labeled_entry(obstacle_hyper_group, 4, "fine_topk_per_branch", self.obstacle_fine_topk_per_branch_var)
+        self._make_labeled_entry(obstacle_hyper_group, 5, "max_subspace_candidates", self.obstacle_max_subspace_candidates_var)
+        self._make_labeled_entry(obstacle_hyper_group, 6, "max_evaluated_candidates", self.obstacle_max_evaluated_candidates_var)
+        self._make_labeled_entry(obstacle_hyper_group, 7, "nr_max_iters", self.obstacle_nr_max_iters_var)
+        self._make_labeled_entry(obstacle_hyper_group, 8, "nr_tol_pos_mm", self.obstacle_nr_tol_pos_mm_var)
+        self._make_labeled_entry(obstacle_hyper_group, 9, "nr_tol_ori_rad", self.obstacle_nr_tol_ori_rad_var)
+        self._make_labeled_entry(obstacle_hyper_group, 10, "nr_damping", self.obstacle_nr_damping_var)
+        self._make_labeled_entry(obstacle_hyper_group, 11, "nr_step_scale", self.obstacle_nr_step_scale_var)
+        self._make_labeled_entry(obstacle_hyper_group, 12, "trajectory_steps", self.obstacle_trajectory_steps_var)
+        self._make_labeled_entry(obstacle_hyper_group, 13, "dedupe_tol_deg", self.obstacle_dedupe_tol_deg_var)
+        self._make_note(
+            obstacle_hyper_group,
+            14,
+            "说明：前 7 项控制候选召回与实际评估数量；中间 5 项控制 NR 修正；trajectory_steps 控制轨迹离散步数；dedupe_tol_deg 控制候选解去重容差，越小通常保留的不同候选越多。",
+            columnspan=4,
+        )
+
+        obstacle_editor = ttk.LabelFrame(form, text="障碍物编辑（AABB）", padding=8)
+        obstacle_editor.grid(row=11, column=0, columnspan=3, sticky="ew", pady=(10, 0))
         obstacle_editor.columnconfigure(1, weight=1)
-        self._make_labeled_entry(obstacle_editor, 0, "obstacle name", self.obstacle_name_var)
-        self._make_vector_entry(obstacle_editor, 1, "center_mm", ["x", "y", "z"], self.obstacle_center_part_vars, columns=3)
-        self._make_vector_entry(obstacle_editor, 2, "size_mm", ["dx", "dy", "dz"], self.obstacle_size_part_vars, columns=3)
+        ttk.Label(obstacle_editor, text="当前障碍物").grid(row=0, column=0, sticky="w", pady=2)
+        self.obstacle_selector = ttk.Combobox(
+            obstacle_editor,
+            textvariable=self.obstacle_selector_var,
+            state="readonly",
+            values=self.obstacle_selector_values,
+        )
+        self.obstacle_selector.grid(row=0, column=1, columnspan=2, sticky="ew", pady=2)
+        self.obstacle_selector.bind("<<ComboboxSelected>>", self._on_obstacle_selector_changed)
+        self._make_labeled_entry(obstacle_editor, 1, "obstacle name", self.obstacle_name_var)
+        self._make_vector_entry(obstacle_editor, 2, "center_mm", ["x", "y", "z"], self.obstacle_center_part_vars, columns=3)
+        self._make_vector_entry(obstacle_editor, 3, "size_mm", ["dx", "dy", "dz"], self.obstacle_size_part_vars, columns=3)
         self._make_note(
             obstacle_editor,
-            3,
+            4,
             "范围说明：center_mm 为障碍物中心坐标，单位 mm；size_mm 为长方体三边长度，单位 mm，3 个值都应大于 0。运行避障前会自动写回 scene_json。",
         )
-        ttk.Button(obstacle_editor, text="从 scene_json 读取", command=self.load_obstacle_editor_from_scene).grid(row=4, column=0, sticky="ew", pady=(8, 0))
-        ttk.Button(obstacle_editor, text="写回 scene_json", command=self.save_obstacle_editor_to_scene).grid(row=4, column=1, sticky="ew", pady=(8, 0), padx=(6, 0))
-        ttk.Button(obstacle_editor, text="恢复默认值", command=self.reset_obstacle_editor_to_default).grid(row=4, column=2, sticky="ew", pady=(8, 0), padx=(6, 0))
+        ttk.Button(obstacle_editor, text="从 scene_json 读取", command=self.load_obstacle_editor_from_scene).grid(row=5, column=0, sticky="ew", pady=(8, 0))
+        ttk.Button(obstacle_editor, text="写回 scene_json", command=self.save_obstacle_editor_to_scene).grid(row=5, column=1, sticky="ew", pady=(8, 0), padx=(6, 0))
+        ttk.Button(obstacle_editor, text="恢复默认值", command=self.reset_obstacle_editor_to_default).grid(row=5, column=2, sticky="ew", pady=(8, 0), padx=(6, 0))
+        ttk.Button(obstacle_editor, text="新增障碍物", command=self.add_obstacle_to_scene).grid(row=6, column=0, sticky="ew", pady=(8, 0))
+        ttk.Button(obstacle_editor, text="删除当前障碍物", command=self.delete_current_obstacle_from_scene).grid(row=6, column=1, columnspan=2, sticky="ew", pady=(8, 0), padx=(6, 0))
 
-        ttk.Button(tab, text="运行 plan_collision_free_ik", command=self.run_obstacle).grid(row=11, column=0, columnspan=3, sticky="ew", pady=(12, 0))
+        ttk.Button(form, text="运行 plan_collision_free_ik", command=self.run_obstacle).grid(row=12, column=0, columnspan=3, sticky="ew", pady=(12, 0))
 
     def _build_unity_tab(self) -> None:
         tab = ttk.Frame(self.notebook, padding=10)
@@ -697,6 +796,73 @@ class App(tk.Tk):
             raise ValueError(f"{label} 必须为 3 个逗号分隔数值，例如 221.7,274.53,493.57")
         return values
 
+    def _build_obstacle_selector_label(self, index: int, name: str) -> str:
+        return f"{index + 1}. {name}"
+
+    def _obstacle_payload_to_center_size(self, obstacle: dict) -> tuple[list[float], list[float]]:
+        if "center_mm" in obstacle and "size_mm" in obstacle:
+            center = [float(v) for v in obstacle["center_mm"]]
+            size = [float(v) for v in obstacle["size_mm"]]
+            return center, size
+        if "min_mm" in obstacle and "max_mm" in obstacle:
+            box_min = [float(v) for v in obstacle["min_mm"]]
+            box_max = [float(v) for v in obstacle["max_mm"]]
+            center = [(a + b) * 0.5 for a, b in zip(box_min, box_max)]
+            size = [b - a for a, b in zip(box_min, box_max)]
+            return center, size
+        raise ValueError("obstacle 缺少 center_mm/size_mm 或 min_mm/max_mm")
+
+    def _set_obstacle_editor_values(self, name: str, center: list[float], size: list[float]) -> None:
+        self.obstacle_name_var.set(name)
+        self.obstacle_center_var.set(self._format_q_deg(center))
+        self.obstacle_size_var.set(self._format_q_deg(size))
+
+    def _refresh_obstacle_selector(self, obstacles: list[dict], selected_index: int = 0) -> None:
+        values = [
+            self._build_obstacle_selector_label(idx, str(obstacle.get("name", f"obstacle_{idx + 1}")))
+            for idx, obstacle in enumerate(obstacles)
+        ]
+        self.obstacle_selector_values = values
+        self.obstacle_selector.configure(values=values)
+        if not values:
+            self.current_obstacle_index = 0
+            self.obstacle_selector_var.set("")
+            return
+        selected_index = max(0, min(selected_index, len(values) - 1))
+        self.current_obstacle_index = selected_index
+        self.obstacle_selector_var.set(values[selected_index])
+
+    def _load_selected_obstacle_into_editor(self, obstacles: list[dict], index: int) -> str:
+        if not obstacles:
+            raise ValueError("scene_json 中没有 obstacles")
+        index = max(0, min(index, len(obstacles) - 1))
+        obstacle = obstacles[index]
+        name = str(obstacle.get("name", f"obstacle_{index + 1}"))
+        center, size = self._obstacle_payload_to_center_size(obstacle)
+        self._refresh_obstacle_selector(obstacles, selected_index=index)
+        self._set_obstacle_editor_values(name, center, size)
+        return f"已加载障碍物：{self._build_obstacle_selector_label(index, name)}"
+
+    def _build_obstacle_payload_from_editor(self, *, fallback_name: str) -> dict:
+        center = self._parse_vec3_text(self.obstacle_center_var.get(), label="center_mm")
+        size = self._parse_vec3_text(self.obstacle_size_var.get(), label="size_mm")
+        if any(v <= 0.0 for v in size):
+            raise ValueError("size_mm 的三个分量都必须大于 0")
+        return {
+            "name": self.obstacle_name_var.get().strip() or fallback_name,
+            "center_mm": center,
+            "size_mm": size,
+        }
+
+    def _make_new_obstacle_name(self, obstacles: list[dict]) -> str:
+        used = {str(obstacle.get("name", "")).strip() for obstacle in obstacles}
+        idx = 1
+        while True:
+            candidate = f"demo_box_{idx}"
+            if candidate not in used:
+                return candidate
+            idx += 1
+
     def _load_scene_payload(self) -> tuple[Path, dict]:
         scene_path = Path(self.scene_var.get())
         if not scene_path.exists():
@@ -712,7 +878,7 @@ class App(tk.Tk):
         try:
             self._load_obstacle_editor_from_scene()
         except Exception:
-            pass
+            self._refresh_obstacle_selector([], selected_index=0)
 
     def _reset_obstacle_editor_to_default(self) -> str:
         self.obstacle_name_var.set(DEFAULT_OBSTACLE_NAME)
@@ -734,23 +900,8 @@ class App(tk.Tk):
         obstacles = payload.get("obstacles", [])
         if not obstacles:
             raise ValueError(f"scene_json 中没有 obstacles：{scene_path}")
-        obstacle = obstacles[0]
-        name = str(obstacle.get("name", "obstacle_1"))
-        if "center_mm" in obstacle and "size_mm" in obstacle:
-            center = [float(v) for v in obstacle["center_mm"]]
-            size = [float(v) for v in obstacle["size_mm"]]
-        elif "min_mm" in obstacle and "max_mm" in obstacle:
-            box_min = [float(v) for v in obstacle["min_mm"]]
-            box_max = [float(v) for v in obstacle["max_mm"]]
-            center = [(a + b) * 0.5 for a, b in zip(box_min, box_max)]
-            size = [b - a for a, b in zip(box_min, box_max)]
-        else:
-            raise ValueError("首个 obstacle 缺少 center_mm/size_mm 或 min_mm/max_mm")
-
-        self.obstacle_name_var.set(name)
-        self.obstacle_center_var.set(self._format_q_deg(center))
-        self.obstacle_size_var.set(self._format_q_deg(size))
-        return f"已从 scene_json 读取首个障碍物：{name}\nscene_json：{scene_path}"
+        load_msg = self._load_selected_obstacle_into_editor(obstacles, self.current_obstacle_index)
+        return f"{load_msg}\nscene_json：{scene_path}"
 
     def load_obstacle_editor_from_scene(self) -> None:
         try:
@@ -763,25 +914,20 @@ class App(tk.Tk):
 
     def _save_obstacle_editor_to_scene(self) -> str:
         scene_path, payload = self._load_scene_payload()
-        center = self._parse_vec3_text(self.obstacle_center_var.get(), label="center_mm")
-        size = self._parse_vec3_text(self.obstacle_size_var.get(), label="size_mm")
-        if any(v <= 0.0 for v in size):
-            raise ValueError("size_mm 的三个分量都必须大于 0")
         obstacles = payload.setdefault("obstacles", [])
-        obstacle_payload = {
-            "name": self.obstacle_name_var.get().strip() or "obstacle_1",
-            "center_mm": center,
-            "size_mm": size,
-        }
+        obstacle_payload = self._build_obstacle_payload_from_editor(fallback_name=f"obstacle_{self.current_obstacle_index + 1}")
         if obstacles:
-            obstacles[0] = obstacle_payload
+            index = max(0, min(self.current_obstacle_index, len(obstacles) - 1))
+            obstacles[index] = obstacle_payload
         else:
             obstacles.append(obstacle_payload)
+            index = 0
         self._write_scene_payload(scene_path, payload)
+        self._refresh_obstacle_selector(obstacles, selected_index=index)
         return (
-            f"已写回 scene_json 首个障碍物：{obstacle_payload['name']}\n"
-            f"center_mm：{center}\n"
-            f"size_mm：{size}\n"
+            f"已写回 scene_json 当前障碍物：{self._build_obstacle_selector_label(index, obstacle_payload['name'])}\n"
+            f"center_mm：{obstacle_payload['center_mm']}\n"
+            f"size_mm：{obstacle_payload['size_mm']}\n"
             f"scene_json：{scene_path}"
         )
 
@@ -793,6 +939,80 @@ class App(tk.Tk):
         except Exception as exc:
             self.set_summary(f"任务：障碍物编辑\n\n写回失败：{exc}")
             self.append_log(f"[obstacle editor] 写回失败：{exc}")
+
+    def _on_obstacle_selector_changed(self, _event: tk.Event | None = None) -> None:
+        try:
+            scene_path, payload = self._load_scene_payload()
+            obstacles = payload.get("obstacles", [])
+            if not obstacles:
+                return
+            try:
+                index = self.obstacle_selector_values.index(self.obstacle_selector_var.get())
+            except ValueError:
+                index = 0
+            msg = self._load_selected_obstacle_into_editor(obstacles, index)
+            self.set_summary(f"任务：障碍物编辑\n\n{msg}\nscene_json：{scene_path}")
+            self.append_log(msg)
+        except Exception as exc:
+            self.set_summary(f"任务：障碍物编辑\n\n切换障碍物失败：{exc}")
+            self.append_log(f"[obstacle editor] 切换失败：{exc}")
+
+    def _add_obstacle_to_scene(self) -> str:
+        scene_path, payload = self._load_scene_payload()
+        obstacles = payload.setdefault("obstacles", [])
+        new_name = self._make_new_obstacle_name(obstacles)
+        obstacle_payload = {
+            "name": new_name,
+            "center_mm": list(NEW_OBSTACLE_CENTER_MM),
+            "size_mm": list(NEW_OBSTACLE_SIZE_MM),
+        }
+        obstacles.append(obstacle_payload)
+        new_index = len(obstacles) - 1
+        self._write_scene_payload(scene_path, payload)
+        self._load_selected_obstacle_into_editor(obstacles, new_index)
+        return (
+            f"已新增障碍物：{self._build_obstacle_selector_label(new_index, new_name)}\n"
+            f"center_mm：{obstacle_payload['center_mm']}\n"
+            f"size_mm：{obstacle_payload['size_mm']}\n"
+            f"scene_json：{scene_path}"
+        )
+
+    def add_obstacle_to_scene(self) -> None:
+        try:
+            msg = self._add_obstacle_to_scene()
+            self.set_summary(f"任务：障碍物编辑\n\n{msg}")
+            self.append_log(msg)
+        except Exception as exc:
+            self.set_summary(f"任务：障碍物编辑\n\n新增失败：{exc}")
+            self.append_log(f"[obstacle editor] 新增失败：{exc}")
+
+    def _delete_current_obstacle_from_scene(self) -> str:
+        scene_path, payload = self._load_scene_payload()
+        obstacles = payload.get("obstacles", [])
+        if not obstacles:
+            raise ValueError("scene_json 中没有可删除的障碍物")
+        if len(obstacles) == 1:
+            raise ValueError("当前至少需要保留 1 个障碍物；如需空场景，请手动编辑 scene_json。")
+        index = max(0, min(self.current_obstacle_index, len(obstacles) - 1))
+        removed = obstacles.pop(index)
+        next_index = min(index, len(obstacles) - 1)
+        payload["obstacles"] = obstacles
+        self._write_scene_payload(scene_path, payload)
+        load_msg = self._load_selected_obstacle_into_editor(obstacles, next_index)
+        return (
+            f"已删除障碍物：{removed.get('name', f'obstacle_{index + 1}')}\n"
+            f"{load_msg}\n"
+            f"scene_json：{scene_path}"
+        )
+
+    def delete_current_obstacle_from_scene(self) -> None:
+        try:
+            msg = self._delete_current_obstacle_from_scene()
+            self.set_summary(f"任务：障碍物编辑\n\n{msg}")
+            self.append_log(msg)
+        except Exception as exc:
+            self.set_summary(f"任务：障碍物编辑\n\n删除失败：{exc}")
+            self.append_log(f"[obstacle editor] 删除失败：{exc}")
 
     def _format_q_deg(self, values: list[float]) -> str:
         return ",".join(f"{float(v):.6f}".rstrip("0").rstrip(".") for v in values)
@@ -1029,14 +1249,20 @@ class App(tk.Tk):
             "--pred_meta", self.pred_meta_var.get(),
             "--branch_meta", self.branch_meta_var.get(),
             "--fine_meta", self.fine_meta_var.get(),
-            "--topk_shoulder", "2",
-            "--topk_elbow", "1",
-            "--topk_wrist", "2",
-            "--max_branch_candidates", "6",
-            "--fine_topk_per_branch", "3",
-            "--max_subspace_candidates", "18",
-            "--max_evaluated_candidates", "18",
-            "--trajectory_steps", "120",
+            "--topk_shoulder", self.obstacle_topk_shoulder_var.get(),
+            "--topk_elbow", self.obstacle_topk_elbow_var.get(),
+            "--topk_wrist", self.obstacle_topk_wrist_var.get(),
+            "--max_branch_candidates", self.obstacle_max_branch_candidates_var.get(),
+            "--fine_topk_per_branch", self.obstacle_fine_topk_per_branch_var.get(),
+            "--max_subspace_candidates", self.obstacle_max_subspace_candidates_var.get(),
+            "--max_evaluated_candidates", self.obstacle_max_evaluated_candidates_var.get(),
+            "--nr_max_iters", self.obstacle_nr_max_iters_var.get(),
+            "--nr_tol_pos_mm", self.obstacle_nr_tol_pos_mm_var.get(),
+            "--nr_tol_ori_rad", self.obstacle_nr_tol_ori_rad_var.get(),
+            "--nr_damping", self.obstacle_nr_damping_var.get(),
+            "--nr_step_scale", self.obstacle_nr_step_scale_var.get(),
+            "--trajectory_steps", self.obstacle_trajectory_steps_var.get(),
+            "--dedupe_tol_deg", self.obstacle_dedupe_tol_deg_var.get(),
             "--save_selected_frames",
             "--out_json", str(out_path),
         ]
