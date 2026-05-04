@@ -183,6 +183,77 @@ python gui\app.py
 
 当前所有涉及 `JSON` 文件的常用路径输入框，均已加入 `选择...` 按钮；默认路径仍保留，便于快速复现。
 
+当前所有常用路径/目录输入框右侧还增加了 `设为默认` 按钮：
+
+1. 点击后会将当前路径写入本地 GUI 配置
+2. 配置文件位置为：
+   - `gui/gui_defaults.json`
+3. 下次重新打开 GUI 时，会优先读取该文件中的默认值
+
+这样可以把常用的 `metadata / JSON / figure 输出目录 / Unity 输出目录` 固定下来，避免每次重新选择。
+
+当前 GUI 主体区也已改为可拖拽布局：
+
+1. 主界面左侧页面区与右侧输出区之间
+   - 可左右拖动
+   - 用于调整主工作区与日志输出区占比
+2. 右侧 `结果总结 / 原始日志` 之间
+   - 可上下拖动
+   - 用于调整摘要与日志的显示高度
+
+当前 `GUI -> 推理` 页也已经暴露出推理阶段主要超参数，包括：
+
+1. 候选召回参数
+   - `topk_shoulder`
+   - `topk_elbow`
+   - `topk_wrist`
+   - `max_branch_candidates`
+   - `fine_topk_per_branch`
+   - `max_subspace_candidates`
+2. `NR` 校正参数
+   - `enable_nr`
+   - `nr_max_iters`
+   - `nr_tol_pos_mm`
+   - `nr_tol_ori_rad`
+   - `nr_damping`
+   - `nr_step_scale`
+
+其中前一组控制“候选子空间召回范围”，后一组控制“Newton-Raphson 数值修正行为”。
+
+图表页当前也已支持输出目录自定义：
+
+1. `图像输出目录`
+   - 控制生成的 `PNG` 图保存位置
+2. `数据输出目录`
+   - 控制图表附属 `CSV/MD` 数据文件保存位置
+
+若不修改，则仍默认写入：
+
+```text
+figure/figures/
+figure/data/
+```
+
+同时，图表页现在还支持为三类图分别指定数据源：
+
+1. `单案例 IK JSON`
+   - 控制核心图表中的单案例误差与时间分解图
+2. `参考样本目录`
+   - 控制工作空间图读取哪一批 `subspace_*_reference.npz`
+3. `避障规划 JSON`
+   - 控制避障图读取哪一份 `plan_collision_free_ik` 结果
+
+当前图表页右侧还增加了一个“避障图预览”区域，用于显示最近一次生成的避障图 `PNG`。
+
+此外，`GUI -> 图表` 页也已经改为独立可拖拽布局：
+
+1. 左侧图表参数区与右侧避障图预览区之间
+   - 可左右拖动
+2. 默认情况下
+   - 右侧避障图预览区分配更大的显示空间
+
+因此在查看 `obstacle_candidates_overview_thesis.png` 等大图时，不再依赖固定窗口宽度。
+
 另外，当前 `GUI` 已加入一个实用联动：
 
 1. 当 `推理` 页运行成功后
@@ -193,6 +264,61 @@ python gui\app.py
    - `Unity -> FK参考导出 -> q`
 
 这样可以避免人工从结果里抄写关节角。
+
+补充：当前 `推理` 页与 `避障` 页中的 `pose6` 也已经联动，二者共用同一个目标位姿输入；在任一页面修改后，另一页面会同步更新。
+
+同时，当前以下输入已经改为分框输入形式，而不是单一逗号字符串框：
+
+1. `推理 -> pose6`
+2. `避障 -> pose6`
+3. `避障 -> q_start`
+4. `避障 -> center_mm`
+5. `避障 -> size_mm`
+
+其中：
+
+1. `pose6`
+   - 拆分为 `x / y / z / phi / theta / psi`
+2. `q_start`
+   - 拆分为 `q1 ~ q6`
+3. `center_mm`
+   - 拆分为 `x / y / z`
+4. `size_mm`
+   - 拆分为 `dx / dy / dz`
+
+并且界面下方已经补充范围说明：
+
+1. `pose6`
+   - `x,y,z` 单位为 `mm`
+   - `phi,theta,psi` 单位为 `rad`
+2. `q_start`
+   - 直接显示当前项目采用的 `ABB_IRB` 六轴关节限位
+3. `center_mm / size_mm`
+   - 直接提示其物理意义与单位
+
+这样在切换目标位姿、起始关节和障碍物参数时，比原始逗号串输入更直观，也更不容易输错。
+
+另外，`GUI -> 避障` 页当前还内置了一个“首个 AABB 障碍物编辑器”，可直接修改：
+
+1. `obstacle name`
+2. `center_mm`
+3. `size_mm`
+
+其中：
+
+1. `center_mm` 为障碍物中心位置
+2. `size_mm` 为长方体尺寸
+3. 单位均为 `mm`
+
+运行 `plan_collision_free_ik` 前，GUI 会自动把当前编辑值写回所选 `scene_json`，因此可以直接用它测试不同障碍物位置与尺寸下的避障结果。
+
+另外，当前 GUI 内部的说明文字已经改为随区域宽度自动换行，因此当左侧参数区被拖窄时，说明文本会自动重排，不会像早期版本那样直接被压缩遮挡。
+
+此外，当前还提供一个 `恢复默认值` 按钮，可将首个障碍物一键恢复为工程最初默认参数：
+
+1. `name = demo_box_1`
+2. `center_mm = [221.7, 274.53, 493.57]`
+3. `size_mm = [127.62, 90.45, 175.06]`
 
 ## 4. 机械臂运动学模型
 
@@ -1757,27 +1883,58 @@ python -X utf8 figure/scripts/run_ik_benchmark_six_methods.py --n_samples 100 --
 1. `生成核心图表`
    - 调用 `figure/scripts/generate_core_figures.py`
    - 用于生成当前工程的核心论文图表
+   - 读取的数据来源包括：
+     - `artifacts/fk_validation/fk_validation_report.json`
+     - `artifacts/subspace_validation/subspace_profiles.json`
+     - `artifacts/prediction_system_formal/metadata.json`
+     - `artifacts/classification_system_formal/metadata.json`
+     - `artifacts/branch_classification_system/metadata.json`
+     - `artifacts/fine_classification_system/metadata.json`
+     - `artifacts/fine_classification_system/test_pose_001_full_ik.json`
    - 包括：
      - `FK` 偏置验证图
      - 子空间划分对比图
      - 子空间预测误差分布图
      - 分类器表现图
      - 其它汇总性核心图表
+   - 说明：
+     - 该按钮基于实验汇总结果绘图
+     - 不依赖当前 GUI 输入的 `pose6` 或 `q_start`
+     - 但其中“单案例 IK 时间/误差图”会读取图表页指定的 `单案例 IK JSON`
 
 2. `生成工作空间图`
    - 调用 `figure/scripts/generate_workspace_figures.py`
-   - 读取 `data/subspace_reference_abb_strict_samples512_seed2026/` 下的参考样本
+   - 默认读取 `data/subspace_reference_abb_strict_samples512_seed2026/` 下的参考样本
+   - 也可在 GUI 图表页改成其它参考样本目录
+   - 实际读取文件形式为：
+     - `data/subspace_reference_abb_strict_samples512_seed2026/subspace_*_reference.npz`
+   - 每个样本文件内部读取：
+     - `pose6`
+     - 其中用于绘图的是末端位置 `x,y,z`
    - 生成：
      - 三视图投影图
      - 三维样本可达空间图
+   - 说明：
+     - 该按钮基于参考样本点云绘图
+     - 不依赖当前 GUI 输入的 `pose6`、`q_start` 或避障结果
 
 3. `生成避障图`
    - 调用 `figure/scripts/generate_obstacle_candidate_trajectory_figures.py`
-   - 读取 `artifacts/obstacle_avoidance/open_space_reselect_demo_plan.json`
+   - 默认读取 `artifacts/obstacle_avoidance/open_space_reselect_demo_plan.json`
+   - 也可在 GUI 图表页改成任意一份 `plan_json`
+   - 其中初始关节来自该文件内的 `q_start_deg`
+   - 目标位姿来自该文件内的 `target_pose6`
+   - 障碍物与安全参数来自该文件内的 `scene`
+   - 候选轨迹来自该文件内的 `evaluated_candidates`
    - 生成固定障碍物场景下的：
      - 碰撞/无碰撞轨迹对比图
      - 候选重选示意图
      - 论文风格避障配图
+   - 说明：
+     - 该按钮基于单次避障规划结果绘图
+     - 若你在 GUI“避障”页刚生成了新的 `out_json`，程序会自动把该路径同步到图表页的 `避障规划 JSON`
+     - 同时会自动执行一次避障图生成
+     - 并在图表页右侧刷新最新避障图预览
 
 图表输出主要写入：
 
@@ -1785,6 +1942,21 @@ python -X utf8 figure/scripts/run_ik_benchmark_six_methods.py --n_samples 100 --
 figure/figures/
 figure/data/
 ```
+
+若使用 `GUI` 的 `图表` 页，当前还可在运行前设置：
+
+1. `图像输出目录`
+   - 对应环境变量 `ABB_FIGURE_OUTPUT_DIR`
+   - `核心图表 / 工作空间图 / 避障图` 生成的 `PNG` 会写到这里
+2. `数据输出目录`
+   - 对应环境变量 `ABB_FIGURE_DATA_DIR`
+   - `核心图表 / 工作空间图` 生成的 `CSV`、`Markdown` 等数据文件会写到这里
+
+补充说明：
+
+1. `避障图` 主要只依赖 `图像输出目录`
+2. `核心图表` 与 `工作空间图` 会同时使用 `图像输出目录` 和 `数据输出目录`
+3. 若不修改，仍按工程默认目录输出，不影响原有命令行使用方式
 
 ### 15.9 导出 Unity 单姿态参考 `JSON`
 
@@ -1832,12 +2004,19 @@ python gui\app.py
    - 输入目标位姿 `pose6`
    - 检查三份 metadata 默认路径
    - 点击 `运行 predict_ik`
+   - 该 `pose6` 会自动同步到 `避障` 页
 
 2. `避障` 页
    - 输入目标位姿 `pose6`
    - 输入起始关节 `q_start`
    - 选择 `scene_json`
    - 点击 `运行 plan_collision_free_ik`
+   - 该 `pose6` 会自动同步回 `推理` 页
+   - 运行成功后还会自动：
+     - 同步 `图表 -> 避障规划 JSON`
+     - 切换到 `图表` 页
+     - 执行 `生成避障图`
+     - 在右侧预览区显示最新结果
 
 3. `Unity` 页
    - 若做单姿态校验：使用 `FK参考导出`
@@ -1845,7 +2024,13 @@ python gui\app.py
    - 若做障碍物场景回放：使用 `避障结果转 Unity 回放`
 
 4. `图表` 页
-   - 根据需要生成核心图、工作空间图或避障图
+   - 如有需要，先设置：
+     - `图像输出目录`
+     - `数据输出目录`
+     - `单案例 IK JSON`
+     - `参考样本目录`
+     - `避障规划 JSON`
+   - 再根据需要生成核心图、工作空间图或避障图
 
 说明：
 

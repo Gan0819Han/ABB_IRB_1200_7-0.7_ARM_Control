@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 from pathlib import Path
@@ -22,9 +23,9 @@ if str(ROOT) not in sys.path:
 from abb_nn.branching import branch_label_to_name, subspace_to_branch_label
 
 FIGURE_DIR = ROOT / "figure"
-DATA_DIR = FIGURE_DIR / "data"
-FIGURES_DIR = FIGURE_DIR / "figures"
-REFERENCE_DIR = ROOT / "data" / "subspace_reference_abb_strict_samples512_seed2026"
+DATA_DIR = Path(os.environ.get("ABB_FIGURE_DATA_DIR", str(FIGURE_DIR / "data"))).resolve()
+FIGURES_DIR = Path(os.environ.get("ABB_FIGURE_OUTPUT_DIR", str(FIGURE_DIR / "figures"))).resolve()
+DEFAULT_REFERENCE_DIR = ROOT / "data" / "subspace_reference_abb_strict_samples512_seed2026"
 
 
 def configure_style() -> None:
@@ -45,13 +46,13 @@ def configure_style() -> None:
     )
 
 
-def load_reference_points(max_points_per_subspace: int = 128) -> pd.DataFrame:
-    if not REFERENCE_DIR.exists():
-        raise FileNotFoundError(f"Reference data directory not found: {REFERENCE_DIR}")
+def load_reference_points(reference_dir: Path, max_points_per_subspace: int = 128) -> pd.DataFrame:
+    if not reference_dir.exists():
+        raise FileNotFoundError(f"Reference data directory not found: {reference_dir}")
 
     rows = []
     rng = np.random.default_rng(2026)
-    for file_path in sorted(REFERENCE_DIR.glob("subspace_*_reference.npz")):
+    for file_path in sorted(reference_dir.glob("subspace_*_reference.npz")):
         sid = int(file_path.stem.split("_")[1])
         branch = subspace_to_branch_label(sid, segment_profile="abb_strict")
         arr = np.load(file_path)
@@ -152,13 +153,23 @@ def update_manifest() -> None:
     readme.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Generate workspace figures from saved reference samples.")
+    parser.add_argument("--reference_dir", default=str(DEFAULT_REFERENCE_DIR))
+    parser.add_argument("--max_points_per_subspace", type=int, default=128)
+    return parser
+
+
 def main() -> None:
+    args = build_parser().parse_args()
     configure_style()
-    df = load_reference_points(max_points_per_subspace=128)
+    reference_dir = Path(args.reference_dir)
+    df = load_reference_points(reference_dir=reference_dir, max_points_per_subspace=int(args.max_points_per_subspace))
     plot_workspace_projections(df)
     plot_workspace_3d(df)
     update_manifest()
     print(f"Saved workspace figures to: {FIGURES_DIR}")
+    print(f"Reference sample directory: {reference_dir.resolve()}")
 
 
 if __name__ == "__main__":

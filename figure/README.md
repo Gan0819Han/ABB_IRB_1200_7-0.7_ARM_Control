@@ -9,3 +9,9 @@
 - `figures/prediction_subspace_error_rank.png`
 - `figures/classification_hierarchical_comparison.png`
 - `figures/single_case_ik_metrics.png`
+- `figures/obstacle_candidates_free_only.png`
+- `figures/obstacle_candidates_colliding_only.png`
+- `figures/obstacle_candidates_overview.png`
+- `figures/obstacle_candidates_free_only_thesis.png`
+- `figures/obstacle_candidates_colliding_only_thesis.png`
+- `figures/obstacle_candidates_overview_thesis.png`

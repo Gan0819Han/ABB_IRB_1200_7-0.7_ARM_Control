@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 from pathlib import Path
@@ -23,9 +24,9 @@ from obstacle_avoidance.collision import LINK_SEGMENTS, ObstacleScene
 from obstacle_avoidance.planning import evaluate_trajectory_against_scene
 
 FIGURE_DIR = ROOT / "figure"
-FIGURES_DIR = FIGURE_DIR / "figures"
+FIGURES_DIR = Path(os.environ.get("ABB_FIGURE_OUTPUT_DIR", str(FIGURE_DIR / "figures"))).resolve()
 ARTIFACTS_DIR = ROOT / "artifacts"
-PLAN_JSON = ARTIFACTS_DIR / "obstacle_avoidance" / "open_space_reselect_demo_plan.json"
+DEFAULT_PLAN_JSON = ARTIFACTS_DIR / "obstacle_avoidance" / "open_space_reselect_demo_plan.json"
 
 
 def configure_style() -> None:
@@ -442,11 +443,19 @@ def update_manifest() -> None:
     readme.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Generate obstacle-avoidance trajectory figures from one planning result JSON.")
+    parser.add_argument("--plan_json", default=str(DEFAULT_PLAN_JSON))
+    return parser
+
+
 def main() -> None:
+    args = build_parser().parse_args()
     ensure_dirs()
     configure_style()
 
-    payload = load_json(PLAN_JSON)
+    plan_json = Path(args.plan_json)
+    payload = load_json(plan_json)
     cases = build_candidate_cases(payload)
     free_cases = [case for case in cases if not case["collision"]]
     colliding_cases = [case for case in cases if case["collision"]]
@@ -503,6 +512,7 @@ def main() -> None:
     )
     update_manifest()
     print(f"Saved obstacle candidate figures to: {FIGURES_DIR}")
+    print(f"Obstacle plan source JSON: {plan_json.resolve()}")
 
 
 if __name__ == "__main__":

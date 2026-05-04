@@ -3,7 +3,9 @@
 
 from __future__ import annotations
 
+import argparse
 import json
+import os
 from pathlib import Path
 from typing import Iterable
 
@@ -16,8 +18,15 @@ import seaborn as sns
 ROOT = Path(__file__).resolve().parents[2]
 ARTIFACTS_DIR = ROOT / "artifacts"
 FIGURE_DIR = ROOT / "figure"
-DATA_DIR = FIGURE_DIR / "data"
-FIGURES_DIR = FIGURE_DIR / "figures"
+DATA_DIR = Path(os.environ.get("ABB_FIGURE_DATA_DIR", str(FIGURE_DIR / "data"))).resolve()
+FIGURES_DIR = Path(os.environ.get("ABB_FIGURE_OUTPUT_DIR", str(FIGURE_DIR / "figures"))).resolve()
+DEFAULT_FK_VALIDATION_JSON = ARTIFACTS_DIR / "fk_validation" / "fk_validation_report.json"
+DEFAULT_SUBSPACE_PROFILES_JSON = ARTIFACTS_DIR / "subspace_validation" / "subspace_profiles.json"
+DEFAULT_PREDICTION_META_JSON = ARTIFACTS_DIR / "prediction_system_formal" / "metadata.json"
+DEFAULT_FLAT_CLASSIFICATION_META_JSON = ARTIFACTS_DIR / "classification_system_formal" / "metadata.json"
+DEFAULT_BRANCH_CLASSIFICATION_META_JSON = ARTIFACTS_DIR / "branch_classification_system" / "metadata.json"
+DEFAULT_FINE_CLASSIFICATION_META_JSON = ARTIFACTS_DIR / "fine_classification_system" / "metadata.json"
+DEFAULT_SINGLE_CASE_JSON = ARTIFACTS_DIR / "fine_classification_system" / "test_pose_001_full_ik.json"
 
 
 def ensure_dirs() -> None:
@@ -53,8 +62,8 @@ def save_figure(fig: plt.Figure, stem: str) -> None:
     plt.close(fig)
 
 
-def export_fk_validation_tables() -> pd.DataFrame:
-    report = load_json(ARTIFACTS_DIR / "fk_validation" / "fk_validation_report.json")
+def export_fk_validation_tables(report_path: Path) -> pd.DataFrame:
+    report = load_json(report_path)
     rows = []
     for item in report["official_workspace_validation"]["theta2_offset_hypotheses"]:
         rows.append(
@@ -99,8 +108,8 @@ def plot_fk_theta2_offset_validation(df: pd.DataFrame) -> None:
     save_figure(fig, "fk_theta2_offset_validation")
 
 
-def export_subspace_prediction_metrics() -> pd.DataFrame:
-    meta = load_json(ARTIFACTS_DIR / "prediction_system_formal" / "metadata.json")
+def export_subspace_prediction_metrics(meta_path: Path) -> pd.DataFrame:
+    meta = load_json(meta_path)
     rows = []
     for item in meta["trained_subspaces"]:
         rows.append(
@@ -117,8 +126,8 @@ def export_subspace_prediction_metrics() -> pd.DataFrame:
     return df
 
 
-def export_subspace_profiles() -> pd.DataFrame:
-    obj = load_json(ARTIFACTS_DIR / "subspace_validation" / "subspace_profiles.json")
+def export_subspace_profiles(profile_path: Path) -> pd.DataFrame:
+    obj = load_json(profile_path)
     rows = []
     joint_names = ["q1", "q2", "q3", "q4", "q5", "q6"]
     for profile in obj["profiles"]:
@@ -216,10 +225,10 @@ def plot_prediction_error_rank(df: pd.DataFrame) -> None:
     save_figure(fig, "prediction_subspace_error_rank")
 
 
-def export_classification_metrics() -> pd.DataFrame:
-    flat = load_json(ARTIFACTS_DIR / "classification_system_formal" / "metadata.json")
-    branch = load_json(ARTIFACTS_DIR / "branch_classification_system" / "metadata.json")
-    fine = load_json(ARTIFACTS_DIR / "fine_classification_system" / "metadata.json")
+def export_classification_metrics(flat_path: Path, branch_path: Path, fine_path: Path) -> pd.DataFrame:
+    flat = load_json(flat_path)
+    branch = load_json(branch_path)
+    fine = load_json(fine_path)
 
     rows = []
     for item in flat["models"]:
@@ -321,8 +330,8 @@ def plot_classification_comparison(df: pd.DataFrame) -> None:
     save_figure(fig, "classification_hierarchical_comparison")
 
 
-def export_single_case_metrics() -> pd.DataFrame:
-    obj = load_json(ARTIFACTS_DIR / "fine_classification_system" / "test_pose_001_full_ik.json")
+def export_single_case_metrics(case_path: Path) -> pd.DataFrame:
+    obj = load_json(case_path)
     rows = [
         {"group": "timing", "item": "candidate_generation_ms", "value": obj["timing_breakdown_ms"]["candidate_generation_ms"]},
         {"group": "timing", "item": "branch_classification_ms", "value": obj["timing_breakdown_ms"]["branch_classification_ms"]},
@@ -386,24 +395,41 @@ def write_manifest(created_files: Iterable[str]) -> None:
     (FIGURE_DIR / "README.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Generate core thesis figures for ABB_IRB.")
+    parser.add_argument("--fk_validation_json", default=str(DEFAULT_FK_VALIDATION_JSON))
+    parser.add_argument("--subspace_profiles_json", default=str(DEFAULT_SUBSPACE_PROFILES_JSON))
+    parser.add_argument("--prediction_meta", default=str(DEFAULT_PREDICTION_META_JSON))
+    parser.add_argument("--flat_cls_meta", default=str(DEFAULT_FLAT_CLASSIFICATION_META_JSON))
+    parser.add_argument("--branch_meta", default=str(DEFAULT_BRANCH_CLASSIFICATION_META_JSON))
+    parser.add_argument("--fine_meta", default=str(DEFAULT_FINE_CLASSIFICATION_META_JSON))
+    parser.add_argument("--single_case_json", default=str(DEFAULT_SINGLE_CASE_JSON))
+    return parser
+
+
 def main() -> None:
+    args = build_parser().parse_args()
     ensure_dirs()
     configure_style()
 
-    fk_df = export_fk_validation_tables()
+    fk_df = export_fk_validation_tables(Path(args.fk_validation_json))
     plot_fk_theta2_offset_validation(fk_df)
 
-    subspace_df = export_subspace_profiles()
+    subspace_df = export_subspace_profiles(Path(args.subspace_profiles_json))
     plot_subspace_profile_comparison(subspace_df)
 
-    pred_df = export_subspace_prediction_metrics()
+    pred_df = export_subspace_prediction_metrics(Path(args.prediction_meta))
     plot_prediction_error_distribution(pred_df)
     plot_prediction_error_rank(pred_df)
 
-    cls_df = export_classification_metrics()
+    cls_df = export_classification_metrics(
+        Path(args.flat_cls_meta),
+        Path(args.branch_meta),
+        Path(args.fine_meta),
+    )
     plot_classification_comparison(cls_df)
 
-    case_df = export_single_case_metrics()
+    case_df = export_single_case_metrics(Path(args.single_case_json))
     plot_single_case_metrics(case_df)
 
     write_manifest(
@@ -419,6 +445,7 @@ def main() -> None:
 
     print(f"Saved figure data to: {DATA_DIR}")
     print(f"Saved figures to: {FIGURES_DIR}")
+    print(f"Single-case source JSON: {Path(args.single_case_json).resolve()}")
 
 
 if __name__ == "__main__":
