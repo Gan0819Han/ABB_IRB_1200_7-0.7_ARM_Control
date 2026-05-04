@@ -1990,6 +1990,19 @@ python -X utf8 .\scripts\export_unity_obstacle_avoidance_demo.py --plan_json art
 
 说明：当前脚本默认导出 `abb_unity_obstacle_demo_v2`，除最终选中的无碰撞轨迹外，还会附带一条碰撞候选轨迹，供 Unity 侧做蓝线/红线对比播放。
 
+补充：当前版本已经支持 waypoint 两段式轨迹重选，规划结果与 Unity 导出结果中会新增以下关键字段：
+
+1. `has_collision_free_solution`
+2. `selected_solution_collision_free`
+3. `selected_solution.trajectory_mode`
+4. `selected_solution.trajectory_waypoint_deg`
+
+其中：
+
+1. `trajectory_mode = direct` 表示单段直达轨迹
+2. `trajectory_mode = midpoint / lift_shoulder / drop_shoulder / lift_elbow / drop_elbow / swing_wrist_* / start_biased / goal_biased` 表示经过中间 waypoint 的两段式轨迹
+3. 若当前场景下没有额外需要展示的碰撞对比轨迹，则 `comparison_collision_solution` 可以为 `null`
+
 ### 15.14 GUI 当前推荐使用顺序
 
 若不想频繁使用命令行，当前可直接使用：
@@ -2050,6 +2063,7 @@ python gui\app.py
 6. 当前工程中真正的瓶颈已经从“局部修正精度”转移到“候选子空间召回率与速度权衡”。
 7. Python 到 Unity 的关节角、末端位置、末端姿态与轨迹播放链路已经打通。
 8. 固定 `AABB` 障碍物场景下的轨迹碰撞检测与候选解重选已经具备可运行原型。
+9. 在当前 `open_space_reselect_demo` 场景下，waypoint 两段式候选已验证可找到无碰撞轨迹；示例结果中，规划器最终选中 `subspace_id = 1`、`trajectory_mode = goal_biased`，末端精度保持 `10^-6 mm / 10^-6 rad` 量级，最小净空约 `16.78 mm`。
 
 ### 16.2 下一步可优化方向
 
@@ -2057,7 +2071,7 @@ python gui\app.py
 2. 研究常驻模型加载，消除脚本级启动耗时。
 3. 对候选初值的排序准则加入姿态误差项，而不是只看位置误差。
 4. 将当前固定障碍物规划结果导出到 Unity 做碰撞轨迹与无碰撞轨迹对比播放。
-5. 从“单段关节空间线性插值”推进到“中间 waypoint 两段式轨迹”或更平滑的轨迹生成。
+5. 在现有 waypoint 两段式基础上，继续扩展为更系统的 waypoint 搜索、代价学习或采样式规划。
 6. 将当前图表、公式和 benchmark 结果进一步整理为论文章节内容。
 
 ## 17. 文档导航

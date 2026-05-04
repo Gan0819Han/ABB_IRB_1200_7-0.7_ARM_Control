@@ -8,7 +8,7 @@ from typing import Iterable
 
 import numpy as np
 
-from fk_model import fk_abb_irb_joint_points
+from fk_model import JOINT_LIMITS_DEG, fk_abb_irb_joint_points
 from .collision import ObstacleScene, evaluate_robot_aabb_collision
 
 
@@ -26,16 +26,104 @@ class TrajectorySelectionWeights:
     ori_tol_rad: float = 1.0e-2
 
 
+def clip_q_to_joint_limits_deg(q_deg: Iterable[float]) -> np.ndarray:
+    q = np.asarray(list(q_deg), dtype=float).reshape(6)
+    return np.clip(q, JOINT_LIMITS_DEG[:, 0], JOINT_LIMITS_DEG[:, 1])
+
+
+def build_waypoint_joint_trajectory_candidates_deg(
+    q_start_deg: Iterable[float],
+    q_goal_deg: Iterable[float],
+) -> list[dict]:
+    q_start = np.asarray(list(q_start_deg), dtype=float).reshape(6)
+    q_goal = np.asarray(list(q_goal_deg), dtype=float).reshape(6)
+    q_mid = 0.5 * (q_start + q_goal)
+    delta = q_goal - q_start
+
+    templates: list[tuple[str, np.ndarray]] = [
+        ("direct", q_goal.reshape(6)),
+        ("midpoint", q_mid),
+        ("lift_shoulder", q_mid + np.array([0.0, 25.0, -20.0, 10.0, 0.0, 0.0], dtype=float)),
+        ("drop_shoulder", q_mid + np.array([0.0, -25.0, 20.0, -10.0, 0.0, 0.0], dtype=float)),
+        ("lift_elbow", q_mid + np.array([0.0, 10.0, -30.0, 12.0, 0.0, 0.0], dtype=float)),
+        ("drop_elbow", q_mid + np.array([0.0, -10.0, 30.0, -12.0, 0.0, 0.0], dtype=float)),
+        ("swing_wrist_pos", q_mid + np.array([0.0, 0.0, 0.0, 20.0, 0.0, 15.0], dtype=float)),
+        ("swing_wrist_neg", q_mid + np.array([0.0, 0.0, 0.0, -20.0, 0.0, -15.0], dtype=float)),
+        ("start_biased", 0.7 * q_start + 0.3 * q_goal + np.array([0.0, 18.0, -15.0, 8.0, 0.0, 0.0], dtype=float)),
+        ("goal_biased", 0.3 * q_start + 0.7 * q_goal + np.array([0.0, -18.0, 15.0, -8.0, 0.0, 0.0], dtype=float)),
+    ]
+
+    candidates: list[dict] = []
+    seen_signatures: set[tuple[float, ...]] = set()
+    for mode, waypoint in templates:
+        if mode == "direct":
+            q_points = np.vstack([q_start, q_goal])
+        else:
+            q_wp = clip_q_to_joint_limits_deg(waypoint)
+            q_points = np.vstack([q_start, q_wp, q_goal])
+        signature = tuple(np.round(q_points.reshape(-1), 4).tolist())
+        if signature in seen_signatures:
+            continue
+        seen_signatures.add(signature)
+        item = {
+            "trajectory_mode": mode,
+            "q_points_deg": q_points,
+            "waypoint_deg": None if mode == "direct" else q_points[1].tolist(),
+        }
+        candidates.append(item)
+    return candidates
+
+
 def build_joint_trajectory_deg(
     q_start_deg: Iterable[float],
     q_goal_deg: Iterable[float],
     steps: int,
 ) -> np.ndarray:
-    q_start = np.asarray(list(q_start_deg), dtype=float).reshape(6)
-    q_goal = np.asarray(list(q_goal_deg), dtype=float).reshape(6)
-    total_steps = max(2, int(steps))
-    ts = np.linspace(0.0, 1.0, total_steps, dtype=float)
-    return (1.0 - ts.reshape(-1, 1)) * q_start.reshape(1, 6) + ts.reshape(-1, 1) * q_goal.reshape(1, 6)
+    return build_piecewise_joint_trajectory_deg([q_start_deg, q_goal_deg], steps)
+
+
+def build_piecewise_joint_trajectory_deg(
+    q_points_deg: Iterable[Iterable[float]],
+    steps: int,
+) -> np.ndarray:
+    points = [np.asarray(list(point), dtype=float).reshape(6) for point in q_points_deg]
+    if len(points) < 2:
+        raise ValueError("q_points_deg must contain at least two waypoints.")
+
+    total_steps = max(int(steps), len(points))
+    total_points = total_steps + len(points) - 2
+    segment_lengths = []
+    for idx in range(len(points) - 1):
+        segment_lengths.append(float(np.sum(np.abs(points[idx + 1] - points[idx]))))
+    total_length = float(np.sum(segment_lengths))
+
+    if total_length <= 0.0:
+        return np.repeat(points[0].reshape(1, 6), total_steps, axis=0)
+
+    raw_alloc = [max(2, int(round(total_points * (length / total_length)))) for length in segment_lengths]
+    allocated = int(np.sum(raw_alloc))
+    while allocated > total_points:
+        idx = int(np.argmax(raw_alloc))
+        if raw_alloc[idx] > 2:
+            raw_alloc[idx] -= 1
+            allocated -= 1
+        else:
+            break
+    while allocated < total_points:
+        idx = int(np.argmax(segment_lengths))
+        raw_alloc[idx] += 1
+        allocated += 1
+
+    traj_parts: list[np.ndarray] = []
+    for seg_idx, seg_steps in enumerate(raw_alloc):
+        start = points[seg_idx]
+        end = points[seg_idx + 1]
+        ts = np.linspace(0.0, 1.0, max(2, int(seg_steps)), dtype=float)
+        seg = (1.0 - ts.reshape(-1, 1)) * start.reshape(1, 6) + ts.reshape(-1, 1) * end.reshape(1, 6)
+        if seg_idx > 0:
+            seg = seg[1:]
+        traj_parts.append(seg)
+    return np.vstack(traj_parts)
 
 
 def trajectory_joint_path_length_deg(q_traj_deg: np.ndarray) -> float:
@@ -64,6 +152,18 @@ def evaluate_trajectory_against_scene(
     include_frames: bool = False,
 ) -> dict:
     q_traj = build_joint_trajectory_deg(q_start_deg=q_start_deg, q_goal_deg=q_goal_deg, steps=steps)
+    return evaluate_joint_trajectory_against_scene(q_traj=q_traj, scene=scene, include_frames=include_frames)
+
+
+def evaluate_joint_trajectory_against_scene(
+    q_traj_deg: np.ndarray,
+    scene: ObstacleScene,
+    include_frames: bool = False,
+) -> dict:
+    q_traj = np.asarray(q_traj_deg, dtype=float)
+    if q_traj.ndim != 2 or q_traj.shape[1] != 6:
+        raise ValueError("q_traj_deg must have shape (N, 6).")
+
     frame_records: list[dict] = []
     collision_frame_count = 0
     first_collision_frame = -1

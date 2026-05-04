@@ -17,7 +17,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from obstacle_avoidance.collision import ObstacleScene
-from obstacle_avoidance.planning import evaluate_trajectory_against_scene
+from obstacle_avoidance.planning import build_piecewise_joint_trajectory_deg, evaluate_joint_trajectory_against_scene
 
 
 def python_mm_to_unity_m(position_mm: Sequence[float]) -> np.ndarray:
@@ -71,6 +71,8 @@ def build_solution_payload_from_summary(solution: dict, trajectory_summary: dict
         raise ValueError("Trajectory summary does not contain per-frame data.")
     return {
         "subspace_id": int(solution["subspace_id"]),
+        "trajectory_mode": str(solution.get("trajectory_mode", "direct")),
+        "trajectory_waypoint_deg": solution.get("trajectory_waypoint_deg"),
         "q0_deg": [float(v) for v in solution["q0_deg"]],
         "q_goal_deg": [float(v) for v in solution["q_goal_deg"]],
         "nr_iters": int(solution["nr_iters"]),
@@ -90,9 +92,18 @@ def build_solution_payload_from_summary(solution: dict, trajectory_summary: dict
 
 
 def select_collision_candidate(payload: dict) -> dict | None:
+    selected = payload.get("selected_solution", {})
+    selected_subspace = selected.get("subspace_id")
+    selected_mode = selected.get("trajectory_mode")
     for item in payload.get("evaluated_candidates", []):
-        if bool(item["trajectory_summary"]["collision"]):
-            return item
+        if not bool(item["trajectory_summary"]["collision"]):
+            continue
+        if (
+            item.get("subspace_id") == selected_subspace
+            and item.get("trajectory_mode") == selected_mode
+        ):
+            continue
+        return item
     return None
 
 
@@ -133,11 +144,14 @@ def main() -> None:
     if args.collision_candidate_mode == "best_collision":
         collision_candidate = select_collision_candidate(payload)
         if collision_candidate is not None:
-            collision_summary = evaluate_trajectory_against_scene(
-                q_start_deg=payload["q_start_deg"],
-                q_goal_deg=collision_candidate["q_goal_deg"],
-                scene=ObstacleScene.from_dict(scene),
+            q_points_deg = np.asarray(collision_candidate["trajectory_points_deg"], dtype=float)
+            q_traj_deg = build_piecewise_joint_trajectory_deg(
+                q_points_deg=q_points_deg,
                 steps=int(collision_candidate["trajectory_summary"]["trajectory_steps"]),
+            )
+            collision_summary = evaluate_joint_trajectory_against_scene(
+                q_traj_deg=q_traj_deg,
+                scene=ObstacleScene.from_dict(scene),
                 include_frames=True,
             )
             collision_solution_payload = build_solution_payload_from_summary(
@@ -153,6 +167,8 @@ def main() -> None:
         "target_pose6": [float(v) for v in target_pose6],
         "target_world_m": vec3_payload(target_unity_world_m),
         "q_start_deg": [float(v) for v in payload.get("q_start_deg", [0, 0, 0, 0, 0, 0])],
+        "has_collision_free_solution": bool(payload.get("has_collision_free_solution", False)),
+        "selected_solution_collision_free": bool(payload.get("selected_solution_collision_free", False)),
         "obstacles": unity_obstacles,
         "selected_solution": selected_solution_payload,
         "comparison_collision_solution": collision_solution_payload,

@@ -20,7 +20,10 @@ from abb_nn.optimization import NROptions, newton_raphson_refine
 from obstacle_avoidance.collision import ObstacleScene
 from obstacle_avoidance.planning import (
     TrajectorySelectionWeights,
+    build_piecewise_joint_trajectory_deg,
+    build_waypoint_joint_trajectory_candidates_deg,
     compute_selection_cost,
+    evaluate_joint_trajectory_against_scene,
     evaluate_trajectory_against_scene,
     summarize_candidate_rank,
 )
@@ -208,44 +211,48 @@ def main() -> None:
         unique_refined_solutions.append(q_goal_deg.copy())
 
         metrics = evaluate_solution_metrics(q_goal_deg, target_pose)
-        trajectory_summary = evaluate_trajectory_against_scene(
-            q_start_deg=q_start_deg,
-            q_goal_deg=q_goal_deg,
-            scene=scene,
-            steps=args.trajectory_steps,
-            include_frames=False,
-        )
-        selection_cost = compute_selection_cost(
-            final_pos_err_mm=float(metrics["final_pos_err_mm"]),
-            final_ori_err_rad=float(metrics["final_ori_err_rad"]),
-            trajectory_summary=trajectory_summary,
-            weights=selection_weights,
-        )
-        rank_summary = summarize_candidate_rank(
-            final_pos_err_mm=float(metrics["final_pos_err_mm"]),
-            final_ori_err_rad=float(metrics["final_ori_err_rad"]),
-            trajectory_summary=trajectory_summary,
-            selection_cost=selection_cost,
-            weights=selection_weights,
-        )
+        for traj_variant in build_waypoint_joint_trajectory_candidates_deg(q_start_deg=q_start_deg, q_goal_deg=q_goal_deg):
+            q_points_deg = np.asarray(traj_variant["q_points_deg"], dtype=float)
+            q_traj_deg = build_piecewise_joint_trajectory_deg(q_points_deg=q_points_deg, steps=args.trajectory_steps)
+            trajectory_summary = evaluate_joint_trajectory_against_scene(
+                q_traj_deg=q_traj_deg,
+                scene=scene,
+                include_frames=False,
+            )
+            selection_cost = compute_selection_cost(
+                final_pos_err_mm=float(metrics["final_pos_err_mm"]),
+                final_ori_err_rad=float(metrics["final_ori_err_rad"]),
+                trajectory_summary=trajectory_summary,
+                weights=selection_weights,
+            )
+            rank_summary = summarize_candidate_rank(
+                final_pos_err_mm=float(metrics["final_pos_err_mm"]),
+                final_ori_err_rad=float(metrics["final_ori_err_rad"]),
+                trajectory_summary=trajectory_summary,
+                selection_cost=selection_cost,
+                weights=selection_weights,
+            )
 
-        evaluated_candidates.append(
-            {
-                "candidate_rank": int(rank_index),
-                "subspace_id": int(sid),
-                "q0_deg": q0_deg.tolist(),
-                "q_goal_deg": q_goal_deg.tolist(),
-                "initial_pos_err_mm": float(initial_pos_err_mm),
-                "initial_e_max_mm": float(model_item["e_max"]),
-                "nr_iters": int(nr["iters"]),
-                "nr_converged": bool(nr["converged"]),
-                "final_pose6": metrics["final_pose6"],
-                "final_pos_err_mm": float(metrics["final_pos_err_mm"]),
-                "final_ori_err_rad": float(metrics["final_ori_err_rad"]),
-                "trajectory_summary": trajectory_summary,
-                "selection": rank_summary,
-            }
-        )
+            evaluated_candidates.append(
+                {
+                    "candidate_rank": int(rank_index),
+                    "subspace_id": int(sid),
+                    "trajectory_mode": str(traj_variant["trajectory_mode"]),
+                    "trajectory_waypoint_deg": traj_variant["waypoint_deg"],
+                    "trajectory_points_deg": q_points_deg.tolist(),
+                    "q0_deg": q0_deg.tolist(),
+                    "q_goal_deg": q_goal_deg.tolist(),
+                    "initial_pos_err_mm": float(initial_pos_err_mm),
+                    "initial_e_max_mm": float(model_item["e_max"]),
+                    "nr_iters": int(nr["iters"]),
+                    "nr_converged": bool(nr["converged"]),
+                    "final_pose6": metrics["final_pose6"],
+                    "final_pos_err_mm": float(metrics["final_pos_err_mm"]),
+                    "final_ori_err_rad": float(metrics["final_ori_err_rad"]),
+                    "trajectory_summary": trajectory_summary,
+                    "selection": rank_summary,
+                }
+            )
 
     if not evaluated_candidates:
         raise RuntimeError("All evaluated candidates collapsed to duplicates; no candidate remained for planning.")
@@ -262,11 +269,11 @@ def main() -> None:
 
     selected_solution = dict(evaluated_candidates[0])
     if args.save_selected_frames:
-        selected_solution["trajectory_summary"] = evaluate_trajectory_against_scene(
-            q_start_deg=q_start_deg,
-            q_goal_deg=np.asarray(selected_solution["q_goal_deg"], dtype=float),
+        selected_points = np.asarray(selected_solution["trajectory_points_deg"], dtype=float)
+        selected_traj = build_piecewise_joint_trajectory_deg(q_points_deg=selected_points, steps=args.trajectory_steps)
+        selected_solution["trajectory_summary"] = evaluate_joint_trajectory_against_scene(
+            q_traj_deg=selected_traj,
             scene=scene,
-            steps=args.trajectory_steps,
             include_frames=True,
         )
 
@@ -294,6 +301,8 @@ def main() -> None:
         },
         "evaluated_candidates": evaluated_candidates,
         "selected_solution": selected_solution,
+        "has_collision_free_solution": bool(any(not item["trajectory_summary"]["collision"] for item in evaluated_candidates)),
+        "selected_solution_collision_free": bool(not selected_solution["trajectory_summary"]["collision"]),
         "planning_time_ms": float(t_total_ms),
         "timing_breakdown_ms": {
             "candidate_generation_ms": float(timing_generation["candidate_generation_ms"]),
