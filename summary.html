@@ -1,0 +1,1782 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ABB_IRB 项目总览</title>
+  <style>
+    :root {
+      --bg: #f5f2ea;
+      --paper: #fffdf8;
+      --paper-strong: #fffaf1;
+      --ink: #1f2933;
+      --muted: #5f6c76;
+      --line: #d8d1c3;
+      --line-strong: #b7ab94;
+      --accent: #355c7d;
+      --accent-soft: #e4edf4;
+      --accent-deep: #22384f;
+      --warm: #8b6f47;
+      --shadow: 0 20px 50px rgba(44, 56, 72, 0.08);
+      --radius: 22px;
+      --radius-sm: 14px;
+      --content-width: 1460px;
+      --nav-width: 270px;
+      --sans: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      --serif: "Source Han Serif SC", "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at top left, rgba(53, 92, 125, 0.12), transparent 22%),
+        radial-gradient(circle at 85% 15%, rgba(139, 111, 71, 0.12), transparent 20%),
+        linear-gradient(180deg, #f8f5ee 0%, #f1ede3 100%);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.75;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    img {
+      display: block;
+      max-width: 100%;
+    }
+
+    .page-shell {
+      max-width: calc(var(--content-width) + 112px);
+      margin: 0 auto;
+      padding: 24px 28px 96px;
+    }
+
+    .paper {
+      display: grid;
+      grid-template-columns: var(--nav-width) minmax(0, 1fr);
+      gap: 26px;
+      align-items: start;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 20px;
+      background: rgba(255, 253, 248, 0.88);
+      border: 1px solid rgba(183, 171, 148, 0.5);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+      border-radius: var(--radius);
+      padding: 22px 18px;
+    }
+
+    .sidebar h2 {
+      margin: 0 0 10px;
+      font-family: var(--serif);
+      font-size: 1.05rem;
+      letter-spacing: 0.06em;
+      color: var(--accent-deep);
+    }
+
+    .sidebar p {
+      margin: 0 0 16px;
+      color: var(--muted);
+      font-size: 0.92rem;
+      line-height: 1.6;
+    }
+
+    .toc {
+      display: grid;
+      gap: 8px;
+    }
+
+    .toc a {
+      padding: 8px 10px;
+      border-radius: 10px;
+      color: var(--muted);
+      font-size: 0.94rem;
+      transition: 0.2s ease;
+      border: 1px solid transparent;
+    }
+
+    .toc a:hover,
+    .toc a.active {
+      color: var(--accent-deep);
+      background: var(--accent-soft);
+      border-color: rgba(53, 92, 125, 0.16);
+    }
+
+    .content {
+      background: linear-gradient(180deg, rgba(255, 253, 248, 0.98), rgba(255, 250, 241, 0.98));
+      border: 1px solid rgba(183, 171, 148, 0.46);
+      border-radius: 30px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .hero {
+      padding: 58px 62px 44px;
+      background:
+        linear-gradient(135deg, rgba(34, 56, 79, 0.96), rgba(53, 92, 125, 0.92)),
+        radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.08), transparent 24%);
+      color: #f7f3eb;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto -110px -140px auto;
+      width: 320px;
+      height: 320px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.06);
+      filter: blur(4px);
+    }
+
+    .hero-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      font-size: 0.86rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .hero h1 {
+      margin: 18px 0 12px;
+      font-family: var(--serif);
+      font-size: clamp(2rem, 4vw, 3.4rem);
+      line-height: 1.2;
+      letter-spacing: 0.01em;
+    }
+
+    .hero p {
+      margin: 0;
+      max-width: 940px;
+      font-size: 1.02rem;
+      color: rgba(247, 243, 235, 0.9);
+    }
+
+    .meta-grid,
+    .stat-grid,
+    .contrib-grid,
+    .extension-grid,
+    .result-grid,
+    .command-grid,
+    .two-col {
+      display: grid;
+      gap: 16px;
+    }
+
+    .meta-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      margin-top: 28px;
+    }
+
+    .meta-card,
+    .stat-card,
+    .contrib-card,
+    .extension-card,
+    .result-card,
+    .command-card {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 18px;
+      padding: 16px 18px;
+    }
+
+    .meta-label,
+    .stat-label {
+      display: block;
+      font-size: 0.78rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(247, 243, 235, 0.7);
+      margin-bottom: 6px;
+    }
+
+    .meta-value,
+    .stat-value {
+      font-size: 1.04rem;
+      font-weight: 600;
+    }
+
+    .section {
+      padding: 34px 62px 8px;
+      scroll-margin-top: 32px;
+    }
+
+    .section:last-child {
+      padding-bottom: 56px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: baseline;
+      gap: 14px;
+      margin-bottom: 18px;
+      border-bottom: 1px solid rgba(183, 171, 148, 0.6);
+      padding-bottom: 12px;
+    }
+
+    .section-index {
+      color: var(--warm);
+      font-family: var(--serif);
+      font-size: 0.96rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .section-title {
+      margin: 0;
+      font-family: var(--serif);
+      font-size: clamp(1.5rem, 2vw, 2.15rem);
+      line-height: 1.28;
+      color: var(--accent-deep);
+    }
+
+    .lead {
+      font-size: 1.02rem;
+      color: #2c3948;
+      margin-top: 0;
+    }
+
+    .keywords {
+      margin-top: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 12px;
+      background: var(--accent-soft);
+      border: 1px solid rgba(53, 92, 125, 0.14);
+      border-radius: 999px;
+      color: var(--accent-deep);
+      font-size: 0.9rem;
+    }
+
+    .stat-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      margin: 22px 0 10px;
+    }
+
+    .stat-card {
+      background: var(--paper-strong);
+      border: 1px solid rgba(183, 171, 148, 0.48);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    }
+
+    .stat-label {
+      color: var(--muted);
+    }
+
+    .stat-value {
+      color: var(--accent-deep);
+      font-size: 1.26rem;
+    }
+
+    .contrib-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      margin-top: 20px;
+    }
+
+    .contrib-card,
+    .extension-card,
+    .result-card,
+    .command-card {
+      background: var(--paper);
+      border: 1px solid rgba(183, 171, 148, 0.5);
+      border-radius: 18px;
+      padding: 18px 18px 16px;
+    }
+
+    .contrib-card h3,
+    .extension-card h3,
+    .result-card h3,
+    .command-card h3,
+    .subsection-title {
+      margin: 0 0 10px;
+      font-family: var(--serif);
+      font-size: 1.12rem;
+      color: var(--accent-deep);
+    }
+
+    .contrib-card p,
+    .extension-card p,
+    .result-card p,
+    .command-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .flow-board {
+      margin-top: 18px;
+      padding: 24px;
+      border-radius: 24px;
+      background:
+        linear-gradient(180deg, rgba(228, 237, 244, 0.7), rgba(255, 250, 241, 0.96));
+      border: 1px solid rgba(53, 92, 125, 0.16);
+    }
+
+    .flow-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    .flow-step {
+      position: relative;
+      padding: 18px 16px 16px;
+      background: rgba(255, 255, 255, 0.88);
+      border: 1px solid rgba(183, 171, 148, 0.5);
+      border-radius: 18px;
+      min-height: 156px;
+    }
+
+    .flow-step::after {
+      content: "→";
+      position: absolute;
+      top: 50%;
+      right: -13px;
+      transform: translateY(-50%);
+      color: var(--line-strong);
+      font-size: 1.25rem;
+      font-weight: 700;
+    }
+
+    .flow-step:last-child::after {
+      display: none;
+    }
+
+    .flow-num {
+      display: inline-flex;
+      width: 30px;
+      height: 30px;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.92rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .flow-step h3 {
+      margin: 0 0 10px;
+      font-family: var(--serif);
+      font-size: 1.06rem;
+      color: var(--accent-deep);
+    }
+
+    .flow-step p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.93rem;
+      line-height: 1.65;
+    }
+
+    .caption {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .figure-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    figure {
+      margin: 0;
+      background: var(--paper);
+      border: 1px solid rgba(183, 171, 148, 0.5);
+      border-radius: 18px;
+      padding: 14px;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    }
+
+    figure img {
+      border-radius: 12px;
+      cursor: zoom-in;
+      border: 1px solid rgba(183, 171, 148, 0.45);
+    }
+
+    figcaption {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .two-col {
+      grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+      margin-top: 18px;
+    }
+
+    .two-col.equal {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .panel {
+      min-width: 0;
+    }
+
+    .panel table {
+      table-layout: fixed;
+    }
+
+    .panel td,
+    .panel th {
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+
+    .panel {
+      background: var(--paper);
+      border: 1px solid rgba(183, 171, 148, 0.52);
+      border-radius: 20px;
+      padding: 20px 22px;
+    }
+
+    .panel p:last-child,
+    .panel ul:last-child,
+    .panel ol:last-child {
+      margin-bottom: 0;
+    }
+
+    .formula,
+    .code-block {
+      margin: 14px 0;
+      background: #f6f3ec;
+      border: 1px solid rgba(183, 171, 148, 0.55);
+      border-radius: 14px;
+      padding: 15px 18px;
+      overflow-x: auto;
+    }
+
+    .formula {
+      font-family: var(--serif);
+      color: #24384d;
+      line-height: 1.7;
+    }
+
+    .formula .eq {
+      display: block;
+      white-space: nowrap;
+      font-size: 1rem;
+    }
+
+    .process-note {
+      margin-top: 14px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: rgba(228, 237, 244, 0.62);
+      border: 1px solid rgba(53, 92, 125, 0.16);
+      color: #334556;
+      font-size: 0.94rem;
+    }
+
+    .architecture-stack {
+      display: grid;
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .architecture-board {
+      background: linear-gradient(180deg, #f6f2ea 0%, #fcfaf5 100%);
+      border: 1px solid rgba(183, 171, 148, 0.58);
+      border-radius: 22px;
+      padding: 22px;
+      overflow: hidden;
+    }
+
+    .architecture-board h3 {
+      margin: 0 0 6px;
+      font-family: var(--serif);
+      color: var(--accent-deep);
+      font-size: 1.14rem;
+    }
+
+    .architecture-board p {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 0.94rem;
+    }
+
+    .arch-grid {
+      display: grid;
+      gap: 18px;
+      align-items: center;
+    }
+
+    .arch-grid.regressor {
+      grid-template-columns: 170px 1fr 170px;
+    }
+
+    .arch-grid.branch {
+      grid-template-columns: 180px 1fr 210px;
+    }
+
+    .arch-grid.fine {
+      grid-template-columns: 210px 1fr 190px;
+    }
+
+    .arch-node,
+    .arch-output,
+    .arch-compact {
+      background: #fefdf9;
+      border: 1px solid rgba(115, 128, 138, 0.48);
+      border-radius: 10px;
+      padding: 10px 12px;
+      text-align: center;
+      color: #24384d;
+      font-size: 0.92rem;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+    }
+
+    .arch-output {
+      background: #f5fbef;
+      border-color: rgba(126, 156, 107, 0.46);
+    }
+
+    .arch-module {
+      border: 3px dashed rgba(53, 92, 125, 0.8);
+      border-radius: 18px;
+      padding: 16px 18px;
+      background: rgba(255, 255, 255, 0.62);
+      display: grid;
+      gap: 10px;
+      position: relative;
+    }
+
+    .arch-module::before,
+    .arch-module::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      width: 0;
+      border-left: 3px dotted rgba(45, 57, 71, 0.9);
+      transform: translateX(-50%);
+    }
+
+    .arch-module::before {
+      top: -18px;
+      height: 18px;
+    }
+
+    .arch-module::after {
+      bottom: -18px;
+      height: 18px;
+    }
+
+    .arch-module.no-tail::after {
+      display: none;
+    }
+
+    .arch-layer {
+      background: #edd1ca;
+      border: 1px solid rgba(149, 112, 103, 0.55);
+      border-radius: 10px;
+      padding: 10px 10px;
+      text-align: center;
+      font-size: 0.92rem;
+      color: #3f312d;
+      position: relative;
+    }
+
+    .arch-layer.pool {
+      background: #dae6f6;
+      border-color: rgba(95, 122, 167, 0.45);
+      color: #243d61;
+    }
+
+    .arch-layer.fc {
+      background: #d8e8c8;
+      border-color: rgba(112, 142, 89, 0.5);
+      color: #2c4824;
+    }
+
+    .arch-layer.cond {
+      background: #efe1c2;
+      border-color: rgba(159, 133, 79, 0.45);
+      color: #5f4b20;
+    }
+
+    .arch-vertical {
+      display: grid;
+      gap: 12px;
+      position: relative;
+    }
+
+    .arch-vertical .arch-layer:not(:last-child)::after,
+    .arch-heads .arch-output:not(:last-child)::after,
+    .arch-fc-stack .arch-layer:not(:last-child)::after {
+      content: "↓";
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #2b3b4d;
+      font-weight: 700;
+    }
+
+    .arch-vertical .arch-layer {
+      position: relative;
+    }
+
+    .arch-vertical .arch-layer:not(:last-child)::after {
+      bottom: -22px;
+    }
+
+    .arch-heads,
+    .arch-fc-stack {
+      display: grid;
+      gap: 12px;
+      position: relative;
+    }
+
+    .arch-heads .arch-output,
+    .arch-fc-stack .arch-layer {
+      position: relative;
+    }
+
+    .arch-heads .arch-output:not(:last-child)::after,
+    .arch-fc-stack .arch-layer:not(:last-child)::after {
+      bottom: -23px;
+    }
+
+    .arch-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .arch-legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    .arch-legend i {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border-radius: 4px;
+      border: 1px solid rgba(0, 0, 0, 0.12);
+    }
+
+    .arch-pink { background: #edd1ca; }
+    .arch-blue { background: #dae6f6; }
+    .arch-green { background: #d8e8c8; }
+    .arch-gold { background: #efe1c2; }
+
+    .code-block {
+      font-family: "Consolas", "Cascadia Code", monospace;
+      font-size: 0.92rem;
+      color: #1f2933;
+    }
+
+    .inline-math {
+      font-family: var(--serif);
+      color: var(--accent-deep);
+      font-weight: 600;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 0;
+      font-size: 0.95rem;
+    }
+
+    thead th {
+      background: #edf2f6;
+      color: var(--accent-deep);
+      font-weight: 700;
+    }
+
+    th,
+    td {
+      border: 1px solid rgba(183, 171, 148, 0.55);
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    tbody tr:nth-child(even) {
+      background: rgba(248, 244, 235, 0.75);
+    }
+
+    ul,
+    ol {
+      padding-left: 20px;
+      color: #30404f;
+    }
+
+    li + li {
+      margin-top: 6px;
+    }
+
+    .result-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      margin-top: 18px;
+    }
+
+    .result-metric {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 0;
+      border-bottom: 1px dashed rgba(183, 171, 148, 0.6);
+      font-size: 0.93rem;
+      color: #30404f;
+    }
+
+    .result-metric:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .extension-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      margin-top: 18px;
+    }
+
+    .command-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      margin-top: 18px;
+    }
+
+    .footnote {
+      margin-top: 18px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: rgba(228, 237, 244, 0.72);
+      border: 1px solid rgba(53, 92, 125, 0.14);
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(15, 23, 33, 0.82);
+      z-index: 1000;
+    }
+
+    .lightbox.open {
+      display: flex;
+    }
+
+    .lightbox-inner {
+      max-width: min(1200px, 92vw);
+      max-height: 90vh;
+      background: #101923;
+      padding: 18px;
+      border-radius: 18px;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+    }
+
+    .lightbox img {
+      max-width: 100%;
+      max-height: calc(90vh - 36px);
+      border-radius: 12px;
+    }
+
+    @media (max-width: 1380px) {
+      .two-col {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 1100px) {
+      .paper {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: relative;
+        top: 0;
+      }
+
+      .meta-grid,
+      .stat-grid,
+      .contrib-grid,
+      .flow-grid,
+      .figure-grid,
+      .result-grid,
+      .extension-grid,
+      .command-grid,
+      .arch-grid.regressor,
+      .arch-grid.branch,
+      .arch-grid.fine {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .flow-step::after {
+        display: none;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .page-shell {
+        padding: 16px 12px 72px;
+      }
+
+      .hero,
+      .section {
+        padding-left: 22px;
+        padding-right: 22px;
+      }
+
+      .meta-grid,
+      .stat-grid,
+      .contrib-grid,
+      .flow-grid,
+      .figure-grid,
+      .result-grid,
+      .extension-grid,
+      .command-grid,
+      .arch-grid.regressor,
+      .arch-grid.branch,
+      .arch-grid.fine {
+        grid-template-columns: 1fr;
+      }
+
+      .section-header {
+        flex-direction: column;
+        gap: 6px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-shell">
+    <div class="paper">
+      <aside class="sidebar">
+        <h2>目录导航</h2>
+        <p>论文式项目总览，覆盖建模、训练、推理、避障、可视化与复现实验入口。</p>
+        <nav class="toc">
+          <a href="#summary">摘要与定位</a>
+          <a href="#background">研究背景与贡献</a>
+          <a href="#pipeline">项目总流程</a>
+          <a href="#kinematics">运动学建模</a>
+          <a href="#subspace">子空间与标签体系</a>
+          <a href="#network">神经网络系统设计</a>
+          <a href="#inference">推理与优化流程</a>
+          <a href="#results">当前正式结果</a>
+          <a href="#extensions">工程扩展与应用链路</a>
+          <a href="#reproduce">复现实验入口</a>
+        </nav>
+      </aside>
+
+      <main class="content">
+        <header class="hero" id="summary">
+          <span class="hero-kicker">ABB_IRB Neural IK Project</span>
+          <h1>ABB IRB 1200-7/0.7 机械臂神经网络逆运动学工程总览</h1>
+          <p>
+            本页面面向毕业设计论文写作与项目答辩展示，对当前工程的研究目标、数学建模、
+            数据与标签体系、局部回归网络、分层分类器、候选生成策略、阻尼 Newton-Raphson 校正、
+            benchmark、Unity 联调、GUI 封装以及固定障碍物场景下的轨迹重选流程进行系统梳理。
+            页面内容直接整理自仓库内的 README、Summary、源码实现与正式结果工件，而非脱离工程状态的概念性摘要。
+          </p>
+
+          <div class="keywords">
+            <span class="chip">ABB IRB 1200-7/0.7</span>
+            <span class="chip">Segmented Neural IK</span>
+            <span class="chip">Hierarchical Classification</span>
+            <span class="chip">Newton-Raphson Refinement</span>
+            <span class="chip">Obstacle-Aware Reselection</span>
+            <span class="chip">Unity Visualization</span>
+          </div>
+
+          <div class="meta-grid">
+            <div class="meta-card">
+              <span class="meta-label">机器人对象</span>
+              <span class="meta-value">ABB IRB 1200-7/0.7</span>
+            </div>
+            <div class="meta-card">
+              <span class="meta-label">正式划分方案</span>
+              <span class="meta-value">abb_strict = 192 子空间</span>
+            </div>
+            <div class="meta-card">
+              <span class="meta-label">核心方法</span>
+              <span class="meta-value">分类器 + 子空间回归 + NR</span>
+            </div>
+            <div class="meta-card">
+              <span class="meta-label">工程状态</span>
+              <span class="meta-value">训练工件、图表、GUI、Unity 链路已齐备</span>
+            </div>
+          </div>
+        </header>
+
+        <section class="section" id="background">
+          <div class="section-header">
+            <span class="section-index">Section 01</span>
+            <h2 class="section-title">研究背景与总体贡献</h2>
+          </div>
+          <p class="lead">
+            本项目围绕 ABB 工业机械臂的逆运动学求解问题展开。与仅使用传统数值法的方案不同，
+            当前工程采用“子空间划分 + 局部神经网络回归 + 分层分类候选生成 + 数值精修”的组合式链路，
+            目标是在保证物理一致性与最终精度的前提下，提高候选初始化质量、压缩搜索范围并增强工程展示能力。
+          </p>
+
+          <div class="stat-grid">
+            <div class="stat-card">
+              <span class="stat-label">Formal Regression</span>
+              <span class="stat-value">192 个子空间回归器</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Classification</span>
+              <span class="stat-value">单层基线 + 两层分层分类</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Optimization</span>
+              <span class="stat-value">阻尼 NR 局部精修</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Visualization</span>
+              <span class="stat-value">Figure / GUI / Unity 三端联动</span>
+            </div>
+          </div>
+
+          <div class="contrib-grid">
+            <article class="contrib-card">
+              <h3>贡献一：可解释的解空间分段建模</h3>
+              <p>
+                通过对六轴关节空间进行结构化分段，将高维逆解问题转化为若干局部回归子任务，
+                在保证机械意义明确的同时，为分类器候选压缩与回归器训练提供了统一标签基础。
+              </p>
+            </article>
+            <article class="contrib-card">
+              <h3>贡献二：分层候选生成与数值精修耦合</h3>
+              <p>
+                使用粗分类判定大构型，细分类压缩到少量候选子空间，再由子空间回归器输出初值，
+                最终借助阻尼 Newton-Raphson 达到高精度逆解，使神经网络与数值法形成互补。
+              </p>
+            </article>
+            <article class="contrib-card">
+              <h3>贡献三：完整工程链路闭环</h3>
+              <p>
+                当前仓库不仅包含训练与推理，还覆盖 benchmark、论文图表、图形界面、Unity 轨迹回放、
+                固定障碍物碰撞检测与候选解重选，具备较完整的研究型工程形态。
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <section class="section" id="pipeline">
+          <div class="section-header">
+            <span class="section-index">Section 02</span>
+            <h2 class="section-title">项目总流程</h2>
+          </div>
+          <p class="lead">
+            按当前工程推荐的正式路径，项目主线可概括为“建模 - 分段 - 训练 - 候选生成 - 精修 - 评估 - 可视化”。
+            其中，推理阶段的核心不是单一网络直接输出最终逆解，而是通过若干相互耦合的模块逐步收缩解空间并提高精度。
+          </p>
+
+          <div class="flow-board">
+            <div class="flow-grid">
+              <article class="flow-step">
+                <span class="flow-num">1</span>
+                <h3>运动学建模</h3>
+                <p>根据 <code>robot_config.py</code> 的 DH 参数、关节限位与偏置，建立 FK、pose6 与数值雅可比。</p>
+              </article>
+              <article class="flow-step">
+                <span class="flow-num">2</span>
+                <h3>子空间划分</h3>
+                <p>按关节区间将全局解空间划分为 <code>96/192</code> 个子空间，形成局部回归与分类标签系统。</p>
+              </article>
+              <article class="flow-step">
+                <span class="flow-num">3</span>
+                <h3>神经网络训练</h3>
+                <p>训练子空间回归器、单层分类器、粗分类三头网络与条件细分类网络，保存正式元数据与模型工件。</p>
+              </article>
+              <article class="flow-step">
+                <span class="flow-num">4</span>
+                <h3>候选生成与回归</h3>
+                <p>以目标位姿为输入，先生成粗分支与细分类候选，再由对应子空间回归器产生逆解初值。</p>
+              </article>
+              <article class="flow-step">
+                <span class="flow-num">5</span>
+                <h3>FK 回代与 NR 校正</h3>
+                <p>依据回代误差筛选较优初值，并通过阻尼 Newton-Raphson 进行局部修正以获得高精度逆解。</p>
+              </article>
+              <article class="flow-step">
+                <span class="flow-num">6</span>
+                <h3>结果评估</h3>
+                <p>统计位置误差、姿态误差、耗时、候选质量以及 benchmark 结果，形成图表与结果摘要。</p>
+              </article>
+              <article class="flow-step">
+                <span class="flow-num">7</span>
+                <h3>避障与轨迹重选</h3>
+                <p>在固定障碍物场景下，对候选终解生成轨迹并做碰撞检测，通过代价函数重选无碰撞轨迹。</p>
+              </article>
+              <article class="flow-step">
+                <span class="flow-num">8</span>
+                <h3>GUI / Unity 展示</h3>
+                <p>输出 GUI 结果与 Unity 可播放 JSON，实现研究流程的交互封装和可视化验证。</p>
+              </article>
+            </div>
+            <p class="caption">图 1. 工程主流程由分类候选压缩、局部回归初始化与数值法精修组成，避障与可视化模块在主求解链路基础上继续扩展。</p>
+          </div>
+
+          <figure style="margin-top: 18px;">
+            <img src="figure/figures/system_simulation_pipeline.png" alt="系统仿真流程图" data-lightbox>
+            <figcaption>图 2. 仓库中已有的系统仿真流程图，可作为项目训练、推理与仿真一体化链路的图形化补充。</figcaption>
+          </figure>
+        </section>
+
+        <section class="section" id="kinematics">
+          <div class="section-header">
+            <span class="section-index">Section 03</span>
+            <h2 class="section-title">机械臂运动学建模</h2>
+          </div>
+
+          <div class="two-col">
+            <article class="panel">
+              <h3 class="subsection-title">3.1 对象与位姿表达</h3>
+              <p>
+                当前研究对象为 <strong>ABB IRB 1200-7/0.7</strong> 六自由度工业机械臂。
+                末端位姿采用 <span class="inline-math">pose6 = [x, y, z, \phi, \theta, \psi]</span> 表达，
+                其中位置单位为 <code>mm</code>，姿态单位为 <code>rad</code>。该表示同时作为训练样本特征、
+                分类器输入与回归器输入的统一形式。
+              </p>
+
+              <h3 class="subsection-title">3.2 FK 与数值雅可比</h3>
+              <p>
+                <code>fk_model.py</code> 负责实现正运动学、关节点坐标计算、欧拉角变换与数值雅可比。
+                在推理阶段，FK 除了用于回代误差统计外，也是阻尼 Newton-Raphson 计算误差向量与雅可比矩阵的直接基础。
+              </p>
+
+              <div class="formula">
+                <span class="eq">T(\mathbf{q}) = A_1(q_1) A_2(q_2) \cdots A_6(q_6)</span>
+                <span class="eq">pose6(\mathbf{q}) = [x(\mathbf{q}), y(\mathbf{q}), z(\mathbf{q}), \phi(\mathbf{q}), \theta(\mathbf{q}), \psi(\mathbf{q})]</span>
+              </div>
+            </article>
+
+            <article class="panel">
+              <h3 class="subsection-title">3.3 关键参数与偏置</h3>
+              <p>
+                当前工程将第 2 关节偏置设置为 <code>theta2_offset = -90°</code>，
+                该偏置并不改变机械限位本身，而是用于使数学坐标系与 ABB 机械臂建模约定保持一致。
+              </p>
+
+              <table>
+                <thead>
+                  <tr>
+                    <th>参数项</th>
+                    <th>当前取值</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>机器人型号</td>
+                    <td>IRB 1200-7/0.7</td>
+                  </tr>
+                  <tr>
+                    <td>输入特征</td>
+                    <td><code>x_mm, y_mm, z_mm, phi_rad, theta_rad, psi_rad</code></td>
+                  </tr>
+                  <tr>
+                    <td>第 2 关节偏置</td>
+                    <td><code>-90°</code></td>
+                  </tr>
+                  <tr>
+                    <td>输出目标</td>
+                    <td><code>q1_deg ~ q6_deg</code></td>
+                  </tr>
+                </tbody>
+              </table>
+            </article>
+          </div>
+        </section>
+
+        <section class="section" id="subspace">
+          <div class="section-header">
+            <span class="section-index">Section 04</span>
+            <h2 class="section-title">子空间划分与标签体系</h2>
+          </div>
+          <p class="lead">
+            子空间划分是本项目的核心结构之一。通过将六个关节分别划分为若干区间，可把全局逆解问题拆分为多个局部回归子问题，
+            同时为分类器提供明确的离散标签空间。当前工程保留 <code>abb_simplified</code> 与 <code>abb_strict</code> 两种方案，
+            正式实验统一采用 <code>abb_strict</code>。
+          </p>
+
+          <div class="two-col">
+            <article class="panel">
+              <h3 class="subsection-title">4.1 两套划分方案</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>配置</th>
+                    <th>q1</th>
+                    <th>q2</th>
+                    <th>q3</th>
+                    <th>q4</th>
+                    <th>q5</th>
+                    <th>q6</th>
+                    <th>总子空间数</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>abb_simplified</code></td>
+                    <td>2</td>
+                    <td>2</td>
+                    <td>2</td>
+                    <td>2</td>
+                    <td>3</td>
+                    <td>2</td>
+                    <td>96</td>
+                  </tr>
+                  <tr>
+                    <td><code>abb_strict</code></td>
+                    <td>2</td>
+                    <td>2</td>
+                    <td>2</td>
+                    <td>4</td>
+                    <td>3</td>
+                    <td>2</td>
+                    <td>192</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div class="formula">
+                <span class="eq">N<sub>subspace</sub> = ∏<sub>j=1</sub><sup>6</sup> n<sub>j</sub></span>
+                <span class="eq">2 × 2 × 2 × 4 × 3 × 2 = 192</span>
+              </div>
+            </article>
+
+            <article class="panel">
+              <h3 class="subsection-title">4.2 `abb_strict` 六轴分段</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>关节</th>
+                    <th>分段区间（deg）</th>
+                    <th>分段数</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>q1</td>
+                    <td>[-170, 0], [0, 170]</td>
+                    <td>2</td>
+                  </tr>
+                  <tr>
+                    <td>q2</td>
+                    <td>[-100, 20], [20, 135]</td>
+                    <td>2</td>
+                  </tr>
+                  <tr>
+                    <td>q3</td>
+                    <td>[-200, -65], [-65, 70]</td>
+                    <td>2</td>
+                  </tr>
+                  <tr>
+                    <td>q4</td>
+                    <td>[-270, -135], [-135, 0], [0, 135], [135, 270]</td>
+                    <td>4</td>
+                  </tr>
+                  <tr>
+                    <td>q5</td>
+                    <td>[-130, -45], [-45, 45], [45, 130]</td>
+                    <td>3</td>
+                  </tr>
+                  <tr>
+                    <td>q6</td>
+                    <td>[-180, 0], [0, 180]</td>
+                    <td>2</td>
+                  </tr>
+                </tbody>
+              </table>
+            </article>
+          </div>
+
+          <div class="figure-grid">
+            <figure>
+              <img src="figure/figures/subspace_profile_comparison.png" alt="子空间划分对比图" data-lightbox>
+              <figcaption>图 3. `abb_simplified` 与 `abb_strict` 两套划分配置的结构对比。</figcaption>
+            </figure>
+            <figure>
+              <img src="figure/figures/workspace_reference_projections.png" alt="工作空间参考投影图" data-lightbox>
+              <figcaption>图 4. 子空间参考样本投影，有助于从空间覆盖角度理解分段建模的意义。</figcaption>
+            </figure>
+          </div>
+
+          <article class="panel" style="margin-top: 18px;">
+            <h3 class="subsection-title">4.3 粗标签与细标签</h3>
+            <p>
+              在 <code>abb_strict</code> 配置下，当前工程使用两层分类：
+              第一层采用 <code>coarse12</code>，由 <code>shoulder</code>、<code>elbow</code>、
+              <code>wrist</code> 三个头共同构成 <strong>12</strong> 个粗分支；
+              第二层在给定粗分支条件下，对 <code>q2_bin</code>、<code>q4_bin</code>、<code>q6_bin</code>
+              组成的 <strong>16</strong> 个细类进行判定，并最终映射回全局 <code>subspace_id</code>。
+            </p>
+            <div class="formula">
+              <span class="eq">s = (((((b<sub>1</sub> n<sub>2</sub> + b<sub>2</sub>)n<sub>3</sub> + b<sub>3</sub>)n<sub>4</sub> + b<sub>4</sub>)n<sub>5</sub> + b<sub>5</sub>)n<sub>6</sub> + b<sub>6</sub>)</span>
+              <span class="eq">(branch label, fine label) → subspace id</span>
+            </div>
+          </article>
+        </section>
+
+        <section class="section" id="network">
+          <div class="section-header">
+            <span class="section-index">Section 05</span>
+            <h2 class="section-title">神经网络系统设计</h2>
+          </div>
+          <p class="lead">
+            这一部分不再强调公式推导，而是强调网络结构本身如何服务于整个逆解流程。
+            当前系统由三类关键网络组成：局部回归器、粗分类三头网络、条件细分类网络。
+            它们分别对应“初值生成”“大构型压缩”和“局部候选收缩”三个不同职责。
+          </p>
+
+          <div class="architecture-stack">
+            <article class="architecture-board">
+              <h3>5.1 子空间回归器结构</h3>
+              <p>
+                对每个候选子空间，系统调用对应的局部回归器生成逆解初值。
+                正式实现中这一模块拆成两支：一支预测 <code>q1~q5</code>，另一支预测 <code>q6</code>。
+              </p>
+              <div class="arch-grid regressor">
+                <div class="arch-node">输入<br><strong>pose6 (6)</strong></div>
+                <div class="arch-module no-tail">
+                  <div class="arch-vertical">
+                    <div class="arch-layer">全连接层 (20)<br>ReLU</div>
+                    <div class="arch-layer">全连接层 (20)<br>ReLU</div>
+                    <div class="arch-layer">全连接层 (20)<br>ReLU</div>
+                  </div>
+                </div>
+                <div class="arch-fc-stack">
+                  <div class="arch-output">输出 A<br><strong>q1~q5</strong></div>
+                  <div class="arch-output">输出 B<br><strong>q6</strong></div>
+                </div>
+              </div>
+              <div class="process-note">
+                结构要点：统一输入为 <code>pose6</code>，隐藏层宽度为 <code>20</code>，深度为 <code>3</code>，
+                通过两个局部分支输出完整的 6 维关节初值。
+              </div>
+            </article>
+
+            <article class="architecture-board">
+              <h3>5.2 粗分类三头网络结构</h3>
+              <p>
+                该模块的目标不是直接给出最终 <code>subspace_id</code>，而是先判断机械臂的大构型。
+                它使用共享主干后接三个分类头，分别预测 <code>shoulder</code>、<code>elbow</code> 与 <code>wrist</code>。
+              </p>
+              <div class="arch-grid branch">
+                <div class="arch-node">输入<br><strong>pose6 (6)</strong></div>
+                <div class="arch-module no-tail">
+                  <div class="arch-vertical">
+                    <div class="arch-layer">输入投影层 (35)</div>
+                    <div class="arch-layer">隐藏块 × 6 / 20 / 30</div>
+                    <div class="arch-layer pool">共享特征主干</div>
+                  </div>
+                </div>
+                <div class="arch-heads">
+                  <div class="arch-output">Shoulder Head<br><strong>2 类</strong></div>
+                  <div class="arch-output">Elbow Head<br><strong>2 类</strong></div>
+                  <div class="arch-output">Wrist Head<br><strong>3 类</strong></div>
+                </div>
+              </div>
+              <div class="process-note">
+                结构要点：共享主干负责抽取姿态特征，三头输出负责大构型判别；
+                三头结果再通过组合形成 <code>2 × 2 × 3 = 12</code> 个粗分支候选。
+              </div>
+            </article>
+
+            <article class="architecture-board">
+              <h3>5.3 条件细分类网络结构</h3>
+              <p>
+                在粗分支已知的前提下，系统将 <code>pose6</code> 与 <code>branch_onehot_12</code> 拼接，
+                构造条件输入，并进一步压缩到局部细类别，最终映射回全局 <code>subspace_id</code>。
+              </p>
+              <div class="arch-grid fine">
+                <div class="arch-fc-stack">
+                  <div class="arch-compact">pose6<br><strong>6 维</strong></div>
+                  <div class="arch-compact">branch one-hot<br><strong>12 维</strong></div>
+                  <div class="arch-node">拼接输入<br><strong>18 维</strong></div>
+                </div>
+                <div class="arch-module no-tail">
+                  <div class="arch-vertical">
+                    <div class="arch-layer cond">条件输入投影层 (35)</div>
+                    <div class="arch-layer">隐藏块 × 6 / 20 / 30</div>
+                    <div class="arch-layer fc">细分类主干</div>
+                  </div>
+                </div>
+                <div class="arch-heads">
+                  <div class="arch-output">Fine Classifier<br><strong>16 类</strong></div>
+                  <div class="arch-output">映射表<br><strong>fine → subspace</strong></div>
+                </div>
+              </div>
+              <div class="process-note">
+                结构要点：细分类器本质上是“带粗分支条件的局部分类器”，它不直接替代粗分类，
+                而是在粗分支约束下进一步细化候选集合。
+              </div>
+            </article>
+          </div>
+
+          <article class="panel" style="margin-top: 18px;">
+            <h3 class="subsection-title">5.4 分类器三种结构变体</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>变体</th>
+                  <th>宽度</th>
+                  <th>深度</th>
+                  <th>残差连接</th>
+                  <th>BatchNorm</th>
+                  <th>适用模块</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>v1</code></td>
+                  <td>35</td>
+                  <td>6</td>
+                  <td>否</td>
+                  <td>否</td>
+                  <td>单层分类器 / 细分类器 / 粗分类器</td>
+                </tr>
+                <tr>
+                  <td><code>v2</code></td>
+                  <td>35</td>
+                  <td>20</td>
+                  <td>是</td>
+                  <td>否</td>
+                  <td>单层分类器 / 细分类器 / 粗分类器</td>
+                </tr>
+                <tr>
+                  <td><code>v3</code></td>
+                  <td>35</td>
+                  <td>30</td>
+                  <td>是</td>
+                  <td>是</td>
+                  <td>单层分类器 / 细分类器 / 粗分类器</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="arch-legend">
+              <span><i class="arch-pink"></i>标准隐藏层 / 特征层</span>
+              <span><i class="arch-blue"></i>共享主干 / 池化结构节点</span>
+              <span><i class="arch-green"></i>分类或回归输出</span>
+              <span><i class="arch-gold"></i>条件输入相关节点</span>
+            </div>
+            <div class="footnote">
+              注：源码中的 <code>ClassifierMLP</code> 与 <code>MultiHeadBranchClassifier</code> 都采用“输入投影 + 隐藏块 + 输出头”的组织方式；
+              上述结构图刻意强调模块职责与数据流向，以便论文展示时快速讲清系统结构。
+            </div>
+          </article>
+        </section>
+
+        <section class="section" id="inference">
+          <div class="section-header">
+            <span class="section-index">Section 06</span>
+            <h2 class="section-title">推理与优化流程</h2>
+          </div>
+          <p class="lead">
+            正式在线推理入口为 <code>predict_ik.py</code>，障碍物场景下的扩展规划入口为
+            <code>scripts/plan_collision_free_ik.py</code>。与“网络直接出最终解”的方式不同，
+            当前系统强调候选集合生成、物理回代验证与数值精修的层层收缩，因此本节重点展示结构流程而非公式。
+          </p>
+
+          <div class="flow-board">
+            <div class="flow-grid">
+              <article class="flow-step">
+                <span class="flow-num">1</span>
+                <h3>目标位姿输入</h3>
+                <p>输入统一为 <code>pose6</code>，即末端位置与姿态组合特征。</p>
+              </article>
+              <article class="flow-step">
+                <span class="flow-num">2</span>
+                <h3>粗分类候选</h3>
+                <p>由三头网络分别给出 shoulder、elbow、wrist 的高置信组合，形成粗分支集合。</p>
+              </article>
+              <article class="flow-step">
+                <span class="flow-num">3</span>
+                <h3>细分类压缩</h3>
+                <p>结合粗分支 one-hot 条件，细分类器把搜索范围进一步收缩到少量候选子空间。</p>
+              </article>
+              <article class="flow-step">
+                <span class="flow-num">4</span>
+                <h3>局部回归初值</h3>
+                <p>对每个候选子空间调用局部回归器，生成关节角初值 <code>q0</code>。</p>
+              </article>
+              <article class="flow-step">
+                <span class="flow-num">5</span>
+                <h3>FK 回代筛选</h3>
+                <p>根据末端位置误差、上界指标 <code>e_max</code> 与候选排序结果筛出较优初值。</p>
+              </article>
+              <article class="flow-step">
+                <span class="flow-num">6</span>
+                <h3>NR 局部精修</h3>
+                <p>对较优初值执行阻尼 Newton-Raphson，获得高精度终解。</p>
+              </article>
+              <article class="flow-step">
+                <span class="flow-num">7</span>
+                <h3>轨迹生成</h3>
+                <p>若存在障碍物场景，则以起点和终点构造直连或 waypoint 候选轨迹。</p>
+              </article>
+              <article class="flow-step">
+                <span class="flow-num">8</span>
+                <h3>碰撞检测与重选</h3>
+                <p>依据碰撞帧数、最小净空、路径长度与精度阈值，对候选轨迹进行重选。</p>
+              </article>
+            </div>
+            <p class="caption">图 11. 当前推理链路的核心不是单点预测，而是“分类压缩 - 回归初始化 - 数值精修 - 轨迹级筛选”的逐级收缩过程。</p>
+          </div>
+
+          <div class="two-col" style="margin-top: 18px;">
+            <article class="panel">
+              <h3 class="subsection-title">6.1 主求解链路</h3>
+              <ul>
+                <li>粗分类用于判断大构型，减少全局穷举的不必要开销。</li>
+                <li>细分类在粗分支条件下进一步缩小候选子空间集合。</li>
+                <li>局部回归器负责把候选解带入数值法的有效收敛域。</li>
+                <li>FK 回代负责从物理一致性的角度再做一层验证。</li>
+                <li>NR 负责将“可用初值”修正到“高精度终解”。</li>
+              </ul>
+              <div class="process-note">
+                从论文讲述角度，可以把这里概括成一句话：
+                “神经网络负责快速定位与初始化，数值法负责最终精修与精度闭环。”
+              </div>
+            </article>
+
+            <article class="panel">
+              <h3 class="subsection-title">6.2 避障重选链路</h3>
+              <ul>
+                <li>每个候选终解都可生成一条待验证轨迹，而非只检查终点本身。</li>
+                <li>轨迹评价指标包括：碰撞标志、碰撞帧数、最小净空、路径长度、单帧最大关节变化量。</li>
+                <li>系统优先保留无碰撞且满足精度阈值的候选，再在可行解内部比较总代价。</li>
+                <li>因此当前避障问题本质上是“候选轨迹重选”，而不只是“单次逆解求解”。</li>
+              </ul>
+              <div class="process-note">
+                在示例场景中，系统最终选择 <code>subspace = 10</code> 的无碰撞轨迹，
+                最小净空约为 <code>109.069 mm</code>，说明流程已经具备轨迹级可行性判断能力。
+              </div>
+            </article>
+          </div>
+
+          <article class="panel" style="margin-top: 18px;">
+            <h3 class="subsection-title">6.3 固定障碍物场景下的候选解重选</h3>
+            <p>
+              在障碍物场景中，候选终解不再只按末端误差排序，而是进一步生成轨迹并进行逐帧碰撞检测。
+              当前规划器对每个候选轨迹统计是否碰撞、碰撞帧数、最小净空、轨迹总关节长度、单帧最大关节变化量等量，
+              再通过代价函数选择无碰撞且满足精度阈值的轨迹。
+            </p>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>代价项</th>
+                  <th>物理含义</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>I_col</code></td>
+                  <td>轨迹是否发生碰撞</td>
+                </tr>
+                <tr>
+                  <td><code>N_col</code></td>
+                  <td>碰撞帧数</td>
+                </tr>
+                <tr>
+                  <td><code>d_min</code></td>
+                  <td>最小净空，若为负则表示侵入障碍物</td>
+                </tr>
+                <tr>
+                  <td><code>E_acc</code></td>
+                  <td>位置误差与姿态误差超阈值罚项</td>
+                </tr>
+                <tr>
+                  <td><code>L_q</code></td>
+                  <td>轨迹总关节路径长度</td>
+                </tr>
+                <tr>
+                  <td><code>Δq_max</code></td>
+                  <td>单帧最大关节变化量</td>
+                </tr>
+                <tr>
+                  <td><code>d_clr</code></td>
+                  <td>净空奖励项，上限截断</td>
+                </tr>
+              </tbody>
+            </table>
+          </article>
+        </section>
+
+        <section class="section" id="results">
+          <div class="section-header">
+            <span class="section-index">Section 07</span>
+            <h2 class="section-title">当前正式结果</h2>
+          </div>
+          <p class="lead">
+            本节汇总当前仓库中正式结果工件与 README 已确认的关键数值，重点展示回归系统、分类系统、
+            单样本推理效果以及固定障碍物场景下的轨迹重选结果。
+          </p>
+
+          <div class="result-grid">
+            <article class="result-card">
+              <h3>7.1 回归器汇总</h3>
+              <div class="result-metric"><span>正式配置</span><strong>abb_strict</strong></div>
+              <div class="result-metric"><span>子空间总数</span><strong>192</strong></div>
+              <div class="result-metric"><span>每个子空间样本数</span><strong>100000</strong></div>
+              <div class="result-metric"><span>训练轮数</span><strong>400</strong></div>
+              <div class="result-metric"><span>`q1-5` 验证 MSE 均值</span><strong>332.6695 deg²</strong></div>
+              <div class="result-metric"><span>`q6` 验证 MSE 均值</span><strong>465.1991 deg²</strong></div>
+              <div class="result-metric"><span>测试位置误差均值</span><strong>83.2627 mm</strong></div>
+              <div class="result-metric"><span>`e_max` 中位数</span><strong>546.7141 mm</strong></div>
+            </article>
+
+            <article class="result-card">
+              <h3>7.2 分类系统</h3>
+              <div class="result-metric"><span>单层 `192` 类 `v1`</span><strong>0.1110</strong></div>
+              <div class="result-metric"><span>单层 `192` 类 `v2`</span><strong>0.1422</strong></div>
+              <div class="result-metric"><span>单层 `192` 类 `v3`</span><strong>0.1416</strong></div>
+              <div class="result-metric"><span>粗分类 Joint Acc `v2`</span><strong>0.3068</strong></div>
+              <div class="result-metric"><span>粗分类 Shoulder Acc `v2`</span><strong>0.6155</strong></div>
+              <div class="result-metric"><span>细分类 Top-1 `v3`</span><strong>0.4425</strong></div>
+              <div class="result-metric"><span>细分类 Top-3 `v3`</span><strong>0.8325</strong></div>
+              <div class="result-metric"><span>分支规模</span><strong>12 粗类 / 16 细类</strong></div>
+            </article>
+
+            <article class="result-card">
+              <h3>7.3 障碍物场景示例</h3>
+              <div class="result-metric"><span>场景文件</span><strong>open_space_reselect_demo</strong></div>
+              <div class="result-metric"><span>障碍物中心</span><strong>[221.7, 274.53, 493.57]</strong></div>
+              <div class="result-metric"><span>障碍物尺寸</span><strong>[127.62, 90.45, 175.06]</strong></div>
+              <div class="result-metric"><span>选中子空间</span><strong>10</strong></div>
+              <div class="result-metric"><span>最终位置误差</span><strong>0.00053 mm</strong></div>
+              <div class="result-metric"><span>最终姿态误差</span><strong>9.28e-07 rad</strong></div>
+              <div class="result-metric"><span>碰撞帧数</span><strong>0</strong></div>
+              <div class="result-metric"><span>最小净空</span><strong>109.069 mm</strong></div>
+            </article>
+          </div>
+
+          <div class="figure-grid">
+            <figure>
+              <img src="figure/figures/prediction_subspace_error_distribution.png" alt="回归误差分布图" data-lightbox>
+              <figcaption>图 5. 正式回归系统的子空间位置误差分布，表明局部回归器能够提供可用初值，但仍需 NR 精修。</figcaption>
+            </figure>
+            <figure>
+              <img src="figure/figures/classification_hierarchical_comparison.png" alt="分类系统结果图" data-lightbox>
+              <figcaption>图 6. 单层分类与分层分类性能对比，说明在 ABB 机械臂场景下分层策略更适合作为候选压缩器。</figcaption>
+            </figure>
+          </div>
+
+          <div class="figure-grid" style="margin-top: 18px;">
+            <figure>
+              <img src="figure/figures/single_case_ik_metrics.png" alt="单样本完整逆解结果图" data-lightbox>
+              <figcaption>图 7. 单样本推理结果表明，神经回归器可将初值带入有效收敛域，NR 仅需少量迭代即可收敛。</figcaption>
+            </figure>
+            <figure>
+              <img src="figure/figures/obstacle_avoidance_trajectory_comparison.png" alt="障碍物避障轨迹对比图" data-lightbox>
+              <figcaption>图 8. 固定障碍物场景下的候选轨迹与最终选中轨迹对比，体现轨迹级碰撞检测与代价重选的作用。</figcaption>
+            </figure>
+          </div>
+
+          <article class="panel" style="margin-top: 18px;">
+            <h3 class="subsection-title">7.4 结果解读</h3>
+            <ul>
+              <li>子空间回归器的主要价值在于生成高质量初值，而非直接充当最终逆解输出器。</li>
+              <li>单层 `192` 类分类器的 Top-1 准确率偏低，难以稳定完成在线子空间定位。</li>
+              <li>粗分类器用于判断大构型，细分类器在条件输入下可把局部候选精度提升到可用水平。</li>
+              <li>阻尼 Newton-Raphson 是当前链路中实现高精度终解的必要环节。</li>
+              <li>障碍物场景下，问题重心从“单个终解是否正确”转向“整条轨迹是否无碰撞且代价更优”。</li>
+            </ul>
+          </article>
+        </section>
+
+        <section class="section" id="extensions">
+          <div class="section-header">
+            <span class="section-index">Section 08</span>
+            <h2 class="section-title">工程扩展与应用链路</h2>
+          </div>
+          <p class="lead">
+            除核心逆运动学方法外，当前工程已经形成从实验评估到交互展示的扩展链路，使项目不仅能输出数值结果，
+            也能支撑论文图表、界面封装和三维动画回放。
+          </p>
+
+          <div class="extension-grid">
+            <article class="extension-card">
+              <h3>8.1 Benchmark 对比实验</h3>
+              <p>
+                工程已完成 <code>NN only</code>、<code>NN + NR</code>、<code>DLS</code>、
+                <code>Multi-start DLS</code>、<code>L-BFGS-B</code>、
+                <code>Multi-start L-BFGS-B</code> 六组逆解方法对比，并生成对应图表与统计表格。
+              </p>
+            </article>
+            <article class="extension-card">
+              <h3>8.2 Unity 联调与轨迹回放</h3>
+              <p>
+                Python 侧能够导出 FK 参考结果、普通轨迹 JSON、方法对比轨迹 JSON 与障碍物演示 JSON；
+                Unity 侧则通过 <code>AbbJointPosePlayer</code>、<code>AbbTrajectoryJsonPlayer</code> 等脚本完成回放与校验。
+              </p>
+            </article>
+            <article class="extension-card">
+              <h3>8.3 GUI 封装入口</h3>
+              <p>
+                <code>gui/app.py</code> 将训练后常用的推理、避障、JSON 导出、参考样本查看与图表流程集中封装，
+                使实验验证与论文展示操作更适合答辩或演示场景。
+              </p>
+            </article>
+          </div>
+
+          <div class="figure-grid">
+            <figure>
+              <img src="figure/figures/ik_benchmark_six_methods_summary_n100.png" alt="六方法逆解 benchmark 图" data-lightbox>
+              <figcaption>图 9. 六组逆解方法 benchmark 汇总结果，可用于论文中的算法对比章节。</figcaption>
+            </figure>
+            <figure>
+              <img src="figure/figures/workspace_reference_3d.png" alt="工作空间参考三维图" data-lightbox>
+              <figcaption>图 10. 参考样本空间分布图，展示训练数据与工作空间覆盖情况。</figcaption>
+            </figure>
+          </div>
+        </section>
+
+        <section class="section" id="reproduce">
+          <div class="section-header">
+            <span class="section-index">Section 09</span>
+            <h2 class="section-title">复现实验入口</h2>
+          </div>
+          <p class="lead">
+            为避免页面沦为命令墙，本节只保留最能代表当前正式流程的关键入口命令。
+            完整命令与阶段性运行记录仍以 <code>README.md</code> 和 <code>Summary.md</code> 为准。
+          </p>
+
+          <div class="command-grid">
+            <article class="command-card">
+              <h3>9.1 回归系统正式训练</h3>
+              <div class="code-block">python -X utf8 train_prediction_models.py --segment_profile abb_strict --samples_per_subspace 100000 --epochs 400 --batch_size 4096 --hidden_layers 3 --neurons_per_layer 20 --train_ratio 0.7 --val_ratio 0.15 --test_ratio 0.15 --normalizer_samples 200000 --feature_batch_size 8192 --out_dir artifacts/prediction_system_formal</div>
+            </article>
+            <article class="command-card">
+              <h3>9.2 分类系统正式训练</h3>
+              <div class="code-block">python -X utf8 train_classification_models.py --segment_profile abb_strict --trainset_v1 400000 --trainset_v2 600000 --trainset_v3 500000 --val_samples 5000 --epochs 80 --batch_size 4096 --feature_batch_size 8192 --out_dir artifacts/classification_system_formal</div>
+            </article>
+            <article class="command-card">
+              <h3>9.3 分层分类正式训练</h3>
+              <div class="code-block">python -X utf8 train_branch_classification_models.py --segment_profile abb_strict --trainset_v1 250000 --trainset_v2 400000 --trainset_v3 320000 --val_samples 4000 --epochs 60 --batch_size 4096 --feature_batch_size 8192 --out_dir artifacts/branch_classification_system</div>
+              <div class="code-block">python -X utf8 train_fine_classification_models.py --segment_profile abb_strict --trainset_v1 250000 --trainset_v2 400000 --trainset_v3 320000 --val_samples 4000 --epochs 60 --batch_size 4096 --feature_batch_size 8192 --out_dir artifacts/fine_classification_system</div>
+            </article>
+            <article class="command-card">
+              <h3>9.4 完整推理与避障规划</h3>
+              <div class="code-block">python -X utf8 predict_ik.py --candidate_mode hierarchical --pose "100,200,800,0.1,-0.2,0.3" --pred_meta artifacts/prediction_system_formal/metadata.json --branch_meta artifacts/branch_classification_system/metadata.json --fine_meta artifacts/fine_classification_system/metadata.json --topk_shoulder 2 --topk_elbow 1 --topk_wrist 2 --max_branch_candidates 4 --fine_topk_per_branch 3 --max_subspace_candidates 15 --enable_nr --out_json artifacts/fine_classification_system/test_pose_001_full_ik.json</div>
+              <div class="code-block">python -X utf8 .\scripts\plan_collision_free_ik.py --pose "100,200,800,0.1,-0.2,0.3" --q_start "0,0,0,0,0,0" --scene_json data\obstacles\open_space_reselect_demo.json --pred_meta artifacts\prediction_system_formal\metadata.json --branch_meta artifacts\branch_classification_system\metadata.json --fine_meta artifacts\fine_classification_system\metadata.json --topk_shoulder 2 --topk_elbow 1 --topk_wrist 2 --max_branch_candidates 6 --fine_topk_per_branch 3 --max_subspace_candidates 18 --max_evaluated_candidates 18 --trajectory_steps 120 --save_selected_frames --out_json artifacts\obstacle_avoidance\open_space_reselect_demo_plan.json</div>
+            </article>
+          </div>
+
+          <div class="footnote">
+            页面说明：若后续需要进一步扩展为答辩用交互展板，可在当前单文件基础上继续加入章节折叠、结果筛选或图表索引功能。
+            当前版本优先满足论文展示、项目讲解与仓库内直接打开查看三类需求。
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div class="lightbox" id="lightbox" aria-hidden="true">
+    <div class="lightbox-inner">
+      <img src="" alt="放大查看" id="lightbox-image">
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const tocLinks = Array.from(document.querySelectorAll(".toc a"));
+      const sections = tocLinks
+        .map((link) => document.querySelector(link.getAttribute("href")))
+        .filter(Boolean);
+
+      const updateActiveLink = (id) => {
+        tocLinks.forEach((link) => {
+          const active = link.getAttribute("href") === `#${id}`;
+          link.classList.toggle("active", active);
+        });
+      };
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          const visible = entries
+            .filter((entry) => entry.isIntersecting)
+            .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+          if (visible.length > 0) {
+            updateActiveLink(visible[0].target.id);
+          }
+        },
+        {
+          rootMargin: "-20% 0px -60% 0px",
+          threshold: [0.2, 0.45, 0.7]
+        }
+      );
+
+      sections.forEach((section) => observer.observe(section));
+
+      const lightbox = document.getElementById("lightbox");
+      const lightboxImage = document.getElementById("lightbox-image");
+      const figureImages = document.querySelectorAll("[data-lightbox]");
+
+      figureImages.forEach((img) => {
+        img.addEventListener("click", () => {
+          lightboxImage.src = img.getAttribute("src");
+          lightboxImage.alt = img.getAttribute("alt") || "放大查看";
+          lightbox.classList.add("open");
+          lightbox.setAttribute("aria-hidden", "false");
+        });
+      });
+
+      lightbox.addEventListener("click", (event) => {
+        if (event.target === lightbox || event.target === lightboxImage) {
+          lightbox.classList.remove("open");
+          lightbox.setAttribute("aria-hidden", "true");
+          lightboxImage.src = "";
+        }
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          lightbox.classList.remove("open");
+          lightbox.setAttribute("aria-hidden", "true");
+          lightboxImage.src = "";
+        }
+      });
+
+      if (sections.length > 0) {
+        updateActiveLink(sections[0].id);
+      }
+    })();
+  </script>
+</body>
+</html>
