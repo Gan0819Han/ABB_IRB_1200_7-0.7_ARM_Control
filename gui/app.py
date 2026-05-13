@@ -10,12 +10,19 @@ import sys
 import threading
 from pathlib import Path
 import tkinter as tk
+import tkinter.font as tkfont
 from tkinter import filedialog, ttk
+
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.figure import Figure
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+from PIL import Image, ImageTk
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from fk_model import fk_abb_irb_joint_points
 from robot_config import JOINT_LIMITS_DEG
 
 
@@ -27,6 +34,25 @@ DEFAULT_OBSTACLE_CENTER_MM = [221.7, 274.53, 493.57]
 DEFAULT_OBSTACLE_SIZE_MM = [127.62, 90.45, 175.06]
 NEW_OBSTACLE_CENTER_MM = [360.0, -180.0, 540.0]
 NEW_OBSTACLE_SIZE_MM = [110.0, 90.0, 160.0]
+PREVIEW_BG = "#F8FAFC"
+PREVIEW_AXIS = "#CBD5E1"
+PREVIEW_OBSTACLE_FILL = "#E2E8F0"
+PREVIEW_OBSTACLE_OUTLINE = "#64748B"
+PREVIEW_SELECTED_FILL = "#FDE68A"
+PREVIEW_SELECTED_OUTLINE = "#B45309"
+PREVIEW_ROBOT = "#2563EB"
+PREVIEW_TARGET = "#DC2626"
+PREVIEW_3D_STATUS_IDLE = "等待手动刷新 3D 预览。"
+APP_BG = "#F3F6FB"
+PANEL_BG = "#FFFFFF"
+CARD_BG = "#FCFDFE"
+BORDER_COLOR = "#D7DFEA"
+TEXT_PRIMARY = "#172033"
+TEXT_MUTED = "#5B6474"
+ACCENT = "#2563EB"
+ACCENT_DARK = "#173A8F"
+SUCCESS = "#0F766E"
+CANVAS_BG = "#F7FAFD"
 
 
 class ScrollText(ttk.Frame):
@@ -56,7 +82,7 @@ class ScrollText(ttk.Frame):
 class ScrollableForm(ttk.Frame):
     def __init__(self, master: tk.Widget) -> None:
         super().__init__(master)
-        self.canvas = tk.Canvas(self, highlightthickness=0)
+        self.canvas = tk.Canvas(self, highlightthickness=0, bg=APP_BG, bd=0)
         self.vbar = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
         self.inner = ttk.Frame(self.canvas)
         self.inner.bind(
@@ -98,6 +124,8 @@ class App(tk.Tk):
         self.title("ABB_IRB Control GUI")
         self.geometry("1380x860")
         self.minsize(1200, 780)
+        self.configure(bg=APP_BG)
+        self._setup_theme()
 
         self.path_defaults = self._load_path_defaults()
         self.status_var = tk.StringVar(value="Ready")
@@ -148,6 +176,15 @@ class App(tk.Tk):
         self.obstacle_nr_step_scale_var = tk.StringVar(value="1.0")
         self.obstacle_trajectory_steps_var = tk.StringVar(value="120")
         self.obstacle_dedupe_tol_deg_var = tk.StringVar(value="0.5")
+        self.obstacle_move_step_var = tk.StringVar(value="20")
+        self.obstacle_size_step_var = tk.StringVar(value="10")
+        self.obstacle_editor_preview_status_var = tk.StringVar(value="等待预览刷新。")
+        self.obstacle_preview_canvases: dict[str, tk.Canvas] = {}
+        self._obstacle_preview_after_id: str | None = None
+        self.obstacle_3d_preview_status_var = tk.StringVar(value=PREVIEW_3D_STATUS_IDLE)
+        self.obstacle_3d_figure: Figure | None = None
+        self.obstacle_3d_ax = None
+        self.obstacle_3d_canvas: FigureCanvasTkAgg | None = None
 
         self.fk_q_var = tk.StringVar(value="20,30,-40,10,20,0")
         self.fk_out_json_var = tk.StringVar(value=self._default_path_value("fk_out_json", UNITY_DIR / "Assets" / "ReferenceData" / "gui_fk_reference.json"))
@@ -170,25 +207,58 @@ class App(tk.Tk):
         self.figure_obstacle_plan_json_var = tk.StringVar(value=self._default_path_value("figure_obstacle_plan_json", ROOT / "artifacts" / "obstacle_avoidance" / "gui_plan.json"))
         self.figure_preview_status_var = tk.StringVar(value="尚未生成避障图预览。")
         self.figure_preview_path_var = tk.StringVar(value="")
-        self.obstacle_preview_photo: tk.PhotoImage | None = None
+        self.obstacle_preview_scale_var = tk.StringVar(value="100%")
+        self.obstacle_preview_photo: ImageTk.PhotoImage | None = None
+        self.obstacle_preview_image_original: Image.Image | None = None
+        self.obstacle_preview_scale = 1.0
+        self.figure_preview_canvas: tk.Canvas | None = None
+        self.obstacle_preview_offset_x = 0.0
+        self.obstacle_preview_offset_y = 0.0
+        self._obstacle_preview_drag_last: tuple[float, float] | None = None
 
         self._build_ui()
         self._try_load_obstacle_editor_from_scene()
+        self.refresh_obstacle_editor_preview()
         self.refresh_obstacle_figure_preview()
 
     def _build_ui(self) -> None:
         self.columnconfigure(0, weight=1)
         self.rowconfigure(1, weight=1)
 
-        top = ttk.Frame(self, padding=8)
+        top = tk.Frame(self, bg=ACCENT_DARK, padx=18, pady=14)
         top.grid(row=0, column=0, sticky="ew")
         top.columnconfigure(1, weight=1)
-        ttk.Label(top, text="工程路径").grid(row=0, column=0, sticky="w")
-        ttk.Label(top, text=str(ROOT)).grid(row=0, column=1, sticky="w")
-        ttk.Label(top, textvariable=self.status_var, foreground="#0B5394").grid(row=0, column=2, sticky="e")
+        tk.Label(
+            top,
+            text="ABB IRB Neural IK Workbench",
+            bg=ACCENT_DARK,
+            fg="#FFFFFF",
+            font=("Microsoft YaHei UI", 15, "bold"),
+        ).grid(row=0, column=0, sticky="w")
+        tk.Label(
+            top,
+            text=f"工程路径：{ROOT}",
+            bg=ACCENT_DARK,
+            fg="#D6E4FF",
+            font=("Microsoft YaHei UI", 10),
+        ).grid(row=1, column=0, columnspan=2, sticky="w", pady=(4, 0))
+        tk.Label(
+            top,
+            text="当前状态",
+            bg=ACCENT_DARK,
+            fg="#BFD2FF",
+            font=("Microsoft YaHei UI", 9),
+        ).grid(row=0, column=2, sticky="e")
+        tk.Label(
+            top,
+            textvariable=self.status_var,
+            bg=ACCENT_DARK,
+            fg="#FFFFFF",
+            font=("Microsoft YaHei UI", 11, "bold"),
+        ).grid(row=1, column=2, sticky="e", pady=(4, 0))
 
         main_pane = ttk.Panedwindow(self, orient="horizontal")
-        main_pane.grid(row=1, column=0, sticky="nsew")
+        main_pane.grid(row=1, column=0, sticky="nsew", padx=12, pady=12)
 
         left = ttk.Frame(main_pane, padding=8)
         left.columnconfigure(0, weight=1)
@@ -212,12 +282,14 @@ class App(tk.Tk):
         summary_group.rowconfigure(0, weight=1)
         self.summary = ScrollText(summary_group, height=12, font=("Consolas", 10))
         self.summary.grid(row=0, column=0, sticky="nsew")
+        self._style_text_widget(self.summary.text)
 
         log_group = ttk.LabelFrame(output_pane, text="原始日志", padding=6)
         log_group.columnconfigure(0, weight=1)
         log_group.rowconfigure(0, weight=1)
         self.log = ScrollText(log_group, height=24, font=("Consolas", 10))
         self.log.grid(row=0, column=0, sticky="nsew")
+        self._style_text_widget(self.log.text)
 
         output_pane.add(summary_group, weight=1)
         output_pane.add(log_group, weight=2)
@@ -225,7 +297,7 @@ class App(tk.Tk):
         main_pane.add(left, weight=5)
         main_pane.add(right, weight=2)
 
-        bottom = ttk.Frame(self, padding=8)
+        bottom = ttk.Frame(self, padding=(12, 0, 12, 12), style="Toolbar.TFrame")
         bottom.grid(row=2, column=0, sticky="ew")
         for i in range(8):
             bottom.columnconfigure(i, weight=1)
@@ -237,6 +309,111 @@ class App(tk.Tk):
         ttk.Button(bottom, text="打开结果目录", command=self.open_result_dir).grid(row=0, column=5, sticky="ew", padx=4)
         ttk.Button(bottom, text="打开Unity目录", command=self.open_unity_dir).grid(row=0, column=6, sticky="ew", padx=4)
         ttk.Button(bottom, text="清空输出", command=self.clear_outputs).grid(row=0, column=7, sticky="ew", padx=4)
+
+    def _setup_theme(self) -> None:
+        self.option_add("*Font", "{Microsoft YaHei UI} 10")
+        self.option_add("*TCombobox*Listbox.font", "{Microsoft YaHei UI} 10")
+
+        default_font = tkfont.nametofont("TkDefaultFont")
+        default_font.configure(family="Microsoft YaHei UI", size=10)
+        heading_font = tkfont.nametofont("TkHeadingFont")
+        heading_font.configure(family="Microsoft YaHei UI", size=10, weight="bold")
+        text_font = tkfont.nametofont("TkTextFont")
+        text_font.configure(family="Consolas", size=10)
+
+        style = ttk.Style(self)
+        style.theme_use("clam")
+
+        style.configure(".", background=APP_BG, foreground=TEXT_PRIMARY)
+        style.configure("TFrame", background=APP_BG)
+        style.configure("Toolbar.TFrame", background=APP_BG)
+        style.configure(
+            "TLabel",
+            background=APP_BG,
+            foreground=TEXT_PRIMARY,
+            padding=1,
+        )
+        style.configure(
+            "TLabelframe",
+            background=PANEL_BG,
+            bordercolor=BORDER_COLOR,
+            borderwidth=1,
+            relief="solid",
+            padding=10,
+        )
+        style.configure(
+            "TLabelframe.Label",
+            background=PANEL_BG,
+            foreground=TEXT_PRIMARY,
+            font=("Microsoft YaHei UI", 10, "bold"),
+        )
+        style.configure(
+            "TEntry",
+            fieldbackground="#FFFFFF",
+            bordercolor=BORDER_COLOR,
+            lightcolor="#FFFFFF",
+            darkcolor="#FFFFFF",
+            padding=6,
+        )
+        style.map("TEntry", bordercolor=[("focus", ACCENT)], lightcolor=[("focus", ACCENT)])
+        style.configure(
+            "TCombobox",
+            fieldbackground="#FFFFFF",
+            background="#FFFFFF",
+            bordercolor=BORDER_COLOR,
+            arrowsize=14,
+            padding=5,
+        )
+        style.map("TCombobox", bordercolor=[("focus", ACCENT)])
+        style.configure(
+            "TButton",
+            background="#E8EEF9",
+            foreground=TEXT_PRIMARY,
+            bordercolor="#D4DEEF",
+            focusthickness=0,
+            padding=(10, 7),
+            relief="flat",
+        )
+        style.map(
+            "TButton",
+            background=[("active", "#D9E5FB"), ("pressed", "#C9DAFA")],
+            foreground=[("disabled", "#9BA6B8")],
+        )
+        style.configure(
+            "TCheckbutton",
+            background=PANEL_BG,
+            foreground=TEXT_PRIMARY,
+            indicatorcolor="#FFFFFF",
+            indicatormargin=2,
+        )
+        style.map("TCheckbutton", background=[("active", PANEL_BG)])
+        style.configure("TScrollbar", background="#D7E0EF", troughcolor="#F5F7FB", bordercolor="#F5F7FB")
+        style.configure("Sash", sashthickness=8)
+        style.configure("TNotebook", background=APP_BG, borderwidth=0, tabmargins=(0, 0, 0, 0))
+        style.configure(
+            "TNotebook.Tab",
+            background="#E7EDF8",
+            foreground=TEXT_MUTED,
+            padding=(16, 10),
+            font=("Microsoft YaHei UI", 10, "bold"),
+        )
+        style.map(
+            "TNotebook.Tab",
+            background=[("selected", PANEL_BG), ("active", "#EDF3FF")],
+            foreground=[("selected", ACCENT_DARK), ("active", TEXT_PRIMARY)],
+        )
+
+    def _style_text_widget(self, widget: tk.Text) -> None:
+        widget.configure(
+            bg=CANVAS_BG,
+            fg=TEXT_PRIMARY,
+            insertbackground=TEXT_PRIMARY,
+            relief="flat",
+            borderwidth=0,
+            highlightthickness=0,
+            padx=8,
+            pady=8,
+        )
 
     def _make_labeled_entry(self, parent: ttk.Frame, row: int, label: str, var: tk.StringVar) -> None:
         ttk.Label(parent, text=label).grid(row=row, column=0, sticky="w", pady=2)
@@ -377,9 +554,11 @@ class App(tk.Tk):
         note = tk.Label(
             parent,
             text=text,
-            fg="#666666",
+            bg=PANEL_BG,
+            fg=TEXT_MUTED,
             justify="left",
             anchor="w",
+            font=("Microsoft YaHei UI", 9),
         )
         note.grid(row=row, column=0, columnspan=columnspan, sticky="ew", pady=(4, 0))
 
@@ -444,22 +623,22 @@ class App(tk.Tk):
         hyper_group.grid(row=6, column=0, columnspan=3, sticky="ew", pady=(10, 0))
         hyper_group.columnconfigure(1, weight=1)
         hyper_group.columnconfigure(3, weight=1)
-        self._make_labeled_entry(hyper_group, 0, "topk_shoulder", self.predict_topk_shoulder_var)
-        self._make_labeled_entry(hyper_group, 1, "topk_elbow", self.predict_topk_elbow_var)
-        self._make_labeled_entry(hyper_group, 2, "topk_wrist", self.predict_topk_wrist_var)
-        self._make_labeled_entry(hyper_group, 3, "max_branch_candidates", self.predict_max_branch_candidates_var)
-        self._make_labeled_entry(hyper_group, 4, "fine_topk_per_branch", self.predict_fine_topk_per_branch_var)
-        self._make_labeled_entry(hyper_group, 5, "max_subspace_candidates", self.predict_max_subspace_candidates_var)
-        ttk.Checkbutton(hyper_group, text="enable_nr", variable=self.predict_enable_nr_var).grid(row=6, column=0, sticky="w", pady=(4, 0))
-        self._make_labeled_entry(hyper_group, 7, "nr_max_iters", self.predict_nr_max_iters_var)
-        self._make_labeled_entry(hyper_group, 8, "nr_tol_pos_mm", self.predict_nr_tol_pos_mm_var)
-        self._make_labeled_entry(hyper_group, 9, "nr_tol_ori_rad", self.predict_nr_tol_ori_rad_var)
-        self._make_labeled_entry(hyper_group, 10, "nr_damping", self.predict_nr_damping_var)
-        self._make_labeled_entry(hyper_group, 11, "nr_step_scale", self.predict_nr_step_scale_var)
+        self._make_labeled_entry(hyper_group, 0, "肩部分支候选数", self.predict_topk_shoulder_var)
+        self._make_labeled_entry(hyper_group, 1, "肘部分支候选数", self.predict_topk_elbow_var)
+        self._make_labeled_entry(hyper_group, 2, "腕部分支候选数", self.predict_topk_wrist_var)
+        self._make_labeled_entry(hyper_group, 3, "粗分支最大候选数", self.predict_max_branch_candidates_var)
+        self._make_labeled_entry(hyper_group, 4, "每个粗分支的细分类候选数", self.predict_fine_topk_per_branch_var)
+        self._make_labeled_entry(hyper_group, 5, "子空间最大候选数", self.predict_max_subspace_candidates_var)
+        ttk.Checkbutton(hyper_group, text="启用 NR 校正", variable=self.predict_enable_nr_var).grid(row=6, column=0, sticky="w", pady=(4, 0))
+        self._make_labeled_entry(hyper_group, 7, "NR 最大迭代次数", self.predict_nr_max_iters_var)
+        self._make_labeled_entry(hyper_group, 8, "NR 位置收敛阈值(mm)", self.predict_nr_tol_pos_mm_var)
+        self._make_labeled_entry(hyper_group, 9, "NR 姿态收敛阈值(rad)", self.predict_nr_tol_ori_rad_var)
+        self._make_labeled_entry(hyper_group, 10, "NR 阻尼系数", self.predict_nr_damping_var)
+        self._make_labeled_entry(hyper_group, 11, "NR 步长缩放", self.predict_nr_step_scale_var)
         self._make_note(
             hyper_group,
             12,
-            "说明：前 6 项控制分层分类候选召回范围；后 5 项控制 Newton-Raphson 校正。若关闭 enable_nr，则只输出网络初值解。",
+            "说明：前 6 项控制分层分类候选召回范围；后 5 项控制 Newton-Raphson 校正。若关闭“启用 NR 校正”，则只输出网络初值解。",
             columnspan=4,
         )
 
@@ -471,7 +650,13 @@ class App(tk.Tk):
         self.notebook.add(tab, text="避障")
         tab.rowconfigure(0, weight=1)
         tab.columnconfigure(0, weight=1)
-        scroll = ScrollableForm(tab)
+        pane = ttk.Panedwindow(tab, orient="horizontal")
+        pane.grid(row=0, column=0, sticky="nsew")
+
+        left = ttk.Frame(pane)
+        left.columnconfigure(0, weight=1)
+        left.rowconfigure(0, weight=1)
+        scroll = ScrollableForm(left)
         scroll.grid(row=0, column=0, sticky="nsew")
         form = scroll.inner
         form.columnconfigure(1, weight=1)
@@ -490,24 +675,24 @@ class App(tk.Tk):
         obstacle_hyper_group.grid(row=10, column=0, columnspan=3, sticky="ew", pady=(10, 0))
         obstacle_hyper_group.columnconfigure(1, weight=1)
         obstacle_hyper_group.columnconfigure(3, weight=1)
-        self._make_labeled_entry(obstacle_hyper_group, 0, "topk_shoulder", self.obstacle_topk_shoulder_var)
-        self._make_labeled_entry(obstacle_hyper_group, 1, "topk_elbow", self.obstacle_topk_elbow_var)
-        self._make_labeled_entry(obstacle_hyper_group, 2, "topk_wrist", self.obstacle_topk_wrist_var)
-        self._make_labeled_entry(obstacle_hyper_group, 3, "max_branch_candidates", self.obstacle_max_branch_candidates_var)
-        self._make_labeled_entry(obstacle_hyper_group, 4, "fine_topk_per_branch", self.obstacle_fine_topk_per_branch_var)
-        self._make_labeled_entry(obstacle_hyper_group, 5, "max_subspace_candidates", self.obstacle_max_subspace_candidates_var)
-        self._make_labeled_entry(obstacle_hyper_group, 6, "max_evaluated_candidates", self.obstacle_max_evaluated_candidates_var)
-        self._make_labeled_entry(obstacle_hyper_group, 7, "nr_max_iters", self.obstacle_nr_max_iters_var)
-        self._make_labeled_entry(obstacle_hyper_group, 8, "nr_tol_pos_mm", self.obstacle_nr_tol_pos_mm_var)
-        self._make_labeled_entry(obstacle_hyper_group, 9, "nr_tol_ori_rad", self.obstacle_nr_tol_ori_rad_var)
-        self._make_labeled_entry(obstacle_hyper_group, 10, "nr_damping", self.obstacle_nr_damping_var)
-        self._make_labeled_entry(obstacle_hyper_group, 11, "nr_step_scale", self.obstacle_nr_step_scale_var)
-        self._make_labeled_entry(obstacle_hyper_group, 12, "trajectory_steps", self.obstacle_trajectory_steps_var)
-        self._make_labeled_entry(obstacle_hyper_group, 13, "dedupe_tol_deg", self.obstacle_dedupe_tol_deg_var)
+        self._make_labeled_entry(obstacle_hyper_group, 0, "肩部分支候选数", self.obstacle_topk_shoulder_var)
+        self._make_labeled_entry(obstacle_hyper_group, 1, "肘部分支候选数", self.obstacle_topk_elbow_var)
+        self._make_labeled_entry(obstacle_hyper_group, 2, "腕部分支候选数", self.obstacle_topk_wrist_var)
+        self._make_labeled_entry(obstacle_hyper_group, 3, "粗分支最大候选数", self.obstacle_max_branch_candidates_var)
+        self._make_labeled_entry(obstacle_hyper_group, 4, "每个粗分支的细分类候选数", self.obstacle_fine_topk_per_branch_var)
+        self._make_labeled_entry(obstacle_hyper_group, 5, "子空间最大候选数", self.obstacle_max_subspace_candidates_var)
+        self._make_labeled_entry(obstacle_hyper_group, 6, "实际评估候选数上限", self.obstacle_max_evaluated_candidates_var)
+        self._make_labeled_entry(obstacle_hyper_group, 7, "NR 最大迭代次数", self.obstacle_nr_max_iters_var)
+        self._make_labeled_entry(obstacle_hyper_group, 8, "NR 位置收敛阈值(mm)", self.obstacle_nr_tol_pos_mm_var)
+        self._make_labeled_entry(obstacle_hyper_group, 9, "NR 姿态收敛阈值(rad)", self.obstacle_nr_tol_ori_rad_var)
+        self._make_labeled_entry(obstacle_hyper_group, 10, "NR 阻尼系数", self.obstacle_nr_damping_var)
+        self._make_labeled_entry(obstacle_hyper_group, 11, "NR 步长缩放", self.obstacle_nr_step_scale_var)
+        self._make_labeled_entry(obstacle_hyper_group, 12, "轨迹离散步数", self.obstacle_trajectory_steps_var)
+        self._make_labeled_entry(obstacle_hyper_group, 13, "候选去重容差(deg)", self.obstacle_dedupe_tol_deg_var)
         self._make_note(
             obstacle_hyper_group,
             14,
-            "说明：前 7 项控制候选召回与实际评估数量；中间 5 项控制 NR 修正；trajectory_steps 控制轨迹离散步数；dedupe_tol_deg 控制候选解去重容差，越小通常保留的不同候选越多。",
+            "说明：前 7 项控制候选召回与实际评估数量；中间 5 项控制 NR 修正；轨迹离散步数控制碰撞检测采样密度；候选去重容差越小，通常保留的不同候选越多。",
             columnspan=4,
         )
 
@@ -536,8 +721,95 @@ class App(tk.Tk):
         ttk.Button(obstacle_editor, text="恢复默认值", command=self.reset_obstacle_editor_to_default).grid(row=5, column=2, sticky="ew", pady=(8, 0), padx=(6, 0))
         ttk.Button(obstacle_editor, text="新增障碍物", command=self.add_obstacle_to_scene).grid(row=6, column=0, sticky="ew", pady=(8, 0))
         ttk.Button(obstacle_editor, text="删除当前障碍物", command=self.delete_current_obstacle_from_scene).grid(row=6, column=1, columnspan=2, sticky="ew", pady=(8, 0), padx=(6, 0))
+        step_group = ttk.LabelFrame(obstacle_editor, text="步进微调", padding=8)
+        step_group.grid(row=7, column=0, columnspan=3, sticky="ew", pady=(10, 0))
+        for col in range(4):
+            step_group.columnconfigure(col, weight=1)
+        ttk.Label(step_group, text="位置步长(mm)").grid(row=0, column=0, sticky="w")
+        ttk.Entry(step_group, textvariable=self.obstacle_move_step_var, width=10).grid(row=0, column=1, sticky="ew", padx=(6, 0))
+        ttk.Label(step_group, text="尺寸步长(mm)").grid(row=0, column=2, sticky="w", padx=(12, 0))
+        ttk.Entry(step_group, textvariable=self.obstacle_size_step_var, width=10).grid(row=0, column=3, sticky="ew", padx=(6, 0))
+        ttk.Button(step_group, text="x-", command=lambda: self.nudge_obstacle_component("center", 0, -1)).grid(row=1, column=0, sticky="ew", pady=(8, 0))
+        ttk.Button(step_group, text="x+", command=lambda: self.nudge_obstacle_component("center", 0, 1)).grid(row=1, column=1, sticky="ew", padx=(6, 0), pady=(8, 0))
+        ttk.Button(step_group, text="y-", command=lambda: self.nudge_obstacle_component("center", 1, -1)).grid(row=1, column=2, sticky="ew", padx=(6, 0), pady=(8, 0))
+        ttk.Button(step_group, text="y+", command=lambda: self.nudge_obstacle_component("center", 1, 1)).grid(row=1, column=3, sticky="ew", padx=(6, 0), pady=(8, 0))
+        ttk.Button(step_group, text="z-", command=lambda: self.nudge_obstacle_component("center", 2, -1)).grid(row=2, column=0, sticky="ew", pady=(6, 0))
+        ttk.Button(step_group, text="z+", command=lambda: self.nudge_obstacle_component("center", 2, 1)).grid(row=2, column=1, sticky="ew", padx=(6, 0), pady=(6, 0))
+        ttk.Button(step_group, text="dx-", command=lambda: self.nudge_obstacle_component("size", 0, -1)).grid(row=2, column=2, sticky="ew", padx=(6, 0), pady=(6, 0))
+        ttk.Button(step_group, text="dx+", command=lambda: self.nudge_obstacle_component("size", 0, 1)).grid(row=2, column=3, sticky="ew", padx=(6, 0), pady=(6, 0))
+        ttk.Button(step_group, text="dy-", command=lambda: self.nudge_obstacle_component("size", 1, -1)).grid(row=3, column=0, sticky="ew", pady=(6, 0))
+        ttk.Button(step_group, text="dy+", command=lambda: self.nudge_obstacle_component("size", 1, 1)).grid(row=3, column=1, sticky="ew", padx=(6, 0), pady=(6, 0))
+        ttk.Button(step_group, text="dz-", command=lambda: self.nudge_obstacle_component("size", 2, -1)).grid(row=3, column=2, sticky="ew", padx=(6, 0), pady=(6, 0))
+        ttk.Button(step_group, text="dz+", command=lambda: self.nudge_obstacle_component("size", 2, 1)).grid(row=3, column=3, sticky="ew", padx=(6, 0), pady=(6, 0))
 
-        ttk.Button(form, text="运行 plan_collision_free_ik", command=self.run_obstacle).grid(row=12, column=0, columnspan=3, sticky="ew", pady=(12, 0))
+        preview_group = ttk.LabelFrame(form, text="障碍物三视图实时预览", padding=8)
+        preview_group.grid(row=12, column=0, columnspan=3, sticky="ew", pady=(10, 0))
+        for col in range(3):
+            preview_group.columnconfigure(col, weight=1)
+        preview_status = tk.Label(
+            preview_group,
+            textvariable=self.obstacle_editor_preview_status_var,
+            fg="#0B5394",
+            justify="left",
+            anchor="w",
+        )
+        preview_status.grid(row=0, column=0, columnspan=3, sticky="ew")
+        for col, view_name in enumerate(("XY 俯视", "XZ 正视", "YZ 侧视")):
+            panel = ttk.Frame(preview_group)
+            panel.grid(row=1, column=col, sticky="nsew", padx=(0, 8) if col < 2 else (0, 0), pady=(8, 0))
+            panel.columnconfigure(0, weight=1)
+            panel.rowconfigure(1, weight=1)
+            ttk.Label(panel, text=view_name, anchor="center").grid(row=0, column=0, sticky="ew", pady=(0, 4))
+            canvas = tk.Canvas(panel, width=260, height=240, bg=CANVAS_BG, highlightthickness=1, highlightbackground=BORDER_COLOR)
+            canvas.grid(row=1, column=0, sticky="nsew")
+            canvas.bind("<Configure>", self._on_obstacle_preview_canvas_configure)
+            self.obstacle_preview_canvases[view_name] = canvas
+        ttk.Button(preview_group, text="刷新预览", command=self.refresh_obstacle_editor_preview).grid(row=2, column=0, columnspan=3, sticky="ew", pady=(8, 0))
+        self._make_note(
+            preview_group,
+            3,
+            "说明：预览直接读取当前 scene_json、pose6、q_start 和正在编辑的障碍物参数。改数值会自动刷新，但不会自动写回 scene_json。",
+        )
+
+        ttk.Button(form, text="运行 plan_collision_free_ik", command=self.run_obstacle).grid(row=13, column=0, columnspan=3, sticky="ew", pady=(12, 0))
+
+        right = ttk.Frame(pane)
+        right.columnconfigure(0, weight=1)
+        right.rowconfigure(1, weight=1)
+        preview3d_group = ttk.LabelFrame(right, text="障碍物场景即时 3D 预览", padding=8)
+        preview3d_group.grid(row=0, column=0, sticky="nsew", padx=(10, 0))
+        preview3d_group.columnconfigure(0, weight=1)
+        preview3d_group.rowconfigure(1, weight=1)
+        preview3d_status = tk.Label(
+            preview3d_group,
+            textvariable=self.obstacle_3d_preview_status_var,
+            fg="#0B5394",
+            justify="left",
+            anchor="w",
+        )
+        preview3d_status.grid(row=0, column=0, sticky="ew")
+        plot_host = ttk.Frame(preview3d_group)
+        plot_host.grid(row=1, column=0, sticky="nsew", pady=(8, 8))
+        plot_host.columnconfigure(0, weight=1)
+        plot_host.rowconfigure(0, weight=1)
+        self._build_obstacle_3d_preview_widget(plot_host)
+        ttk.Button(preview3d_group, text="刷新 3D 预览", command=self.refresh_obstacle_3d_preview).grid(row=2, column=0, sticky="ew")
+        preview3d_note = tk.Label(
+            preview3d_group,
+            text="说明：该视图用于摆放阶段，显示起始机械臂、目标点、障碍物及膨胀安全包络。只在点击按钮后刷新。",
+            fg="#666666",
+            justify="left",
+            anchor="w",
+        )
+        preview3d_note.grid(row=3, column=0, sticky="ew", pady=(8, 0))
+
+        def _refresh_wrap(event: tk.Event) -> None:
+            preview3d_note.configure(wraplength=max(260, event.width - 24))
+
+        preview3d_group.bind("<Configure>", _refresh_wrap, add="+")
+
+        pane.add(left, weight=3)
+        pane.add(right, weight=4)
 
     def _build_unity_tab(self) -> None:
         tab = ttk.Frame(self.notebook, padding=10)
@@ -680,7 +952,7 @@ class App(tk.Tk):
         preview_group = ttk.LabelFrame(right, text="避障图预览", padding=8)
         preview_group.grid(row=0, column=0, sticky="nsew", padx=(10, 0))
         preview_group.columnconfigure(0, weight=1)
-        preview_group.rowconfigure(2, weight=1)
+        preview_group.rowconfigure(3, weight=1)
         preview_status = tk.Label(
             preview_group,
             textvariable=self.figure_preview_status_var,
@@ -697,9 +969,31 @@ class App(tk.Tk):
             anchor="w",
         )
         preview_path.grid(row=1, column=0, sticky="ew", pady=(4, 8))
-        self.figure_preview_label = ttk.Label(preview_group, text="暂无预览", anchor="center")
-        self.figure_preview_label.grid(row=2, column=0, sticky="nsew")
-        ttk.Button(preview_group, text="刷新预览", command=self.refresh_obstacle_figure_preview).grid(row=3, column=0, sticky="ew", pady=(8, 0))
+        toolbar = ttk.Frame(preview_group)
+        toolbar.grid(row=2, column=0, sticky="ew", pady=(0, 8))
+        for idx in range(4):
+            toolbar.columnconfigure(idx, weight=1)
+        ttk.Button(toolbar, text="放大", command=lambda: self.scale_obstacle_figure_preview(1.25)).grid(row=0, column=0, sticky="ew")
+        ttk.Button(toolbar, text="缩小", command=lambda: self.scale_obstacle_figure_preview(0.8)).grid(row=0, column=1, sticky="ew", padx=(6, 0))
+        ttk.Button(toolbar, text="重置", command=self.reset_obstacle_figure_preview_scale).grid(row=0, column=2, sticky="ew", padx=(6, 0))
+        ttk.Label(toolbar, textvariable=self.obstacle_preview_scale_var, anchor="e").grid(row=0, column=3, sticky="e", padx=(10, 0))
+        self.figure_preview_canvas = tk.Canvas(
+            preview_group,
+            bg=CANVAS_BG,
+            highlightthickness=1,
+            highlightbackground=BORDER_COLOR,
+            width=760,
+            height=760,
+        )
+        self.figure_preview_canvas.grid(row=3, column=0, sticky="nsew")
+        self.figure_preview_canvas.bind("<Configure>", self._on_figure_preview_canvas_configure)
+        self.figure_preview_canvas.bind("<MouseWheel>", self._on_figure_preview_mousewheel)
+        self.figure_preview_canvas.bind("<Button-4>", self._on_figure_preview_mousewheel)
+        self.figure_preview_canvas.bind("<Button-5>", self._on_figure_preview_mousewheel)
+        self.figure_preview_canvas.bind("<ButtonPress-1>", self._on_figure_preview_drag_start)
+        self.figure_preview_canvas.bind("<B1-Motion>", self._on_figure_preview_drag_motion)
+        self.figure_preview_canvas.bind("<ButtonRelease-1>", self._on_figure_preview_drag_end)
+        ttk.Button(preview_group, text="刷新预览", command=self.refresh_obstacle_figure_preview).grid(row=4, column=0, sticky="ew", pady=(8, 0))
 
         figure_pane.add(left, weight=3)
         figure_pane.add(right, weight=4)
@@ -746,29 +1040,112 @@ class App(tk.Tk):
     def _update_obstacle_preview_widget(self, image_path: Path | None) -> None:
         if image_path is None or not image_path.exists():
             self.obstacle_preview_photo = None
-            self.figure_preview_label.configure(image="", text="暂无预览")
+            self.obstacle_preview_image_original = None
+            self.obstacle_preview_scale = 1.0
+            self.obstacle_preview_offset_x = 0.0
+            self.obstacle_preview_offset_y = 0.0
+            self._obstacle_preview_drag_last = None
+            self._render_obstacle_preview_image()
             self.figure_preview_status_var.set("尚未生成避障图预览。")
             self.figure_preview_path_var.set("")
+            self.obstacle_preview_scale_var.set("100%")
             return
 
-        image = tk.PhotoImage(file=str(image_path))
-        max_w = 360
-        max_h = 420
-        factor = max(
-            1,
-            (image.width() + max_w - 1) // max_w,
-            (image.height() + max_h - 1) // max_h,
-        )
-        if factor > 1:
-            image = image.subsample(factor, factor)
-        self.obstacle_preview_photo = image
-        self.figure_preview_label.configure(image=self.obstacle_preview_photo, text="")
+        self.obstacle_preview_image_original = Image.open(image_path)
+        self.obstacle_preview_scale = 1.0
+        self.obstacle_preview_offset_x = 0.0
+        self.obstacle_preview_offset_y = 0.0
+        self._obstacle_preview_drag_last = None
+        self._render_obstacle_preview_image()
         self.figure_preview_status_var.set("已加载最新避障图预览。")
         self.figure_preview_path_var.set(str(image_path))
 
     def refresh_obstacle_figure_preview(self) -> None:
         path = self._find_latest_obstacle_preview_path()
         self._update_obstacle_preview_widget(path)
+
+    def _render_obstacle_preview_image(self) -> None:
+        if self.figure_preview_canvas is None:
+            return
+
+        canvas = self.figure_preview_canvas
+        canvas.delete("all")
+
+        if self.obstacle_preview_image_original is None:
+            self.obstacle_preview_photo = None
+            self.obstacle_preview_scale_var.set("100%")
+            canvas.create_text(
+                max(1, canvas.winfo_width()) / 2,
+                max(1, canvas.winfo_height()) / 2,
+                text="暂无预览",
+                fill="#64748B",
+                font=("Microsoft YaHei UI", 12),
+            )
+            return
+
+        canvas_width = max(1, canvas.winfo_width())
+        canvas_height = max(1, canvas.winfo_height())
+        preview = self.obstacle_preview_image_original.copy()
+        width, height = preview.size
+        base_ratio = min((canvas_width * 0.94) / max(1, width), (canvas_height * 0.94) / max(1, height))
+        scale = base_ratio * self.obstacle_preview_scale
+        new_w = max(1, int(width * scale))
+        new_h = max(1, int(height * scale))
+        preview = preview.resize((new_w, new_h), Image.LANCZOS)
+        self.obstacle_preview_photo = ImageTk.PhotoImage(preview)
+        center_x = canvas_width / 2 + self.obstacle_preview_offset_x
+        center_y = canvas_height / 2 + self.obstacle_preview_offset_y
+        canvas.create_image(center_x, center_y, image=self.obstacle_preview_photo, anchor="center")
+        self.obstacle_preview_scale_var.set(f"{int(round(self.obstacle_preview_scale * 100))}%")
+
+    def scale_obstacle_figure_preview(self, factor: float) -> None:
+        if self.obstacle_preview_image_original is None:
+            return
+        self.obstacle_preview_scale = min(4.0, max(0.2, self.obstacle_preview_scale * factor))
+        self._render_obstacle_preview_image()
+
+    def reset_obstacle_figure_preview_scale(self) -> None:
+        self.obstacle_preview_scale = 1.0
+        self.obstacle_preview_offset_x = 0.0
+        self.obstacle_preview_offset_y = 0.0
+        self._obstacle_preview_drag_last = None
+        if self.obstacle_preview_image_original is None:
+            self.obstacle_preview_scale_var.set("100%")
+            self._render_obstacle_preview_image()
+            return
+        self._render_obstacle_preview_image()
+
+    def _on_figure_preview_canvas_configure(self, _event: tk.Event) -> None:
+        self._render_obstacle_preview_image()
+
+    def _on_figure_preview_mousewheel(self, event: tk.Event) -> None:
+        if self.obstacle_preview_image_original is None:
+            return
+        delta = getattr(event, "delta", 0)
+        if delta > 0 or getattr(event, "num", None) == 4:
+            self.scale_obstacle_figure_preview(1.1)
+        elif delta < 0 or getattr(event, "num", None) == 5:
+            self.scale_obstacle_figure_preview(1 / 1.1)
+
+    def _on_figure_preview_drag_start(self, event: tk.Event) -> None:
+        if self.obstacle_preview_image_original is None:
+            return
+        self._obstacle_preview_drag_last = (event.x, event.y)
+
+    def _on_figure_preview_drag_motion(self, event: tk.Event) -> None:
+        if self.obstacle_preview_image_original is None or self._obstacle_preview_drag_last is None:
+            return
+        last_x, last_y = self._obstacle_preview_drag_last
+        self.obstacle_preview_offset_x += event.x - last_x
+        self.obstacle_preview_offset_y += event.y - last_y
+        self._obstacle_preview_drag_last = (event.x, event.y)
+        self._render_obstacle_preview_image()
+
+    def _on_figure_preview_drag_end(self, _event: tk.Event) -> None:
+        self._obstacle_preview_drag_last = None
+
+    def _on_obstacle_preview_canvas_configure(self, _event: tk.Event) -> None:
+        self.refresh_obstacle_editor_preview()
 
     def clear_outputs(self) -> None:
         self.summary.clear()
@@ -816,6 +1193,310 @@ class App(tk.Tk):
         self.obstacle_name_var.set(name)
         self.obstacle_center_var.set(self._format_q_deg(center))
         self.obstacle_size_var.set(self._format_q_deg(size))
+
+    def _parse_float_value(self, text: str, *, label: str) -> float:
+        try:
+            return float(text.strip())
+        except Exception as exc:
+            raise ValueError(f"{label} 必须是数值") from exc
+
+    def _build_preview_scene_payload(self) -> dict:
+        _, payload = self._load_scene_payload()
+        obstacles = payload.setdefault("obstacles", [])
+        current_payload = self._build_obstacle_payload_from_editor(fallback_name=f"obstacle_{self.current_obstacle_index + 1}")
+        if obstacles:
+            index = max(0, min(self.current_obstacle_index, len(obstacles) - 1))
+            obstacles[index] = current_payload
+        else:
+            obstacles.append(current_payload)
+        return payload
+
+    def _preview_target_xyz_mm(self) -> list[float]:
+        values = [float(item.strip()) for item in self.pose_var.get().split(",") if item.strip()]
+        if len(values) < 3:
+            raise ValueError("pose6 至少需要提供 x,y,z")
+        return values[:3]
+
+    def _preview_q_start_deg(self) -> list[float]:
+        values = [float(item.strip()) for item in self.q_start_var.get().split(",") if item.strip()]
+        if len(values) != 6:
+            raise ValueError("q_start 必须为 6 个逗号分隔数值")
+        return values
+
+    def _preview_axes_bounds(self, joint_points: list[list[float]], target_xyz: list[float], obstacles: list[dict]) -> dict[str, tuple[float, float]]:
+        points = list(joint_points) + [target_xyz]
+        for obstacle in obstacles:
+            center, size = self._obstacle_payload_to_center_size(obstacle)
+            box_min = [c - 0.5 * s for c, s in zip(center, size)]
+            box_max = [c + 0.5 * s for c, s in zip(center, size)]
+            points.append(box_min)
+            points.append(box_max)
+        mins = [min(point[i] for point in points) for i in range(3)]
+        maxs = [max(point[i] for point in points) for i in range(3)]
+        bounds: dict[str, tuple[float, float]] = {}
+        for idx, axis_name in enumerate(("x", "y", "z")):
+            span = max(maxs[idx] - mins[idx], 400.0)
+            padding = max(80.0, span * 0.12)
+            center = 0.5 * (mins[idx] + maxs[idx])
+            half = 0.5 * span + padding
+            bounds[axis_name] = (center - half, center + half)
+        return bounds
+
+    def _project_preview_point(self, point: list[float], axis_a: str, axis_b: str, bounds: dict[str, tuple[float, float]], width: int, height: int, margin: int = 24) -> tuple[float, float]:
+        values = {"x": float(point[0]), "y": float(point[1]), "z": float(point[2])}
+        min_a, max_a = bounds[axis_a]
+        min_b, max_b = bounds[axis_b]
+        inner_w = max(1.0, width - 2 * margin)
+        inner_h = max(1.0, height - 2 * margin)
+        px = margin + (values[axis_a] - min_a) / max(1.0, max_a - min_a) * inner_w
+        py = height - margin - (values[axis_b] - min_b) / max(1.0, max_b - min_b) * inner_h
+        return px, py
+
+    def _draw_preview_axes(self, canvas: tk.Canvas, width: int, height: int, axis_a: str, axis_b: str) -> None:
+        margin = 24
+        canvas.create_rectangle(1, 1, width - 1, height - 1, outline=PREVIEW_AXIS)
+        canvas.create_line(margin, height - margin, width - margin, height - margin, fill=PREVIEW_AXIS)
+        canvas.create_line(margin, margin, margin, height - margin, fill=PREVIEW_AXIS)
+        canvas.create_text(width - margin, height - margin + 12, text=axis_a.upper(), fill="#475569", anchor="e")
+        canvas.create_text(margin - 8, margin, text=axis_b.upper(), fill="#475569", anchor="e")
+
+    def _draw_obstacle_preview_view(
+        self,
+        canvas: tk.Canvas,
+        title: str,
+        axis_a: str,
+        axis_b: str,
+        bounds: dict[str, tuple[float, float]],
+        joint_points: list[list[float]],
+        target_xyz: list[float],
+        obstacles: list[dict],
+    ) -> None:
+        width = max(200, int(canvas.winfo_width()))
+        height = max(180, int(canvas.winfo_height()))
+        canvas.delete("all")
+        self._draw_preview_axes(canvas, width, height, axis_a, axis_b)
+        canvas.create_text(8, 8, text=title, anchor="nw", fill="#0F172A")
+
+        for idx, obstacle in enumerate(obstacles):
+            center, size = self._obstacle_payload_to_center_size(obstacle)
+            box_min = [c - 0.5 * s for c, s in zip(center, size)]
+            box_max = [c + 0.5 * s for c, s in zip(center, size)]
+            x0, y0 = self._project_preview_point(box_min, axis_a, axis_b, bounds, width, height)
+            x1, y1 = self._project_preview_point(box_max, axis_a, axis_b, bounds, width, height)
+            fill = PREVIEW_SELECTED_FILL if idx == self.current_obstacle_index else PREVIEW_OBSTACLE_FILL
+            outline = PREVIEW_SELECTED_OUTLINE if idx == self.current_obstacle_index else PREVIEW_OBSTACLE_OUTLINE
+            canvas.create_rectangle(min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1), fill=fill, outline=outline, width=2 if idx == self.current_obstacle_index else 1)
+
+        projected_joints = [self._project_preview_point(point, axis_a, axis_b, bounds, width, height) for point in joint_points]
+        flat_points: list[float] = []
+        for px, py in projected_joints:
+            flat_points.extend([px, py])
+        canvas.create_line(*flat_points, fill=PREVIEW_ROBOT, width=2.0)
+        for px, py in projected_joints:
+            canvas.create_oval(px - 2, py - 2, px + 2, py + 2, fill=PREVIEW_ROBOT, outline=PREVIEW_ROBOT)
+
+        tx, ty = self._project_preview_point(target_xyz, axis_a, axis_b, bounds, width, height)
+        canvas.create_oval(tx - 5, ty - 5, tx + 5, ty + 5, fill=PREVIEW_TARGET, outline=PREVIEW_TARGET)
+        canvas.create_text(tx + 8, ty - 8, text="T", fill=PREVIEW_TARGET, anchor="w")
+
+    def refresh_obstacle_editor_preview(self) -> None:
+        if not self.obstacle_preview_canvases:
+            return
+        try:
+            payload = self._build_preview_scene_payload()
+            obstacles = payload.get("obstacles", [])
+            target_xyz = self._preview_target_xyz_mm()
+            q_start = self._preview_q_start_deg()
+            joint_points = fk_abb_irb_joint_points(q_start, input_unit="deg").tolist()
+            bounds = self._preview_axes_bounds(joint_points, target_xyz, obstacles)
+            views = {
+                "XY 俯视": ("x", "y"),
+                "XZ 正视": ("x", "z"),
+                "YZ 侧视": ("y", "z"),
+            }
+            for title, (axis_a, axis_b) in views.items():
+                self._draw_obstacle_preview_view(
+                    self.obstacle_preview_canvases[title],
+                    title,
+                    axis_a,
+                    axis_b,
+                    bounds,
+                    joint_points,
+                    target_xyz,
+                    obstacles,
+                )
+            current_name = self.obstacle_name_var.get().strip() or f"obstacle_{self.current_obstacle_index + 1}"
+            self.obstacle_editor_preview_status_var.set(
+                f"已刷新预览：{len(obstacles)} 个障碍物，当前高亮 {self._build_obstacle_selector_label(self.current_obstacle_index, current_name)}"
+            )
+        except Exception as exc:
+            for canvas in self.obstacle_preview_canvases.values():
+                canvas.delete("all")
+                width = max(200, int(canvas.winfo_width()))
+                height = max(180, int(canvas.winfo_height()))
+                canvas.create_rectangle(1, 1, width - 1, height - 1, outline=PREVIEW_AXIS)
+                canvas.create_text(width / 2, height / 2, text="当前输入无效，无法刷新预览", fill="#B91C1C")
+            self.obstacle_editor_preview_status_var.set(f"预览刷新失败：{exc}")
+
+    def _box_faces(self, box_min: list[float], box_max: list[float]) -> list[list[list[float]]]:
+        x0, y0, z0 = [float(v) for v in box_min]
+        x1, y1, z1 = [float(v) for v in box_max]
+        vertices = [
+            [x0, y0, z0],
+            [x1, y0, z0],
+            [x1, y1, z0],
+            [x0, y1, z0],
+            [x0, y0, z1],
+            [x1, y0, z1],
+            [x1, y1, z1],
+            [x0, y1, z1],
+        ]
+        return [
+            [vertices[i] for i in [0, 1, 2, 3]],
+            [vertices[i] for i in [4, 5, 6, 7]],
+            [vertices[i] for i in [0, 1, 5, 4]],
+            [vertices[i] for i in [2, 3, 7, 6]],
+            [vertices[i] for i in [1, 2, 6, 5]],
+            [vertices[i] for i in [0, 3, 7, 4]],
+        ]
+
+    def _build_obstacle_3d_preview_widget(self, parent: ttk.Frame) -> None:
+        figure = Figure(figsize=(6.8, 5.8), dpi=100)
+        ax = figure.add_subplot(111, projection="3d")
+        canvas = FigureCanvasTkAgg(figure, master=parent)
+        canvas.get_tk_widget().grid(row=0, column=0, sticky="nsew")
+        self.obstacle_3d_figure = figure
+        self.obstacle_3d_ax = ax
+        self.obstacle_3d_canvas = canvas
+
+    def _draw_3d_obstacle_box(self, obstacle: dict, *, selected: bool, inflate_mm: float = 0.0) -> None:
+        if self.obstacle_3d_ax is None:
+            return
+        center, size = self._obstacle_payload_to_center_size(obstacle)
+        box_min = [c - 0.5 * s - inflate_mm for c, s in zip(center, size)]
+        box_max = [c + 0.5 * s + inflate_mm for c, s in zip(center, size)]
+        faces = self._box_faces(box_min, box_max)
+        if inflate_mm > 0.0:
+            poly = Poly3DCollection(
+                faces,
+                facecolors="#A83B2A",
+                edgecolors="#A83B2A",
+                linewidths=0.8,
+                alpha=0.10,
+            )
+        else:
+            poly = Poly3DCollection(
+                faces,
+                facecolors="#D9822B" if not selected else "#F59E0B",
+                edgecolors="#7B4314" if not selected else "#B45309",
+                linewidths=1.0 if not selected else 1.6,
+                alpha=0.28,
+            )
+        self.obstacle_3d_ax.add_collection3d(poly)
+
+    def _set_obstacle_3d_axes_limits(self, joint_points: list[list[float]], target_xyz: list[float], obstacles: list[dict]) -> None:
+        if self.obstacle_3d_ax is None:
+            return
+        points = list(joint_points) + [target_xyz]
+        for obstacle in obstacles:
+            center, size = self._obstacle_payload_to_center_size(obstacle)
+            box_min = [c - 0.5 * s for c, s in zip(center, size)]
+            box_max = [c + 0.5 * s for c, s in zip(center, size)]
+            points.append(box_min)
+            points.append(box_max)
+        mins = [min(point[i] for point in points) for i in range(3)]
+        maxs = [max(point[i] for point in points) for i in range(3)]
+        center = [(a + b) * 0.5 for a, b in zip(mins, maxs)]
+        radius = max(max(maxs[i] - mins[i] for i in range(3)) * 0.62, 320.0)
+        self.obstacle_3d_ax.set_xlim(center[0] - radius, center[0] + radius)
+        self.obstacle_3d_ax.set_ylim(center[1] - radius, center[1] + radius)
+        self.obstacle_3d_ax.set_zlim(max(0.0, center[2] - radius), center[2] + radius)
+        try:
+            self.obstacle_3d_ax.set_box_aspect((1.0, 1.0, 0.9))
+        except Exception:
+            pass
+
+    def refresh_obstacle_3d_preview(self) -> None:
+        if self.obstacle_3d_ax is None or self.obstacle_3d_canvas is None or self.obstacle_3d_figure is None:
+            return
+        try:
+            payload = self._build_preview_scene_payload()
+            obstacles = payload.get("obstacles", [])
+            target_xyz = self._preview_target_xyz_mm()
+            q_start = self._preview_q_start_deg()
+            joint_points = fk_abb_irb_joint_points(q_start, input_unit="deg").tolist()
+            inflate_mm = float(payload.get("link_radius_mm", 35.0)) + float(payload.get("safety_margin_mm", 5.0))
+
+            self.obstacle_3d_figure.clear()
+            self.obstacle_3d_ax = self.obstacle_3d_figure.add_subplot(111, projection="3d")
+            ax = self.obstacle_3d_ax
+            ax.set_title("Obstacle scene preview / 障碍物场景预览", pad=12)
+
+            for idx, obstacle in enumerate(obstacles):
+                self._draw_3d_obstacle_box(obstacle, selected=False, inflate_mm=inflate_mm)
+                self._draw_3d_obstacle_box(obstacle, selected=(idx == self.current_obstacle_index), inflate_mm=0.0)
+
+            xs = [point[0] for point in joint_points]
+            ys = [point[1] for point in joint_points]
+            zs = [point[2] for point in joint_points]
+            ax.plot(xs, ys, zs, color="#334155", linewidth=2.8, marker="o", markersize=4.8)
+            ax.scatter(xs, ys, zs, color="#0F766E", s=22)
+
+            ax.scatter(
+                [target_xyz[0]],
+                [target_xyz[1]],
+                [target_xyz[2]],
+                marker="*",
+                s=240,
+                color="#E9C46A",
+                edgecolors="#7A5C00",
+                linewidths=0.9,
+            )
+            ax.text(target_xyz[0], target_xyz[1], target_xyz[2] + 14.0, "Target", fontsize=9, color="#7A5C00")
+
+            self._set_obstacle_3d_axes_limits(joint_points, target_xyz, obstacles)
+            ax.set_xlabel("X (mm)")
+            ax.set_ylabel("Y (mm)")
+            ax.set_zlabel("Z (mm)")
+            ax.view_init(elev=22, azim=-56)
+            ax.grid(True, alpha=0.22)
+            ax.xaxis.pane.set_facecolor((1.0, 1.0, 1.0, 1.0))
+            ax.yaxis.pane.set_facecolor((1.0, 1.0, 1.0, 1.0))
+            ax.zaxis.pane.set_facecolor((1.0, 1.0, 1.0, 1.0))
+
+            self.obstacle_3d_figure.tight_layout()
+            self.obstacle_3d_canvas.draw_idle()
+
+            current_name = self.obstacle_name_var.get().strip() or f"obstacle_{self.current_obstacle_index + 1}"
+            self.obstacle_3d_preview_status_var.set(
+                f"已刷新 3D 预览：{len(obstacles)} 个障碍物，当前高亮 {self._build_obstacle_selector_label(self.current_obstacle_index, current_name)}"
+            )
+        except Exception as exc:
+            self.obstacle_3d_figure.clear()
+            self.obstacle_3d_ax = self.obstacle_3d_figure.add_subplot(111)
+            self.obstacle_3d_ax.axis("off")
+            self.obstacle_3d_ax.text(0.5, 0.5, "当前输入无效，无法刷新 3D 预览", ha="center", va="center", color="#B91C1C")
+            self.obstacle_3d_canvas.draw_idle()
+            self.obstacle_3d_preview_status_var.set(f"3D 预览刷新失败：{exc}")
+
+    def nudge_obstacle_component(self, mode: str, index: int, direction: int) -> None:
+        step_var = self.obstacle_move_step_var if mode == "center" else self.obstacle_size_step_var
+        values_var = self.obstacle_center_var if mode == "center" else self.obstacle_size_var
+        step_label = "位置步长(mm)" if mode == "center" else "尺寸步长(mm)"
+        value_label = "center_mm" if mode == "center" else "size_mm"
+        try:
+            step = self._parse_float_value(step_var.get(), label=step_label)
+            if step <= 0.0:
+                raise ValueError(f"{step_label} 必须大于 0")
+            values = self._parse_vec3_text(values_var.get(), label=value_label)
+            values[index] += direction * step
+            if mode == "size":
+                values[index] = max(1.0, values[index])
+            values_var.set(self._format_q_deg(values))
+            self.refresh_obstacle_editor_preview()
+        except Exception as exc:
+            self.set_summary(f"任务：障碍物编辑\n\n步进调整失败：{exc}")
+            self.append_log(f"[obstacle editor] 步进调整失败：{exc}")
 
     def _refresh_obstacle_selector(self, obstacles: list[dict], selected_index: int = 0) -> None:
         values = [
@@ -879,6 +1560,7 @@ class App(tk.Tk):
             self._load_obstacle_editor_from_scene()
         except Exception:
             self._refresh_obstacle_selector([], selected_index=0)
+        self.refresh_obstacle_editor_preview()
 
     def _reset_obstacle_editor_to_default(self) -> str:
         self.obstacle_name_var.set(DEFAULT_OBSTACLE_NAME)
@@ -894,6 +1576,7 @@ class App(tk.Tk):
         msg = self._reset_obstacle_editor_to_default()
         self.set_summary(f"任务：障碍物编辑\n\n{msg}")
         self.append_log(msg)
+        self.refresh_obstacle_editor_preview()
 
     def _load_obstacle_editor_from_scene(self) -> str:
         scene_path, payload = self._load_scene_payload()
@@ -908,6 +1591,7 @@ class App(tk.Tk):
             msg = self._load_obstacle_editor_from_scene()
             self.set_summary(f"任务：障碍物编辑\n\n{msg}")
             self.append_log(msg)
+            self.refresh_obstacle_editor_preview()
         except Exception as exc:
             self.set_summary(f"任务：障碍物编辑\n\n读取失败：{exc}")
             self.append_log(f"[obstacle editor] 读取失败：{exc}")
@@ -936,6 +1620,7 @@ class App(tk.Tk):
             msg = self._save_obstacle_editor_to_scene()
             self.set_summary(f"任务：障碍物编辑\n\n{msg}")
             self.append_log(msg)
+            self.refresh_obstacle_editor_preview()
         except Exception as exc:
             self.set_summary(f"任务：障碍物编辑\n\n写回失败：{exc}")
             self.append_log(f"[obstacle editor] 写回失败：{exc}")
@@ -953,6 +1638,7 @@ class App(tk.Tk):
             msg = self._load_selected_obstacle_into_editor(obstacles, index)
             self.set_summary(f"任务：障碍物编辑\n\n{msg}\nscene_json：{scene_path}")
             self.append_log(msg)
+            self.refresh_obstacle_editor_preview()
         except Exception as exc:
             self.set_summary(f"任务：障碍物编辑\n\n切换障碍物失败：{exc}")
             self.append_log(f"[obstacle editor] 切换失败：{exc}")
@@ -982,6 +1668,7 @@ class App(tk.Tk):
             msg = self._add_obstacle_to_scene()
             self.set_summary(f"任务：障碍物编辑\n\n{msg}")
             self.append_log(msg)
+            self.refresh_obstacle_editor_preview()
         except Exception as exc:
             self.set_summary(f"任务：障碍物编辑\n\n新增失败：{exc}")
             self.append_log(f"[obstacle editor] 新增失败：{exc}")
@@ -1010,6 +1697,7 @@ class App(tk.Tk):
             msg = self._delete_current_obstacle_from_scene()
             self.set_summary(f"任务：障碍物编辑\n\n{msg}")
             self.append_log(msg)
+            self.refresh_obstacle_editor_preview()
         except Exception as exc:
             self.set_summary(f"任务：障碍物编辑\n\n删除失败：{exc}")
             self.append_log(f"[obstacle editor] 删除失败：{exc}")

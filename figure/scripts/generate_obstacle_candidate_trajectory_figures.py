@@ -11,8 +11,12 @@ import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+
+try:
+    import seaborn as sns
+except ImportError:
+    sns = None
 
 ROOT = Path(__file__).resolve().parents[2]
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
@@ -30,7 +34,10 @@ DEFAULT_PLAN_JSON = ARTIFACTS_DIR / "obstacle_avoidance" / "open_space_reselect_
 
 
 def configure_style() -> None:
-    sns.set_theme(style="whitegrid")
+    if sns is not None:
+        sns.set_theme(style="whitegrid")
+    else:
+        plt.style.use("default")
     plt.rcParams.update(
         {
             "figure.dpi": 140,
@@ -48,7 +55,10 @@ def configure_style() -> None:
 
 
 def configure_thesis_style() -> None:
-    sns.set_theme(style="white")
+    if sns is not None:
+        sns.set_theme(style="white")
+    else:
+        plt.style.use("default")
     plt.rcParams.update(
         {
             "figure.dpi": 150,

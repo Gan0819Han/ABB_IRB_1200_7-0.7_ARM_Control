@@ -152,7 +152,7 @@ def evaluate_trajectory_against_scene(
     include_frames: bool = False,
 ) -> dict:
     q_traj = build_joint_trajectory_deg(q_start_deg=q_start_deg, q_goal_deg=q_goal_deg, steps=steps)
-    return evaluate_joint_trajectory_against_scene(q_traj=q_traj, scene=scene, include_frames=include_frames)
+    return evaluate_joint_trajectory_against_scene(q_traj_deg=q_traj, scene=scene, include_frames=include_frames)
 
 
 def evaluate_joint_trajectory_against_scene(
