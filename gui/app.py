@@ -611,15 +611,20 @@ class App(tk.Tk):
     def _build_predict_tab(self) -> None:
         tab = ttk.Frame(self.notebook, padding=10)
         self.notebook.add(tab, text="推理")
-        tab.columnconfigure(1, weight=1)
-        self._make_vector_entry(tab, 0, "目标位姿 pose6", ["x", "y", "z", "phi", "theta", "psi"], self.pose_part_vars, columns=3)
-        self._make_note(tab, 1, "范围说明：x/y/z 单位 mm，需位于机械臂可达空间；phi/theta/psi 单位 rad，通常建议填写在 [-3.1416, 3.1416]。")
-        self._make_labeled_path_entry(tab, 2, "prediction metadata", self.pred_meta_var, save=False, default_key="pred_meta")
-        self._make_labeled_path_entry(tab, 3, "branch metadata", self.branch_meta_var, save=False, default_key="branch_meta")
-        self._make_labeled_path_entry(tab, 4, "fine metadata", self.fine_meta_var, save=False, default_key="fine_meta")
-        self._make_labeled_path_entry(tab, 5, "输出 JSON", self.predict_out_json_var, save=True, default_key="predict_out_json")
+        tab.columnconfigure(0, weight=1)
+        tab.rowconfigure(0, weight=1)
+        scroll = ScrollableForm(tab)
+        scroll.grid(row=0, column=0, sticky="nsew")
+        form = scroll.inner
+        form.columnconfigure(1, weight=1)
+        self._make_vector_entry(form, 0, "目标位姿 pose6", ["x", "y", "z", "phi", "theta", "psi"], self.pose_part_vars, columns=3)
+        self._make_note(form, 1, "范围说明：x/y/z 单位 mm，需位于机械臂可达空间；phi/theta/psi 单位 rad，通常建议填写在 [-3.1416, 3.1416]。")
+        self._make_labeled_path_entry(form, 2, "prediction metadata", self.pred_meta_var, save=False, default_key="pred_meta")
+        self._make_labeled_path_entry(form, 3, "branch metadata", self.branch_meta_var, save=False, default_key="branch_meta")
+        self._make_labeled_path_entry(form, 4, "fine metadata", self.fine_meta_var, save=False, default_key="fine_meta")
+        self._make_labeled_path_entry(form, 5, "输出 JSON", self.predict_out_json_var, save=True, default_key="predict_out_json")
 
-        hyper_group = ttk.LabelFrame(tab, text="推理超参数", padding=8)
+        hyper_group = ttk.LabelFrame(form, text="推理超参数", padding=8)
         hyper_group.grid(row=6, column=0, columnspan=3, sticky="ew", pady=(10, 0))
         hyper_group.columnconfigure(1, weight=1)
         hyper_group.columnconfigure(3, weight=1)
@@ -642,8 +647,8 @@ class App(tk.Tk):
             columnspan=4,
         )
 
-        self._make_note(tab, 7, "说明：本页只做逆解推理，q_start 不参与 predict_ik。此处 pose6 与“避障”页共用同一输入，任一页面修改都会同步。输出结果会保存为完整 JSON，右侧同时给出摘要。")
-        ttk.Button(tab, text="运行 predict_ik", command=self.run_predict).grid(row=8, column=0, columnspan=3, sticky="ew", pady=(12, 0))
+        self._make_note(form, 7, "说明：本页只做逆解推理，q_start 不参与 predict_ik。此处 pose6 与“避障”页共用同一输入，任一页面修改都会同步。输出结果会保存为完整 JSON，右侧同时给出摘要。")
+        ttk.Button(form, text="运行 predict_ik", command=self.run_predict).grid(row=8, column=0, columnspan=3, sticky="ew", pady=(12, 0))
 
     def _build_obstacle_tab(self) -> None:
         tab = ttk.Frame(self.notebook, padding=10)
@@ -723,7 +728,9 @@ class App(tk.Tk):
         ttk.Button(obstacle_editor, text="删除当前障碍物", command=self.delete_current_obstacle_from_scene).grid(row=6, column=1, columnspan=2, sticky="ew", pady=(8, 0), padx=(6, 0))
         step_group = ttk.LabelFrame(obstacle_editor, text="步进微调", padding=8)
         step_group.grid(row=7, column=0, columnspan=3, sticky="ew", pady=(10, 0))
-        for col in range(4):
+        for col in range(2):
+            step_group.columnconfigure(col, weight=1)
+        for col in range(2, 4):
             step_group.columnconfigure(col, weight=1)
         ttk.Label(step_group, text="位置步长(mm)").grid(row=0, column=0, sticky="w")
         ttk.Entry(step_group, textvariable=self.obstacle_move_step_var, width=10).grid(row=0, column=1, sticky="ew", padx=(6, 0))
@@ -731,15 +738,15 @@ class App(tk.Tk):
         ttk.Entry(step_group, textvariable=self.obstacle_size_step_var, width=10).grid(row=0, column=3, sticky="ew", padx=(6, 0))
         ttk.Button(step_group, text="x-", command=lambda: self.nudge_obstacle_component("center", 0, -1)).grid(row=1, column=0, sticky="ew", pady=(8, 0))
         ttk.Button(step_group, text="x+", command=lambda: self.nudge_obstacle_component("center", 0, 1)).grid(row=1, column=1, sticky="ew", padx=(6, 0), pady=(8, 0))
-        ttk.Button(step_group, text="y-", command=lambda: self.nudge_obstacle_component("center", 1, -1)).grid(row=1, column=2, sticky="ew", padx=(6, 0), pady=(8, 0))
-        ttk.Button(step_group, text="y+", command=lambda: self.nudge_obstacle_component("center", 1, 1)).grid(row=1, column=3, sticky="ew", padx=(6, 0), pady=(8, 0))
-        ttk.Button(step_group, text="z-", command=lambda: self.nudge_obstacle_component("center", 2, -1)).grid(row=2, column=0, sticky="ew", pady=(6, 0))
-        ttk.Button(step_group, text="z+", command=lambda: self.nudge_obstacle_component("center", 2, 1)).grid(row=2, column=1, sticky="ew", padx=(6, 0), pady=(6, 0))
-        ttk.Button(step_group, text="dx-", command=lambda: self.nudge_obstacle_component("size", 0, -1)).grid(row=2, column=2, sticky="ew", padx=(6, 0), pady=(6, 0))
-        ttk.Button(step_group, text="dx+", command=lambda: self.nudge_obstacle_component("size", 0, 1)).grid(row=2, column=3, sticky="ew", padx=(6, 0), pady=(6, 0))
-        ttk.Button(step_group, text="dy-", command=lambda: self.nudge_obstacle_component("size", 1, -1)).grid(row=3, column=0, sticky="ew", pady=(6, 0))
-        ttk.Button(step_group, text="dy+", command=lambda: self.nudge_obstacle_component("size", 1, 1)).grid(row=3, column=1, sticky="ew", padx=(6, 0), pady=(6, 0))
-        ttk.Button(step_group, text="dz-", command=lambda: self.nudge_obstacle_component("size", 2, -1)).grid(row=3, column=2, sticky="ew", padx=(6, 0), pady=(6, 0))
+        ttk.Button(step_group, text="y-", command=lambda: self.nudge_obstacle_component("center", 1, -1)).grid(row=2, column=0, sticky="ew", pady=(6, 0))
+        ttk.Button(step_group, text="y+", command=lambda: self.nudge_obstacle_component("center", 1, 1)).grid(row=2, column=1, sticky="ew", padx=(6, 0), pady=(6, 0))
+        ttk.Button(step_group, text="z-", command=lambda: self.nudge_obstacle_component("center", 2, -1)).grid(row=3, column=0, sticky="ew", pady=(6, 0))
+        ttk.Button(step_group, text="z+", command=lambda: self.nudge_obstacle_component("center", 2, 1)).grid(row=3, column=1, sticky="ew", padx=(6, 0), pady=(6, 0))
+        ttk.Button(step_group, text="dx-", command=lambda: self.nudge_obstacle_component("size", 0, -1)).grid(row=1, column=2, sticky="ew", padx=(12, 0), pady=(8, 0))
+        ttk.Button(step_group, text="dx+", command=lambda: self.nudge_obstacle_component("size", 0, 1)).grid(row=1, column=3, sticky="ew", padx=(6, 0), pady=(8, 0))
+        ttk.Button(step_group, text="dy-", command=lambda: self.nudge_obstacle_component("size", 1, -1)).grid(row=2, column=2, sticky="ew", padx=(12, 0), pady=(6, 0))
+        ttk.Button(step_group, text="dy+", command=lambda: self.nudge_obstacle_component("size", 1, 1)).grid(row=2, column=3, sticky="ew", padx=(6, 0), pady=(6, 0))
+        ttk.Button(step_group, text="dz-", command=lambda: self.nudge_obstacle_component("size", 2, -1)).grid(row=3, column=2, sticky="ew", padx=(12, 0), pady=(6, 0))
         ttk.Button(step_group, text="dz+", command=lambda: self.nudge_obstacle_component("size", 2, 1)).grid(row=3, column=3, sticky="ew", padx=(6, 0), pady=(6, 0))
 
         preview_group = ttk.LabelFrame(form, text="障碍物三视图实时预览", padding=8)
@@ -775,8 +782,13 @@ class App(tk.Tk):
 
         right = ttk.Frame(pane)
         right.columnconfigure(0, weight=1)
-        right.rowconfigure(1, weight=1)
-        preview3d_group = ttk.LabelFrame(right, text="障碍物场景即时 3D 预览", padding=8)
+        right.rowconfigure(0, weight=1)
+        right_scroll = ScrollableForm(right)
+        right_scroll.grid(row=0, column=0, sticky="nsew")
+        right_form = right_scroll.inner
+        right_form.columnconfigure(0, weight=1)
+
+        preview3d_group = ttk.LabelFrame(right_form, text="障碍物场景即时 3D 预览", padding=8)
         preview3d_group.grid(row=0, column=0, sticky="nsew", padx=(10, 0))
         preview3d_group.columnconfigure(0, weight=1)
         preview3d_group.rowconfigure(1, weight=1)
@@ -814,9 +826,15 @@ class App(tk.Tk):
     def _build_unity_tab(self) -> None:
         tab = ttk.Frame(self.notebook, padding=10)
         self.notebook.add(tab, text="Unity")
-        tab.columnconfigure(1, weight=1)
+        tab.columnconfigure(0, weight=1)
+        tab.rowconfigure(0, weight=1)
 
-        fk_group = ttk.LabelFrame(tab, text="FK参考导出", padding=8)
+        scroll = ScrollableForm(tab)
+        scroll.grid(row=0, column=0, sticky="nsew")
+        form = scroll.inner
+        form.columnconfigure(1, weight=1)
+
+        fk_group = ttk.LabelFrame(form, text="FK参考导出", padding=8)
         fk_group.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 8))
         fk_group.columnconfigure(1, weight=1)
         self._make_labeled_entry(fk_group, 0, "关节角 q", self.fk_q_var)
@@ -824,7 +842,7 @@ class App(tk.Tk):
         self._make_note(fk_group, 2, "作用：把单组关节角对应的 FK 末端位置、姿态和关节点数据导出给 Unity，用于做单姿态校验。")
         ttk.Button(fk_group, text="导出 FK 参考", command=self.run_fk_export).grid(row=3, column=0, columnspan=3, sticky="ew", pady=(8, 0))
 
-        traj_group = ttk.LabelFrame(tab, text="轨迹导出", padding=8)
+        traj_group = ttk.LabelFrame(form, text="轨迹导出", padding=8)
         traj_group.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(0, 8))
         traj_group.columnconfigure(1, weight=1)
         self._make_labeled_entry(traj_group, 0, "q_start", self.traj_q_start_var)
@@ -836,7 +854,7 @@ class App(tk.Tk):
         self._make_note(traj_group, 6, "作用：将 q_start 到 q_goal 的关节空间插值轨迹导出为 Unity 可直接播放的 JSON。")
         ttk.Button(traj_group, text="导出轨迹 JSON", command=self.run_trajectory_export).grid(row=7, column=0, columnspan=3, sticky="ew", pady=(8, 0))
 
-        obs_group = ttk.LabelFrame(tab, text="避障结果转 Unity 回放", padding=8)
+        obs_group = ttk.LabelFrame(form, text="避障结果转 Unity 回放", padding=8)
         obs_group.grid(row=2, column=0, columnspan=2, sticky="ew")
         obs_group.columnconfigure(1, weight=1)
         self._make_labeled_path_entry(obs_group, 0, "plan_json", self.obstacle_plan_json_var, save=False, default_key="obstacle_plan_json")
@@ -857,13 +875,17 @@ class App(tk.Tk):
 
         left = ttk.Frame(figure_pane)
         left.columnconfigure(0, weight=1)
-        left.rowconfigure(3, weight=1)
+        left.rowconfigure(0, weight=1)
+        left_scroll = ScrollableForm(left)
+        left_scroll.grid(row=0, column=0, sticky="nsew")
+        left_form = left_scroll.inner
+        left_form.columnconfigure(0, weight=1)
 
         right = ttk.Frame(figure_pane)
         right.columnconfigure(0, weight=1)
         right.rowconfigure(0, weight=1)
 
-        output_group = ttk.LabelFrame(left, text="输出路径", padding=8)
+        output_group = ttk.LabelFrame(left_form, text="输出路径", padding=8)
         output_group.grid(row=0, column=0, sticky="ew", pady=(0, 8))
         output_group.columnconfigure(1, weight=1)
         self._make_labeled_dir_entry(output_group, 0, "图像输出目录", self.figure_output_dir_var, default_key="figure_output_dir")
@@ -874,7 +896,7 @@ class App(tk.Tk):
             "说明：不修改时仍写入默认的 figure/figures 与 figure/data。避障图主要写图像目录，核心图和工作空间图会同时写图像与数据目录。",
         )
 
-        core_group = ttk.LabelFrame(left, text="1. 核心图表", padding=8)
+        core_group = ttk.LabelFrame(left_form, text="1. 核心图表", padding=8)
         core_group.grid(row=1, column=0, sticky="ew", pady=(0, 8))
         core_group.columnconfigure(1, weight=1)
         self._make_labeled_path_entry(core_group, 0, "单案例 IK JSON", self.figure_core_case_json_var, save=False, default_key="figure_core_case_json")
@@ -899,7 +921,7 @@ class App(tk.Tk):
         core_note_2.grid(row=2, column=0, columnspan=3, sticky="ew", pady=(4, 0))
         ttk.Button(core_group, text="生成核心图表", command=self.run_core_figures).grid(row=3, column=0, columnspan=3, sticky="ew", pady=(8, 0))
 
-        workspace_group = ttk.LabelFrame(left, text="2. 工作空间图", padding=8)
+        workspace_group = ttk.LabelFrame(left_form, text="2. 工作空间图", padding=8)
         workspace_group.grid(row=2, column=0, sticky="ew", pady=(0, 8))
         workspace_group.columnconfigure(1, weight=1)
         self._make_labeled_dir_entry(workspace_group, 0, "参考样本目录", self.figure_workspace_ref_dir_var, default_key="figure_workspace_ref_dir")
@@ -924,8 +946,8 @@ class App(tk.Tk):
         workspace_note_2.grid(row=2, column=0, columnspan=3, sticky="ew", pady=(4, 0))
         ttk.Button(workspace_group, text="生成工作空间图", command=self.run_workspace_figures).grid(row=3, column=0, columnspan=3, sticky="ew", pady=(8, 0))
 
-        obstacle_group = ttk.LabelFrame(left, text="3. 避障图", padding=8)
-        obstacle_group.grid(row=3, column=0, sticky="nsew")
+        obstacle_group = ttk.LabelFrame(left_form, text="3. 避障图", padding=8)
+        obstacle_group.grid(row=3, column=0, sticky="ew")
         obstacle_group.columnconfigure(1, weight=1)
         self._make_labeled_path_entry(obstacle_group, 0, "避障规划 JSON", self.figure_obstacle_plan_json_var, save=False, default_key="figure_obstacle_plan_json")
         obstacle_note_1 = tk.Label(
@@ -1430,7 +1452,7 @@ class App(tk.Tk):
             self.obstacle_3d_figure.clear()
             self.obstacle_3d_ax = self.obstacle_3d_figure.add_subplot(111, projection="3d")
             ax = self.obstacle_3d_ax
-            ax.set_title("Obstacle scene preview / 障碍物场景预览", pad=12)
+            ax.set_title("Obstacle scene preview", pad=12)
 
             for idx, obstacle in enumerate(obstacles):
                 self._draw_3d_obstacle_box(obstacle, selected=False, inflate_mm=inflate_mm)
