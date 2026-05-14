@@ -39,8 +39,8 @@ from fk_model import JOINT_LIMITS_DEG, pose6_from_q_torch_batch
 from predict_ik import build_conditioned_features
 
 FIGURE_DIR = ROOT / "figure"
-DATA_DIR = FIGURE_DIR / "data"
-FIGURES_DIR = FIGURE_DIR / "figures"
+DATA_DIR = Path(os.environ.get("ABB_FIGURE_DATA_DIR", str(FIGURE_DIR / "data")))
+FIGURES_DIR = Path(os.environ.get("ABB_FIGURE_OUTPUT_DIR", str(FIGURE_DIR / "figures")))
 
 SUCCESS_POS_MM = 1.0
 SUCCESS_ORI_RAD = 1e-2

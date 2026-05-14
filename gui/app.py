@@ -22,6 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from gui import services
 from fk_model import fk_abb_irb_joint_points
 from robot_config import JOINT_LIMITS_DEG
 
@@ -199,6 +200,18 @@ class App(tk.Tk):
         self.obstacle_plan_json_var = tk.StringVar(value=self._default_path_value("obstacle_plan_json", ROOT / "artifacts" / "obstacle_avoidance" / "gui_plan.json"))
         self.obstacle_demo_name_var = tk.StringVar(value="gui_obstacle_demo")
         self.obstacle_unity_out_var = tk.StringVar(value=self._default_path_value("obstacle_unity_out_json", UNITY_DIR / "Assets" / "PlanningData" / "gui_obstacle_demo_unity.json"))
+        self.obstacle_compare_name_var = tk.StringVar(value="abb_gui_obstacle_compare")
+        self.obstacle_compare_out_json_var = tk.StringVar(value=self._default_path_value("obstacle_compare_out_json", ROOT / "artifacts" / "obstacle_avoidance" / "gui_obstacle_compare.json"))
+        self.obstacle_compare_unity_out_var = tk.StringVar(value=self._default_path_value("obstacle_compare_unity_out_json", UNITY_DIR / "Assets" / "PlanningData" / "gui_obstacle_compare_unity.json"))
+        self.obstacle_compare_demo_name_var = tk.StringVar(value="gui_obstacle_compare_demo")
+
+        self.comparison_name_var = tk.StringVar(value="abb_gui_method_compare")
+        self.comparison_steps_var = tk.StringVar(value="120")
+        self.comparison_duration_var = tk.StringVar(value="3.0")
+        self.comparison_out_json_var = tk.StringVar(value=self._default_path_value("comparison_out_json", UNITY_DIR / "Assets" / "TrajectoryData" / "abb_gui_method_compare.json"))
+        self.benchmark_n_samples_var = tk.StringVar(value="100")
+        self.benchmark_seed_var = tk.StringVar(value="2026")
+        self.benchmark_tag_var = tk.StringVar(value="gui_n100")
 
         self.figure_output_dir_var = tk.StringVar(value=self._default_path_value("figure_output_dir", ROOT / "figure" / "figures"))
         self.figure_data_dir_var = tk.StringVar(value=self._default_path_value("figure_data_dir", ROOT / "figure" / "data"))
@@ -267,7 +280,9 @@ class App(tk.Tk):
         self.notebook.grid(row=0, column=0, sticky="nsew")
         self._build_predict_tab()
         self._build_obstacle_tab()
+        self._build_obstacle_compare_tab()
         self._build_unity_tab()
+        self._build_comparison_tab()
         self._build_figure_tab()
 
         right = ttk.Frame(main_pane, padding=8)
@@ -863,6 +878,58 @@ class App(tk.Tk):
         self._make_note(obs_group, 3, "作用：把 Python 侧的避障规划结果整理成 Unity 友好版 JSON，供障碍物、目标点、蓝/红轨迹回放使用。")
         ttk.Button(obs_group, text="导出避障回放 JSON", command=self.run_obstacle_unity_export).grid(row=4, column=0, columnspan=3, sticky="ew", pady=(8, 0))
 
+        compare_group = ttk.LabelFrame(form, text="避障对比转 Unity 回放", padding=8)
+        compare_group.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(8, 0))
+        compare_group.columnconfigure(1, weight=1)
+        self._make_labeled_path_entry(compare_group, 0, "comparison_json", self.obstacle_compare_out_json_var, save=False, default_key="obstacle_compare_out_json")
+        self._make_labeled_entry(compare_group, 1, "demo_name", self.obstacle_compare_demo_name_var)
+        self._make_labeled_path_entry(compare_group, 2, "输出 JSON", self.obstacle_compare_unity_out_var, save=True, default_key="obstacle_compare_unity_out_json")
+        self._make_note(compare_group, 3, "作用：把三方法避障对比结果整理成 Unity 同场三线路径回放 JSON。")
+        ttk.Button(compare_group, text="导出避障对比回放 JSON", command=self.run_obstacle_compare_unity_export).grid(row=4, column=0, columnspan=3, sticky="ew", pady=(8, 0))
+
+    def _build_obstacle_compare_tab(self) -> None:
+        tab = ttk.Frame(self.notebook, padding=10)
+        self.notebook.add(tab, text="避障对比")
+        tab.columnconfigure(0, weight=1)
+        tab.rowconfigure(0, weight=1)
+
+        scroll = ScrollableForm(tab)
+        scroll.grid(row=0, column=0, sticky="nsew")
+        form = scroll.inner
+        form.columnconfigure(0, weight=1)
+
+        intro_group = ttk.LabelFrame(form, text="工作流说明", padding=8)
+        intro_group.grid(row=0, column=0, sticky="ew", pady=(0, 8))
+        self._make_note(intro_group, 0, "本页用于论文中的避障方法对比。在同一组 q_start、pose6、scene_json 条件下，对 NN + NR、DLS、L-BFGS-B 三种方法分别执行避障计算并统一汇总。", columnspan=2)
+        self._make_note(intro_group, 1, "该页是并行新入口，不影响现有“避障”页的正式单方法规划链路。", columnspan=2)
+
+        source_group = ttk.LabelFrame(form, text="共享输入来源", padding=8)
+        source_group.grid(row=1, column=0, sticky="ew", pady=(0, 8))
+        source_group.columnconfigure(1, weight=1)
+        self._make_labeled_entry(source_group, 0, "当前目标位姿 pose6", self.pose_var)
+        self._make_labeled_entry(source_group, 1, "当前起始关节 q_start", self.q_start_var)
+        self._make_labeled_path_entry(source_group, 2, "scene_json", self.scene_var, save=False, default_key="scene_json")
+        self._make_labeled_path_entry(source_group, 3, "prediction metadata", self.pred_meta_var, save=False, default_key="pred_meta")
+        self._make_labeled_path_entry(source_group, 4, "branch metadata", self.branch_meta_var, save=False, default_key="branch_meta")
+        self._make_labeled_path_entry(source_group, 5, "fine metadata", self.fine_meta_var, save=False, default_key="fine_meta")
+        self._make_note(source_group, 6, "说明：本页直接复用当前 GUI 的 pose6、q_start、scene_json 和 metadata。数值法链路不会进入 NN 分类器与网络初值环节。", columnspan=4)
+
+        output_group = ttk.LabelFrame(form, text="输出设置", padding=8)
+        output_group.grid(row=2, column=0, sticky="ew", pady=(0, 8))
+        output_group.columnconfigure(1, weight=1)
+        self._make_labeled_entry(output_group, 0, "对比名称", self.obstacle_compare_name_var)
+        self._make_labeled_path_entry(output_group, 1, "对比结果 JSON", self.obstacle_compare_out_json_var, save=True, default_key="obstacle_compare_out_json")
+        self._make_labeled_entry(output_group, 2, "Unity demo_name", self.obstacle_compare_demo_name_var)
+        self._make_labeled_path_entry(output_group, 3, "Unity 对比回放 JSON", self.obstacle_compare_unity_out_var, save=True, default_key="obstacle_compare_unity_out_json")
+
+        action_group = ttk.LabelFrame(form, text="执行动作", padding=8)
+        action_group.grid(row=3, column=0, sticky="ew")
+        for col in range(2):
+            action_group.columnconfigure(col, weight=1)
+        self._make_note(action_group, 0, "V1 只做单案例对比，不做批量 benchmark。Unity 只负责路径展示，统计结果保留在右侧摘要与输出 JSON 中。", columnspan=2)
+        ttk.Button(action_group, text="运行避障方法对比", command=self.run_obstacle_method_comparison).grid(row=1, column=0, columnspan=2, sticky="ew", pady=(8, 0))
+        ttk.Button(action_group, text="导出避障对比回放 JSON", command=self.run_obstacle_compare_unity_export).grid(row=2, column=0, columnspan=2, sticky="ew", pady=(8, 0))
+
     def _build_figure_tab(self) -> None:
         tab = ttk.Frame(self.notebook, padding=10)
         self.notebook.add(tab, text="图表")
@@ -1017,9 +1084,6 @@ class App(tk.Tk):
         self.figure_preview_canvas.bind("<ButtonRelease-1>", self._on_figure_preview_drag_end)
         ttk.Button(preview_group, text="刷新预览", command=self.refresh_obstacle_figure_preview).grid(row=4, column=0, sticky="ew", pady=(8, 0))
 
-        figure_pane.add(left, weight=3)
-        figure_pane.add(right, weight=4)
-
         for parent, widgets in [
             (core_group, [core_note_1, core_note_2]),
             (workspace_group, [workspace_note_1, workspace_note_2]),
@@ -1032,6 +1096,82 @@ class App(tk.Tk):
                     item.configure(wraplength=wrap)
 
             parent.bind("<Configure>", _refresh_wrap, add="+")
+
+        figure_pane.add(left, weight=3)
+        figure_pane.add(right, weight=4)
+
+    def _build_comparison_tab(self) -> None:
+        tab = ttk.Frame(self.notebook, padding=10)
+        self.notebook.add(tab, text="方法对比")
+        tab.columnconfigure(0, weight=1)
+        tab.rowconfigure(0, weight=1)
+
+        scroll = ScrollableForm(tab)
+        scroll.grid(row=0, column=0, sticky="nsew")
+        form = scroll.inner
+        form.columnconfigure(0, weight=1)
+
+        intro_group = ttk.LabelFrame(form, text="工作流说明", padding=8)
+        intro_group.grid(row=0, column=0, sticky="ew", pady=(0, 8))
+        intro_group.columnconfigure(1, weight=1)
+        self._make_note(
+            intro_group,
+            0,
+            "本页用于论文中的普通逆解方法对比。在同一组 pose6、q_start 和同一套 metadata 条件下，同时运行 NN + NR、DLS、L-BFGS-B。",
+            columnspan=2,
+        )
+        self._make_note(
+            intro_group,
+            1,
+            "第一阶段不包含传统数值避障基线。障碍物、scene_json、三视图和 3D 场景预览仍保留在“避障”页。",
+            columnspan=2,
+        )
+
+        source_group = ttk.LabelFrame(form, text="共享输入来源", padding=8)
+        source_group.grid(row=1, column=0, sticky="ew", pady=(0, 8))
+        source_group.columnconfigure(1, weight=1)
+        self._make_labeled_entry(source_group, 0, "当前目标位姿 pose6", self.pose_var)
+        self._make_labeled_entry(source_group, 1, "当前起始关节 q_start", self.q_start_var)
+        self._make_labeled_path_entry(source_group, 2, "prediction metadata", self.pred_meta_var, save=False, default_key="pred_meta")
+        self._make_labeled_path_entry(source_group, 3, "branch metadata", self.branch_meta_var, save=False, default_key="branch_meta")
+        self._make_labeled_path_entry(source_group, 4, "fine metadata", self.fine_meta_var, save=False, default_key="fine_meta")
+        self._make_labeled_dir_entry(source_group, 5, "图像输出目录", self.figure_output_dir_var, default_key="figure_output_dir")
+        self._make_labeled_dir_entry(source_group, 6, "数据输出目录", self.figure_data_dir_var, default_key="figure_data_dir")
+        self._make_note(
+            source_group,
+            7,
+            "说明：本页不维护独立副本，直接复用当前 GUI 的共享输入状态。你在“推理”或“避障”页修改 pose6、q_start、metadata 后，这里会直接使用最新值。",
+            columnspan=4,
+        )
+
+        compare_group = ttk.LabelFrame(form, text="单样本方法对比", padding=8)
+        compare_group.grid(row=2, column=0, sticky="ew", pady=(0, 8))
+        compare_group.columnconfigure(1, weight=1)
+        self._make_labeled_entry(compare_group, 0, "对比名称", self.comparison_name_var)
+        self._make_labeled_entry(compare_group, 1, "轨迹离散步数", self.comparison_steps_var)
+        self._make_labeled_entry(compare_group, 2, "播放时长(s)", self.comparison_duration_var)
+        self._make_labeled_path_entry(compare_group, 3, "Unity 对比输出 JSON", self.comparison_out_json_var, save=True, default_key="comparison_out_json")
+        self._make_note(
+            compare_group,
+            4,
+            "输出内容：统一表格摘要 + 三方法 Unity 回放 JSON。该 JSON 可直接用于现有 comparison 播放链路。",
+            columnspan=4,
+        )
+        ttk.Button(compare_group, text="运行单样本方法对比", command=self.run_method_comparison).grid(row=5, column=0, columnspan=4, sticky="ew", pady=(8, 0))
+
+        benchmark_group = ttk.LabelFrame(form, text="批量 benchmark", padding=8)
+        benchmark_group.grid(row=3, column=0, sticky="ew")
+        benchmark_group.columnconfigure(1, weight=1)
+        self._make_labeled_entry(benchmark_group, 0, "样本数量 n_samples", self.benchmark_n_samples_var)
+        self._make_labeled_entry(benchmark_group, 1, "随机种子 seed", self.benchmark_seed_var)
+        self._make_labeled_entry(benchmark_group, 2, "结果标签 tag", self.benchmark_tag_var)
+        self._make_note(
+            benchmark_group,
+            3,
+            "执行脚本仍会跑六方法 benchmark，但 GUI 摘要只聚焦论文第一阶段最需要的三组方法：NN + NR、DLS、L-BFGS-B。",
+            columnspan=2,
+        )
+        ttk.Button(benchmark_group, text="运行批量 benchmark", command=self.run_benchmark_six_methods).grid(row=4, column=0, columnspan=2, sticky="ew", pady=(8, 0))
 
     def _get_obstacle_preview_candidates(self) -> list[Path]:
         figures_dir = Path(self.figure_output_dir_var.get())
@@ -1763,6 +1903,65 @@ class App(tk.Tk):
             f"{source}"
         )
 
+    def _comparison_form_data(self) -> dict[str, str]:
+        return {
+            "pose6": self.pose_var.get().strip(),
+            "q_start": self.q_start_var.get().strip(),
+            "pred_meta": self.pred_meta_var.get().strip(),
+            "branch_meta": self.branch_meta_var.get().strip(),
+            "fine_meta": self.fine_meta_var.get().strip(),
+            "comparison_name": self.comparison_name_var.get().strip(),
+            "comparison_steps": self.comparison_steps_var.get().strip(),
+            "comparison_duration": self.comparison_duration_var.get().strip(),
+            "comparison_out_json": self.comparison_out_json_var.get().strip(),
+            "topk_shoulder": self.predict_topk_shoulder_var.get().strip(),
+            "topk_elbow": self.predict_topk_elbow_var.get().strip(),
+            "topk_wrist": self.predict_topk_wrist_var.get().strip(),
+            "max_branch_candidates": self.predict_max_branch_candidates_var.get().strip(),
+            "fine_topk_per_branch": self.predict_fine_topk_per_branch_var.get().strip(),
+            "max_subspace_candidates": self.predict_max_subspace_candidates_var.get().strip(),
+            "nr_max_iters": self.predict_nr_max_iters_var.get().strip(),
+            "nr_tol_pos_mm": self.predict_nr_tol_pos_mm_var.get().strip(),
+            "nr_tol_ori_rad": self.predict_nr_tol_ori_rad_var.get().strip(),
+            "nr_damping": self.predict_nr_damping_var.get().strip(),
+            "nr_step_scale": self.predict_nr_step_scale_var.get().strip(),
+        }
+
+    def _obstacle_compare_form_data(self) -> dict[str, str]:
+        return {
+            "pose6": self.pose_var.get().strip(),
+            "q_start": self.q_start_var.get().strip(),
+            "scene_json": self.scene_var.get().strip(),
+            "pred_meta": self.pred_meta_var.get().strip(),
+            "branch_meta": self.branch_meta_var.get().strip(),
+            "fine_meta": self.fine_meta_var.get().strip(),
+            "topk_shoulder": self.obstacle_topk_shoulder_var.get().strip(),
+            "topk_elbow": self.obstacle_topk_elbow_var.get().strip(),
+            "topk_wrist": self.obstacle_topk_wrist_var.get().strip(),
+            "max_branch_candidates": self.obstacle_max_branch_candidates_var.get().strip(),
+            "fine_topk_per_branch": self.obstacle_fine_topk_per_branch_var.get().strip(),
+            "max_subspace_candidates": self.obstacle_max_subspace_candidates_var.get().strip(),
+            "nr_max_iters": self.obstacle_nr_max_iters_var.get().strip(),
+            "nr_tol_pos_mm": self.obstacle_nr_tol_pos_mm_var.get().strip(),
+            "nr_tol_ori_rad": self.obstacle_nr_tol_ori_rad_var.get().strip(),
+            "nr_damping": self.obstacle_nr_damping_var.get().strip(),
+            "nr_step_scale": self.obstacle_nr_step_scale_var.get().strip(),
+            "trajectory_steps": self.obstacle_trajectory_steps_var.get().strip(),
+            "comparison_name": self.obstacle_compare_name_var.get().strip(),
+            "obstacle_compare_out_json": self.obstacle_compare_out_json_var.get().strip(),
+            "obstacle_compare_json": self.obstacle_compare_out_json_var.get().strip(),
+            "obstacle_compare_demo_name": self.obstacle_compare_demo_name_var.get().strip(),
+            "obstacle_compare_unity_out_json": self.obstacle_compare_unity_out_var.get().strip(),
+        }
+
+    def _benchmark_form_data(self) -> dict[str, str]:
+        return {
+            "benchmark_n_samples": self.benchmark_n_samples_var.get().strip(),
+            "benchmark_seed": self.benchmark_seed_var.get().strip(),
+            "benchmark_tag": self.benchmark_tag_var.get().strip(),
+            "figure_data_dir": self.figure_data_dir_var.get().strip(),
+        }
+
     def _build_predict_summary(self, json_path: Path) -> str:
         if not json_path.exists():
             return f"未找到输出文件：{json_path}"
@@ -1865,6 +2064,12 @@ class App(tk.Tk):
         lines.append("")
         lines.append(f"结果文件：{json_path}")
         return "\n".join(lines)
+
+    def _build_obstacle_compare_summary(self, json_path: Path) -> str:
+        return services.build_obstacle_method_comparison_summary(json_path)
+
+    def _build_obstacle_compare_unity_summary(self, json_path: Path) -> str:
+        return services.build_obstacle_method_unity_summary(json_path)
 
     def _build_figure_env(self) -> dict[str, str]:
         figures_dir = Path(self.figure_output_dir_var.get())
@@ -2035,6 +2240,39 @@ class App(tk.Tk):
         ]
         self.run_command("export_unity_obstacle_avoidance_demo", cmd, self._build_obstacle_unity_summary, out_path)
 
+    def run_obstacle_method_comparison(self) -> None:
+        form = self._obstacle_compare_form_data()
+        out_path = Path(form["obstacle_compare_out_json"])
+        self._ensure_parent(str(out_path))
+        self.obstacle_compare_out_json_var.set(str(out_path))
+        self.obstacle_compare_demo_name_var.set(form["obstacle_compare_demo_name"])
+        try:
+            save_msg = self._save_obstacle_editor_to_scene()
+            self.append_log(save_msg)
+        except Exception as exc:
+            self.set_summary(f"任务：compare_obstacle_avoidance_methods\n\n障碍物参数写回失败：{exc}")
+            self.append_log(f"[compare_obstacle_avoidance_methods] 障碍物参数写回失败：{exc}")
+            return
+        cmd, out_path = services.build_obstacle_method_comparison_command(form)
+        self.run_command(
+            "compare_obstacle_avoidance_methods",
+            cmd,
+            self._build_obstacle_compare_summary,
+            out_path,
+        )
+
+    def run_obstacle_compare_unity_export(self) -> None:
+        form = self._obstacle_compare_form_data()
+        out_path = Path(form["obstacle_compare_unity_out_json"])
+        self._ensure_parent(str(out_path))
+        cmd, out_path = services.build_obstacle_method_unity_export_command(form)
+        self.run_command(
+            "export_unity_obstacle_method_comparison",
+            cmd,
+            self._build_obstacle_compare_unity_summary,
+            out_path,
+        )
+
     def run_obstacle_figures_after_planning(self) -> None:
         self.notebook.select(self.figure_tab)
         self.run_obstacle_figures()
@@ -2071,6 +2309,33 @@ class App(tk.Tk):
             summary_path=figures_dir,
             env=self._build_figure_env(),
             on_success=self.refresh_obstacle_figure_preview,
+        )
+
+    def run_method_comparison(self) -> None:
+        form = self._comparison_form_data()
+        cmd, out_path = services.build_method_comparison_command(form)
+        self._ensure_parent(str(out_path))
+        self.traj_out_json_var.set(str(out_path))
+        self.run_command(
+            "export_unity_method_comparison",
+            cmd,
+            services.build_method_comparison_summary,
+            out_path,
+        )
+
+    def run_benchmark_six_methods(self) -> None:
+        form = self._benchmark_form_data()
+        figures_dir = Path(self.figure_output_dir_var.get())
+        data_dir = Path(form["figure_data_dir"])
+        figures_dir.mkdir(parents=True, exist_ok=True)
+        data_dir.mkdir(parents=True, exist_ok=True)
+        cmd, summary_path = services.build_benchmark_six_methods_command(form)
+        self.run_command(
+            "run_ik_benchmark_six_methods",
+            cmd,
+            services.build_benchmark_six_methods_summary,
+            summary_path,
+            env=self._build_figure_env(),
         )
 
     def open_result_dir(self) -> None:

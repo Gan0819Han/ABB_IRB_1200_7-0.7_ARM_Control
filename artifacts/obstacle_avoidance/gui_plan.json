@@ -13411,13 +13411,13 @@
   },
   "has_collision_free_solution": true,
   "selected_solution_collision_free": true,
-  "planning_time_ms": 20611.2065,
+  "planning_time_ms": 21434.8255,
   "timing_breakdown_ms": {
-    "candidate_generation_ms": 34.76809999999952,
-    "classification_ms": 34.76809999999952,
-    "branch_classification_ms": 23.336799999999602,
-    "fine_classification_ms": 11.431299999999922,
-    "candidate_evaluation_ms": 20254.463600000003,
-    "total_ms": 20611.2065
+    "candidate_generation_ms": 13.164699999999918,
+    "classification_ms": 13.164699999999918,
+    "branch_classification_ms": 3.085699999999747,
+    "fine_classification_ms": 10.079000000000171,
+    "candidate_evaluation_ms": 20070.8506,
+    "total_ms": 21434.8255
   }
 }

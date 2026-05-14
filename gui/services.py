@@ -902,3 +902,222 @@ def build_obstacle_figures_command(plan_json: str) -> list[str]:
         PYTHON, "-X", "utf8", "figure\\scripts\\generate_obstacle_candidate_trajectory_figures.py",
         "--plan_json", plan_json,
     ]
+
+
+def build_method_comparison_command(form: dict[str, str]) -> tuple[list[str], Path]:
+    out_path = Path(form["comparison_out_json"])
+    ensure_parent(str(out_path))
+    cmd = [
+        PYTHON, "-X", "utf8", "scripts\\export_unity_method_comparison.py",
+        "--pose", form["pose6"],
+        "--q_start", form["q_start"],
+        "--steps", form["comparison_steps"],
+        "--duration", form["comparison_duration"],
+        "--name", form["comparison_name"],
+        "--pred_meta", form["pred_meta"],
+        "--branch_meta", form["branch_meta"],
+        "--fine_meta", form["fine_meta"],
+        "--topk_shoulder", form["topk_shoulder"],
+        "--topk_elbow", form["topk_elbow"],
+        "--topk_wrist", form["topk_wrist"],
+        "--max_branch_candidates", form["max_branch_candidates"],
+        "--fine_topk_per_branch", form["fine_topk_per_branch"],
+        "--max_subspace_candidates", form["max_subspace_candidates"],
+        "--nr_max_iters", form["nr_max_iters"],
+        "--nr_tol_pos_mm", form["nr_tol_pos_mm"],
+        "--nr_tol_ori_rad", form["nr_tol_ori_rad"],
+        "--nr_damping", form["nr_damping"],
+        "--nr_step_scale", form["nr_step_scale"],
+        "--out_json", str(out_path),
+    ]
+    return cmd, out_path
+
+
+def build_obstacle_method_comparison_command(form: dict[str, str]) -> tuple[list[str], Path]:
+    out_path = Path(form["obstacle_compare_out_json"])
+    ensure_parent(str(out_path))
+    cmd = [
+        PYTHON, "-X", "utf8", "scripts\\compare_obstacle_avoidance_methods.py",
+        "--pose", form["pose6"],
+        "--q_start", form["q_start"],
+        "--scene_json", form["scene_json"],
+        "--pred_meta", form["pred_meta"],
+        "--branch_meta", form["branch_meta"],
+        "--fine_meta", form["fine_meta"],
+        "--topk_shoulder", form["topk_shoulder"],
+        "--topk_elbow", form["topk_elbow"],
+        "--topk_wrist", form["topk_wrist"],
+        "--max_branch_candidates", form["max_branch_candidates"],
+        "--fine_topk_per_branch", form["fine_topk_per_branch"],
+        "--max_subspace_candidates", form["max_subspace_candidates"],
+        "--nr_max_iters", form["nr_max_iters"],
+        "--nr_tol_pos_mm", form["nr_tol_pos_mm"],
+        "--nr_tol_ori_rad", form["nr_tol_ori_rad"],
+        "--nr_damping", form["nr_damping"],
+        "--nr_step_scale", form["nr_step_scale"],
+        "--trajectory_steps", form["trajectory_steps"],
+        "--comparison_name", form["comparison_name"],
+        "--save_selected_frames",
+        "--out_json", str(out_path),
+    ]
+    return cmd, out_path
+
+
+def build_obstacle_method_unity_export_command(form: dict[str, str]) -> tuple[list[str], Path]:
+    out_path = Path(form["obstacle_compare_unity_out_json"])
+    ensure_parent(str(out_path))
+    cmd = [
+        PYTHON, "-X", "utf8", "scripts\\export_unity_obstacle_method_comparison.py",
+        "--comparison_json", form["obstacle_compare_json"],
+        "--demo_name", form["obstacle_compare_demo_name"],
+        "--out_json", str(out_path),
+    ]
+    return cmd, out_path
+
+
+def build_benchmark_six_methods_command(form: dict[str, str]) -> tuple[list[str], Path]:
+    summary_path = Path(form["figure_data_dir"]) / f"ik_benchmark_six_methods_summary_{form['benchmark_tag']}.csv"
+    cmd = [
+        PYTHON, "-X", "utf8", "figure\\scripts\\run_ik_benchmark_six_methods.py",
+        "--n_samples", form["benchmark_n_samples"],
+        "--seed", form["benchmark_seed"],
+        "--tag", form["benchmark_tag"],
+    ]
+    return cmd, summary_path
+
+
+def build_method_comparison_summary(json_path: Path) -> str:
+    if not json_path.exists():
+        return f"未找到输出文件：{json_path}"
+    payload = json.loads(json_path.read_text(encoding="utf-8"))
+    lines = ["任务：export_unity_method_comparison", ""]
+    lines.append(f"comparison_name：{payload.get('comparison_name', '-')}")
+    lines.append(f"trajectory_steps：{payload.get('trajectory_steps', '-')}")
+    lines.append(f"playback_duration_seconds：{payload.get('playback_duration_seconds', '-')}")
+    lines.append("")
+    lines.append("方法结果：")
+    for method in payload.get("methods", []):
+        lines.append(
+            " | ".join(
+                [
+                    str(method.get("label", "-")),
+                    f"time_ms={method.get('solve_time_ms', '-')}",
+                    f"pos_mm={method.get('final_pos_err_mm', '-')}",
+                    f"ori_rad={method.get('final_ori_err_rad', '-')}",
+                    f"iters={method.get('iters', '-')}",
+                    f"converged={method.get('converged', '-')}",
+                ]
+            )
+        )
+    lines.append("")
+    lines.append(f"结果文件：{json_path}")
+    return "\n".join(lines)
+
+
+def build_obstacle_method_comparison_summary(json_path: Path) -> str:
+    if not json_path.exists():
+        return f"未找到输出文件：{json_path}"
+    payload = json.loads(json_path.read_text(encoding="utf-8"))
+    lines = ["任务：compare_obstacle_avoidance_methods", ""]
+    lines.append(f"comparison_name：{payload.get('comparison_name', '-')}")
+    lines.append(f"scene_name：{payload.get('scene_name', '-')}")
+    lines.append(f"trajectory_steps：{payload.get('trajectory_steps', '-')}")
+    lines.append("")
+    lines.append("方法结果：")
+    for method in payload.get("methods", []):
+        parts = [
+            str(method.get("label", "-")),
+            f"time_ms={method.get('planning_time_ms', '-')}",
+            f"pos_mm={method.get('final_pos_err_mm', '-')}",
+            f"ori_rad={method.get('final_ori_err_rad', '-')}",
+            f"free={method.get('selected_solution_collision_free', '-')}",
+            f"clearance_mm={method.get('min_clearance_mm', '-')}",
+            f"mode={method.get('trajectory_mode', '-')}",
+            f"path_deg={method.get('joint_path_length_deg', '-')}",
+        ]
+        if method.get("solver_family") == "numeric":
+            parts.append(f"starts={method.get('initial_guess_count', '-')}")
+            parts.append(f"unique_goals={method.get('unique_goal_candidate_count', '-')}")
+        lines.append(" | ".join(parts))
+    ranking = payload.get("selected_method_ranking", [])
+    if ranking:
+        lines.append("")
+        lines.append("排序参考：")
+        for item in ranking:
+            lines.append(
+                " | ".join(
+                    [
+                        str(item.get("label", "-")),
+                        f"free={item.get('selected_solution_collision_free', '-')}",
+                        f"time_ms={item.get('planning_time_ms', '-')}",
+                        f"clearance_mm={item.get('min_clearance_mm', '-')}",
+                    ]
+                )
+            )
+    lines.append("")
+    lines.append(f"结果文件：{json_path}")
+    return "\n".join(lines)
+
+
+def build_obstacle_method_unity_summary(json_path: Path) -> str:
+    if not json_path.exists():
+        return f"未找到输出文件：{json_path}"
+    payload = json.loads(json_path.read_text(encoding="utf-8"))
+    lines = ["任务：export_unity_obstacle_method_comparison", ""]
+    lines.append(f"demo_name：{payload.get('demo_name', '-')}")
+    lines.append(f"scene_name：{payload.get('scene_name', '-')}")
+    lines.append(f"障碍物数量：{len(payload.get('obstacles', []))}")
+    lines.append("方法轨迹：")
+    for method in payload.get("methods", []):
+        lines.append(
+            " | ".join(
+                [
+                    str(method.get("label", "-")),
+                    f"free={method.get('selected_solution_collision_free', '-')}",
+                    f"mode={method.get('trajectory_mode', '-')}",
+                    f"frames={len(method.get('frames', []))}",
+                ]
+            )
+        )
+    lines.append("")
+    lines.append(f"结果文件：{json_path}")
+    return "\n".join(lines)
+
+
+def build_benchmark_six_methods_summary(csv_path: Path) -> str:
+    if not csv_path.exists():
+        return f"未找到 benchmark 汇总文件：{csv_path}"
+    with csv_path.open("r", encoding="utf-8-sig", newline="") as fh:
+        rows = list(csv.DictReader(fh))
+    if not rows:
+        return f"benchmark 汇总文件为空：{csv_path}"
+    method_labels = {
+        "nn_nr": "NN + NR",
+        "dls": "DLS",
+        "lbfgsb": "L-BFGS-B",
+    }
+    lines = ["任务：run_ik_benchmark_six_methods", ""]
+    lines.append(f"summary_csv：{csv_path}")
+    lines.append("")
+    lines.append("重点方法：")
+    for row in rows:
+        method_key = str(row.get("method", "")).strip()
+        label = method_labels.get(method_key)
+        if label is None:
+            continue
+        lines.append(
+            " | ".join(
+                [
+                    label,
+                    f"success_rate={row.get('success_rate', '-')}",
+                    f"converged_rate={row.get('converged_rate', '-')}",
+                    f"mean_pos_mm={row.get('mean_final_pos_err_mm', '-')}",
+                    f"mean_ori_rad={row.get('mean_final_ori_err_rad', '-')}",
+                    f"mean_time_ms={row.get('mean_solve_time_ms', '-')}",
+                    f"mean_iters={row.get('mean_iters', '-')}",
+                ]
+            )
+        )
+    lines.append("")
+    lines.append(f"共 {len(rows)} 行汇总记录")
+    return "\n".join(lines)
