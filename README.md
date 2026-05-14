@@ -166,6 +166,36 @@ cd E:\CSU\毕业设计\ABB_Arm_Control
 python gui\app.py
 ```
 
+当前工程也新增了一个并行存在的最小可用 Web UI 入口，用于在浏览器中完成常用推理、避障与 Unity 导出流程：
+
+```powershell
+conda activate arm_nn
+cd E:\CSU\毕业设计\ABB_Arm_Control
+python web\app.py
+```
+
+启动后访问：
+
+```text
+http://127.0.0.1:5000
+```
+
+说明：
+
+1. 该 Web UI 是并行新入口，不替代当前 `tkinter` 桌面 GUI
+2. 首版优先覆盖：
+   - `推理`
+   - `避障`
+   - `Unity 导出`
+3. 首版预览只保留轻量图片链路：
+   - 可显示最近一次生成的避障图 PNG
+   - 暂不提供浏览器内 3D 场景预览
+4. 若当前 `arm_nn` 环境尚未安装 `Flask`，需先执行：
+
+```powershell
+pip install flask
+```
+
 当前 `GUI` 的作用不是替代原始算法脚本，而是对常用流程做统一封装，降低命令行操作成本。  
 当前界面包括四个页面：
 

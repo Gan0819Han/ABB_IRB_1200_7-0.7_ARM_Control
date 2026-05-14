@@ -1,0 +1,1017 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ABB IRB Web UI</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --panel: #ffffff;
+      --panel-soft: #f9fbff;
+      --line: #d7dfeb;
+      --text: #172033;
+      --muted: #5d6878;
+      --accent: #1f5ee4;
+      --accent-soft: #eaf0fd;
+      --subtle: #edf2f9;
+      --danger: #b42318;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei UI", "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #edf3fb 0%, #f7f9fc 100%);
+      color: var(--text);
+    }
+    header {
+      padding: 22px 28px;
+      background: linear-gradient(135deg, #183b92, #244aa8);
+      color: #fff;
+      box-shadow: 0 14px 40px rgba(20, 49, 109, 0.18);
+    }
+    header h1 {
+      margin: 0 0 8px;
+      font-size: 30px;
+    }
+    header p {
+      margin: 0;
+      color: #d9e5ff;
+      max-width: 980px;
+      line-height: 1.7;
+    }
+    main {
+      padding: 20px;
+      display: grid;
+      grid-template-columns: minmax(940px, 1.72fr) minmax(280px, 0.48fr);
+      gap: 18px;
+      align-items: start;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: 0 16px 40px rgba(27, 48, 87, 0.08);
+      overflow: hidden;
+    }
+    .panel-scroll {
+      max-height: calc(100vh - 160px);
+      overflow: auto;
+    }
+    .left-panel {
+      min-width: 0;
+    }
+    .result-panel {
+      min-width: 0;
+    }
+    .tabs {
+      display: flex;
+      gap: 8px;
+      padding: 16px;
+      border-bottom: 1px solid var(--line);
+      background: #fcfdff;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+    .tablink {
+      text-decoration: none;
+      color: var(--muted);
+      padding: 10px 16px;
+      border-radius: 11px;
+      background: #f1f4fa;
+      font-weight: 700;
+    }
+    .tablink.active {
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+    .section {
+      display: none;
+      padding: 18px;
+    }
+    .section.active {
+      display: block;
+    }
+    .card {
+      background: var(--panel-soft);
+      border: 1px solid #e8edf5;
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+    .card h2, .card h3 {
+      margin: 0 0 12px;
+    }
+    .card h2 { font-size: 21px; }
+    .card h3 { font-size: 16px; }
+    .grid {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      gap: 10px 14px;
+      align-items: center;
+    }
+    .hyper-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+    .field label, .grid label {
+      font-weight: 700;
+      color: #243247;
+    }
+    input[type="text"], select {
+      width: 100%;
+      padding: 11px 12px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      font: inherit;
+      color: var(--text);
+      background: #fff;
+    }
+    .check {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 12px;
+      color: #243247;
+      font-weight: 700;
+    }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    button {
+      border: none;
+      border-radius: 10px;
+      background: var(--accent);
+      color: #fff;
+      padding: 11px 16px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button.subtle {
+      background: var(--subtle);
+      color: #243650;
+    }
+    .editor-layout {
+      display: grid;
+      grid-template-columns: minmax(320px, 0.95fr) minmax(420px, 1.05fr);
+      gap: 14px;
+      align-items: start;
+    }
+    .step-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .step-box {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .step-box h4 {
+      margin: 0 0 10px;
+      font-size: 14px;
+    }
+    .step-buttons {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .preview-wrap {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px;
+    }
+    .preview-box {
+      min-height: 280px;
+      border: 1px solid #e4ebf4;
+      border-radius: 12px;
+      background: #fff;
+      overflow: auto;
+      padding: 10px;
+    }
+    .preview-box svg {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+    .meta, .status {
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 14px;
+    }
+    .status.error { color: var(--danger); }
+    .result {
+      padding: 18px;
+    }
+    .result .card {
+      padding: 14px;
+    }
+    .result h2 {
+      margin: 0 0 12px;
+      font-size: 20px;
+    }
+    .result .meta {
+      margin-bottom: 10px;
+    }
+    .result-list {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 14px;
+    }
+    .result-list li {
+      margin-bottom: 6px;
+      word-break: break-word;
+    }
+    .inline-hidden {
+      display: none;
+    }
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: #f7f9fc;
+      border: 1px solid #e6ebf4;
+      border-radius: 10px;
+      padding: 12px;
+      font-family: Consolas, monospace;
+      font-size: 13px;
+      max-height: 320px;
+      overflow: auto;
+      margin: 0;
+    }
+    .preview-image {
+      margin-top: 12px;
+      border: 1px solid #dfe6f0;
+      border-radius: 12px;
+      background: #fff;
+      overflow: auto;
+      min-height: 220px;
+      display: grid;
+      place-items: center;
+      padding: 8px;
+    }
+    .preview-image img {
+      width: auto;
+      max-width: none;
+      display: block;
+      height: auto;
+      transform-origin: center center;
+      user-select: none;
+      cursor: grab;
+    }
+    .preview-3d-box {
+      min-height: 360px;
+      border: 1px solid #e4ebf4;
+      border-radius: 12px;
+      background: #fff;
+      overflow: auto;
+      padding: 10px;
+      display: grid;
+      place-items: center;
+    }
+    .preview-3d-box img {
+      width: 100%;
+      max-width: 780px;
+      height: auto;
+      display: block;
+      cursor: grab;
+      user-select: none;
+    }
+    .sticky-actions {
+      position: sticky;
+      bottom: 0;
+      background: linear-gradient(180deg, rgba(249,251,255,0) 0%, rgba(249,251,255,0.92) 28%, rgba(249,251,255,1) 100%);
+      padding-top: 12px;
+      margin-top: 8px;
+    }
+    @media (max-width: 1340px) {
+      main { grid-template-columns: 1fr; }
+      .panel-scroll { max-height: none; }
+    }
+    @media (max-width: 960px) {
+      .grid, .editor-layout { grid-template-columns: 1fr; }
+      .hyper-grid, .step-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>ABB IRB Web UI</h1>
+    <p>本机并行 Web 入口，当前覆盖推理、避障、Unity 导出与图表四个工作面。三视图采用手动刷新，浏览器内 3D 预览暂不纳入这一轮。</p>
+  </header>
+
+  <main>
+    <section class="panel panel-scroll left-panel" id="left-panel">
+      <form id="state-carrier" class="inline-hidden" aria-hidden="true">
+        <input type="hidden" name="pose6" value="{{ defaults.pose6 }}">
+        <input type="hidden" name="pred_meta" value="{{ defaults.pred_meta }}">
+        <input type="hidden" name="branch_meta" value="{{ defaults.branch_meta }}">
+        <input type="hidden" name="fine_meta" value="{{ defaults.fine_meta }}">
+        <input type="hidden" name="predict_out_json" value="{{ defaults.predict_out_json }}">
+        <input type="hidden" name="topk_shoulder" value="{{ defaults.topk_shoulder }}">
+        <input type="hidden" name="topk_elbow" value="{{ defaults.topk_elbow }}">
+        <input type="hidden" name="topk_wrist" value="{{ defaults.topk_wrist }}">
+        <input type="hidden" name="max_branch_candidates" value="{{ defaults.max_branch_candidates }}">
+        <input type="hidden" name="fine_topk_per_branch" value="{{ defaults.fine_topk_per_branch }}">
+        <input type="hidden" name="max_subspace_candidates" value="{{ defaults.max_subspace_candidates }}">
+        <input type="hidden" name="enable_nr" value="{{ defaults.enable_nr }}">
+        <input type="hidden" name="nr_max_iters" value="{{ defaults.nr_max_iters }}">
+        <input type="hidden" name="nr_tol_pos_mm" value="{{ defaults.nr_tol_pos_mm }}">
+        <input type="hidden" name="nr_tol_ori_rad" value="{{ defaults.nr_tol_ori_rad }}">
+        <input type="hidden" name="nr_damping" value="{{ defaults.nr_damping }}">
+        <input type="hidden" name="nr_step_scale" value="{{ defaults.nr_step_scale }}">
+        <input type="hidden" name="q_start" value="{{ defaults.q_start }}">
+        <input type="hidden" name="scene_json" value="{{ defaults.scene_json }}">
+        <input type="hidden" name="obstacle_out_json" value="{{ defaults.obstacle_out_json }}">
+        <input type="hidden" name="obstacle_topk_shoulder" value="{{ defaults.obstacle_topk_shoulder }}">
+        <input type="hidden" name="obstacle_topk_elbow" value="{{ defaults.obstacle_topk_elbow }}">
+        <input type="hidden" name="obstacle_topk_wrist" value="{{ defaults.obstacle_topk_wrist }}">
+        <input type="hidden" name="obstacle_max_branch_candidates" value="{{ defaults.obstacle_max_branch_candidates }}">
+        <input type="hidden" name="obstacle_fine_topk_per_branch" value="{{ defaults.obstacle_fine_topk_per_branch }}">
+        <input type="hidden" name="obstacle_max_subspace_candidates" value="{{ defaults.obstacle_max_subspace_candidates }}">
+        <input type="hidden" name="obstacle_max_evaluated_candidates" value="{{ defaults.obstacle_max_evaluated_candidates }}">
+        <input type="hidden" name="obstacle_nr_max_iters" value="{{ defaults.obstacle_nr_max_iters }}">
+        <input type="hidden" name="obstacle_nr_tol_pos_mm" value="{{ defaults.obstacle_nr_tol_pos_mm }}">
+        <input type="hidden" name="obstacle_nr_tol_ori_rad" value="{{ defaults.obstacle_nr_tol_ori_rad }}">
+        <input type="hidden" name="obstacle_nr_damping" value="{{ defaults.obstacle_nr_damping }}">
+        <input type="hidden" name="obstacle_nr_step_scale" value="{{ defaults.obstacle_nr_step_scale }}">
+        <input type="hidden" name="trajectory_steps" value="{{ defaults.trajectory_steps }}">
+        <input type="hidden" name="dedupe_tol_deg" value="{{ defaults.dedupe_tol_deg }}">
+        <input type="hidden" name="selected_obstacle_index" value="{{ defaults.selected_obstacle_index }}">
+        <input type="hidden" name="obstacle_name" value="{{ defaults.obstacle_name }}">
+        <input type="hidden" name="obstacle_center_mm" value="{{ defaults.obstacle_center_mm }}">
+        <input type="hidden" name="obstacle_size_mm" value="{{ defaults.obstacle_size_mm }}">
+        <input type="hidden" name="obstacle_move_step_mm" value="{{ defaults.obstacle_move_step_mm }}">
+        <input type="hidden" name="obstacle_size_step_mm" value="{{ defaults.obstacle_size_step_mm }}">
+        <input type="hidden" name="preview_3d_elev" value="{{ defaults.preview_3d_elev }}">
+        <input type="hidden" name="preview_3d_azim" value="{{ defaults.preview_3d_azim }}">
+        <input type="hidden" name="fk_q" value="{{ defaults.fk_q }}">
+        <input type="hidden" name="fk_out_json" value="{{ defaults.fk_out_json }}">
+        <input type="hidden" name="traj_q_start" value="{{ defaults.traj_q_start }}">
+        <input type="hidden" name="traj_q_goal" value="{{ defaults.traj_q_goal }}">
+        <input type="hidden" name="traj_steps" value="{{ defaults.traj_steps }}">
+        <input type="hidden" name="traj_duration" value="{{ defaults.traj_duration }}">
+        <input type="hidden" name="traj_name" value="{{ defaults.traj_name }}">
+        <input type="hidden" name="traj_out_json" value="{{ defaults.traj_out_json }}">
+        <input type="hidden" name="obstacle_plan_json" value="{{ defaults.obstacle_plan_json }}">
+        <input type="hidden" name="obstacle_demo_name" value="{{ defaults.obstacle_demo_name }}">
+        <input type="hidden" name="obstacle_unity_out_json" value="{{ defaults.obstacle_unity_out_json }}">
+        <input type="hidden" name="figure_output_dir" value="{{ defaults.figure_output_dir }}">
+        <input type="hidden" name="figure_data_dir" value="{{ defaults.figure_data_dir }}">
+        <input type="hidden" name="figure_core_case_json" value="{{ defaults.figure_core_case_json }}">
+        <input type="hidden" name="figure_workspace_ref_dir" value="{{ defaults.figure_workspace_ref_dir }}">
+        <input type="hidden" name="figure_obstacle_plan_json" value="{{ defaults.figure_obstacle_plan_json }}">
+      </form>
+      <nav class="tabs">
+        <a class="tablink {{ 'active' if active_tab == 'predict' else '' }}" href="#predict">推理</a>
+        <a class="tablink {{ 'active' if active_tab == 'obstacle' else '' }}" href="#obstacle">避障</a>
+        <a class="tablink {{ 'active' if active_tab == 'unity' else '' }}" href="#unity">Unity</a>
+        <a class="tablink {{ 'active' if active_tab == 'figures' else '' }}" href="#figures">图表</a>
+      </nav>
+
+      <section class="section {{ 'active' if active_tab == 'predict' else '' }}" id="predict">
+        <form method="post" action="{{ url_for('run_predict') }}">
+          <div class="card">
+            <h2>推理</h2>
+            <div class="grid">
+              <label for="pose6">目标位姿 pose6</label><input id="pose6" type="text" name="pose6" value="{{ defaults.pose6 }}">
+              <label for="pred_meta">prediction metadata</label><input id="pred_meta" type="text" name="pred_meta" value="{{ defaults.pred_meta }}">
+              <label for="branch_meta">branch metadata</label><input id="branch_meta" type="text" name="branch_meta" value="{{ defaults.branch_meta }}">
+              <label for="fine_meta">fine metadata</label><input id="fine_meta" type="text" name="fine_meta" value="{{ defaults.fine_meta }}">
+              <label for="predict_out_json">输出 JSON</label><input id="predict_out_json" type="text" name="predict_out_json" value="{{ defaults.predict_out_json }}">
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>推理超参数</h3>
+            <div class="hyper-grid">
+              {% for key, label in predict_labels %}
+              <div class="field">
+                <label for="predict-{{ key }}">{{ label }}</label>
+                <input id="predict-{{ key }}" type="text" name="{{ key }}" value="{{ defaults[key] }}">
+              </div>
+              {% endfor %}
+            </div>
+            <label class="check"><input type="checkbox" name="enable_nr" {% if defaults.enable_nr == 'on' %}checked{% endif %}> 启用 NR 校正</label>
+            <div class="toolbar sticky-actions">
+              <button type="submit">运行 predict_ik</button>
+            </div>
+          </div>
+        </form>
+      </section>
+
+      <section class="section {{ 'active' if active_tab == 'obstacle' else '' }}" id="obstacle">
+        <form method="post" action="{{ url_for('run_obstacle') }}">
+          <div class="card">
+            <h2>避障</h2>
+            <div class="grid">
+              <label for="obs-pose6">目标位姿 pose6</label><input id="obs-pose6" type="text" name="pose6" value="{{ defaults.pose6 }}">
+              <label for="q_start">起始关节 q_start</label><input id="q_start" type="text" name="q_start" value="{{ defaults.q_start }}">
+              <label for="scene_json">scene_json</label><input id="scene_json" type="text" name="scene_json" value="{{ defaults.scene_json }}">
+              <label for="obs-pred_meta">prediction metadata</label><input id="obs-pred_meta" type="text" name="pred_meta" value="{{ defaults.pred_meta }}">
+              <label for="obs-branch_meta">branch metadata</label><input id="obs-branch_meta" type="text" name="branch_meta" value="{{ defaults.branch_meta }}">
+              <label for="obs-fine_meta">fine metadata</label><input id="obs-fine_meta" type="text" name="fine_meta" value="{{ defaults.fine_meta }}">
+              <label for="obstacle_out_json">输出 JSON</label><input id="obstacle_out_json" type="text" name="obstacle_out_json" value="{{ defaults.obstacle_out_json }}">
+              <label for="figure_output_dir">图像输出目录</label><input id="figure_output_dir" type="text" name="figure_output_dir" value="{{ defaults.figure_output_dir }}">
+              <label for="figure_data_dir">数据输出目录</label><input id="figure_data_dir" type="text" name="figure_data_dir" value="{{ defaults.figure_data_dir }}">
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>避障超参数</h3>
+            <div class="hyper-grid">
+              {% for key, label in obstacle_labels %}
+              <div class="field">
+                <label for="obs-{{ key }}">{{ label }}</label>
+                <input id="obs-{{ key }}" type="text" name="{{ key }}" value="{{ defaults[key] }}">
+              </div>
+              {% endfor %}
+            </div>
+            <div class="toolbar sticky-actions">
+              <button type="submit">运行 plan_collision_free_ik</button>
+            </div>
+          </div>
+        </form>
+
+        <div class="card">
+          <h3>障碍物编辑器</h3>
+          <p class="status{% if '失败' in obstacle_state.status_text %} error{% endif %}">{{ obstacle_state.status_text }}</p>
+          <div class="editor-layout">
+            <div>
+              <form method="post" action="{{ url_for('obstacle_editor_action') }}">
+                <input type="hidden" name="pose6" value="{{ defaults.pose6 }}">
+                <input type="hidden" name="q_start" value="{{ defaults.q_start }}">
+                <input type="hidden" name="scene_json" value="{{ defaults.scene_json }}">
+                <input type="hidden" name="pred_meta" value="{{ defaults.pred_meta }}">
+                <input type="hidden" name="branch_meta" value="{{ defaults.branch_meta }}">
+                <input type="hidden" name="fine_meta" value="{{ defaults.fine_meta }}">
+                <input type="hidden" name="obstacle_out_json" value="{{ defaults.obstacle_out_json }}">
+                <input type="hidden" name="figure_output_dir" value="{{ defaults.figure_output_dir }}">
+                <input type="hidden" name="figure_data_dir" value="{{ defaults.figure_data_dir }}">
+                <input type="hidden" name="obstacle_topk_shoulder" value="{{ defaults.obstacle_topk_shoulder }}">
+                <input type="hidden" name="obstacle_topk_elbow" value="{{ defaults.obstacle_topk_elbow }}">
+                <input type="hidden" name="obstacle_topk_wrist" value="{{ defaults.obstacle_topk_wrist }}">
+                <input type="hidden" name="obstacle_max_branch_candidates" value="{{ defaults.obstacle_max_branch_candidates }}">
+                <input type="hidden" name="obstacle_fine_topk_per_branch" value="{{ defaults.obstacle_fine_topk_per_branch }}">
+                <input type="hidden" name="obstacle_max_subspace_candidates" value="{{ defaults.obstacle_max_subspace_candidates }}">
+                <input type="hidden" name="obstacle_max_evaluated_candidates" value="{{ defaults.obstacle_max_evaluated_candidates }}">
+                <input type="hidden" name="obstacle_nr_max_iters" value="{{ defaults.obstacle_nr_max_iters }}">
+                <input type="hidden" name="obstacle_nr_tol_pos_mm" value="{{ defaults.obstacle_nr_tol_pos_mm }}">
+                <input type="hidden" name="obstacle_nr_tol_ori_rad" value="{{ defaults.obstacle_nr_tol_ori_rad }}">
+                <input type="hidden" name="obstacle_nr_damping" value="{{ defaults.obstacle_nr_damping }}">
+                <input type="hidden" name="obstacle_nr_step_scale" value="{{ defaults.obstacle_nr_step_scale }}">
+                <input type="hidden" name="trajectory_steps" value="{{ defaults.trajectory_steps }}">
+                <input type="hidden" name="dedupe_tol_deg" value="{{ defaults.dedupe_tol_deg }}">
+                <div class="grid">
+                  <label for="selected_obstacle_index">当前障碍物</label>
+                  <div>
+                    <select id="selected_obstacle_index" name="selected_obstacle_index">
+                      {% for option in obstacle_state.options %}
+                      <option value="{{ option.value }}" {% if defaults.selected_obstacle_index == option.value %}selected{% endif %}>{{ option.label }}</option>
+                      {% endfor %}
+                    </select>
+                    <div class="toolbar">
+                      <button type="submit" name="editor_action" value="select" class="subtle">切换</button>
+                      <button type="submit" name="editor_action" value="load" class="subtle">从 scene_json 读取</button>
+                    </div>
+                  </div>
+                  <label for="obstacle_name">obstacle name</label><input id="obstacle_name" type="text" name="obstacle_name" value="{{ defaults.obstacle_name }}">
+                  <label for="obstacle_center_mm">center_mm</label><input id="obstacle_center_mm" type="text" name="obstacle_center_mm" value="{{ defaults.obstacle_center_mm }}">
+                  <label for="obstacle_size_mm">size_mm</label><input id="obstacle_size_mm" type="text" name="obstacle_size_mm" value="{{ defaults.obstacle_size_mm }}">
+                </div>
+                <div class="toolbar">
+                  <button type="submit" name="editor_action" value="save">写回 scene_json</button>
+                  <button type="submit" name="editor_action" value="reset" class="subtle">恢复默认值</button>
+                  <button type="submit" name="editor_action" value="add" class="subtle">新增障碍物</button>
+                  <button type="submit" name="editor_action" value="delete" class="subtle">删除当前障碍物</button>
+                </div>
+
+                <div class="step-grid" style="margin-top:14px;">
+                  <div class="step-box">
+                    <h4>位置步进微调</h4>
+                    <label for="obstacle_move_step_mm">位置步长(mm)</label>
+                    <input id="obstacle_move_step_mm" type="text" name="obstacle_move_step_mm" value="{{ defaults.obstacle_move_step_mm }}">
+                    <div class="step-buttons">
+                      <button type="submit" name="editor_action" value="nudge:center:x:-1" class="subtle">x-</button>
+                      <button type="submit" name="editor_action" value="nudge:center:x:1" class="subtle">x+</button>
+                      <button type="submit" name="editor_action" value="nudge:center:y:-1" class="subtle">y-</button>
+                      <button type="submit" name="editor_action" value="nudge:center:y:1" class="subtle">y+</button>
+                      <button type="submit" name="editor_action" value="nudge:center:z:-1" class="subtle">z-</button>
+                      <button type="submit" name="editor_action" value="nudge:center:z:1" class="subtle">z+</button>
+                    </div>
+                  </div>
+                  <div class="step-box">
+                    <h4>尺寸步进微调</h4>
+                    <label for="obstacle_size_step_mm">尺寸步长(mm)</label>
+                    <input id="obstacle_size_step_mm" type="text" name="obstacle_size_step_mm" value="{{ defaults.obstacle_size_step_mm }}">
+                    <div class="step-buttons">
+                      <button type="submit" name="editor_action" value="nudge:size:x:-1" class="subtle">dx-</button>
+                      <button type="submit" name="editor_action" value="nudge:size:x:1" class="subtle">dx+</button>
+                      <button type="submit" name="editor_action" value="nudge:size:y:-1" class="subtle">dy-</button>
+                      <button type="submit" name="editor_action" value="nudge:size:y:1" class="subtle">dy+</button>
+                      <button type="submit" name="editor_action" value="nudge:size:z:-1" class="subtle">dz-</button>
+                      <button type="submit" name="editor_action" value="nudge:size:z:1" class="subtle">dz+</button>
+                    </div>
+                  </div>
+                </div>
+              </form>
+            </div>
+
+            <div class="preview-wrap">
+              <h3>三视图辅助预览</h3>
+              <p class="status{% if obstacle_state.preview_error %} error{% endif %}">{{ obstacle_state.preview_status_text }}</p>
+              <form method="post" action="{{ url_for('obstacle_editor_action') }}">
+                <input type="hidden" name="editor_action" value="preview">
+                <input type="hidden" name="pose6" value="{{ defaults.pose6 }}">
+                <input type="hidden" name="q_start" value="{{ defaults.q_start }}">
+                <input type="hidden" name="scene_json" value="{{ defaults.scene_json }}">
+                <input type="hidden" name="selected_obstacle_index" value="{{ defaults.selected_obstacle_index }}">
+                <input type="hidden" name="obstacle_name" value="{{ defaults.obstacle_name }}">
+                <input type="hidden" name="obstacle_center_mm" value="{{ defaults.obstacle_center_mm }}">
+                <input type="hidden" name="obstacle_size_mm" value="{{ defaults.obstacle_size_mm }}">
+                <input type="hidden" name="obstacle_move_step_mm" value="{{ defaults.obstacle_move_step_mm }}">
+                <input type="hidden" name="obstacle_size_step_mm" value="{{ defaults.obstacle_size_step_mm }}">
+                <div class="toolbar" style="margin-top:0; margin-bottom:12px;">
+                  <button type="submit">刷新三视图</button>
+                </div>
+              </form>
+              <div class="preview-box">
+                {% if obstacle_state.preview_svg %}
+                  {{ obstacle_state.preview_svg | safe }}
+                {% else %}
+                  <p class="meta">当前没有可显示的三视图。请先确认 scene_json、pose6、q_start 和障碍物输入有效，然后手动刷新。</p>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>3D 即时预览</h3>
+          <p class="status{% if obstacle_state.preview_3d_error %} error{% endif %}">{{ obstacle_state.preview_3d_status_text }}</p>
+          <form method="post" action="{{ url_for('obstacle_editor_action') }}">
+            <input type="hidden" name="editor_action" value="preview3d">
+            <input type="hidden" name="pose6" value="{{ defaults.pose6 }}">
+            <input type="hidden" name="q_start" value="{{ defaults.q_start }}">
+            <input type="hidden" name="scene_json" value="{{ defaults.scene_json }}">
+            <input type="hidden" name="selected_obstacle_index" value="{{ defaults.selected_obstacle_index }}">
+            <input type="hidden" name="obstacle_name" value="{{ defaults.obstacle_name }}">
+            <input type="hidden" name="obstacle_center_mm" value="{{ defaults.obstacle_center_mm }}">
+            <input type="hidden" name="obstacle_size_mm" value="{{ defaults.obstacle_size_mm }}">
+            <input type="hidden" name="obstacle_move_step_mm" value="{{ defaults.obstacle_move_step_mm }}">
+            <input type="hidden" name="obstacle_size_step_mm" value="{{ defaults.obstacle_size_step_mm }}">
+            <input type="hidden" name="preview_3d_elev" value="{{ defaults.preview_3d_elev }}" id="preview-3d-elev">
+            <input type="hidden" name="preview_3d_azim" value="{{ defaults.preview_3d_azim }}" id="preview-3d-azim">
+            <div class="toolbar" style="margin-top:0; margin-bottom:12px;">
+              <button type="submit">刷新 3D 预览</button>
+            </div>
+          </form>
+          <div class="preview-3d-box">
+            {% if obstacle_state.preview_3d_data_url %}
+              <img src="{{ obstacle_state.preview_3d_data_url }}" alt="障碍物场景 3D 预览" id="preview-3d-image">
+            {% else %}
+              <p class="meta">当前没有可显示的 3D 预览。请确认输入有效后手动刷新。</p>
+            {% endif %}
+          </div>
+        </div>
+      </section>
+
+      <section class="section {{ 'active' if active_tab == 'unity' else '' }}" id="unity">
+        <div class="card">
+          <h2>Unity 导出</h2>
+          <p class="meta">保留桌面版三类导出入口：FK 参考、轨迹 JSON、避障回放 JSON。</p>
+        </div>
+
+        <form method="post" action="{{ url_for('run_fk') }}">
+          <div class="card">
+            <h3>FK 参考导出</h3>
+            <div class="grid">
+              <label for="fk_q">关节角 q</label><input id="fk_q" type="text" name="fk_q" value="{{ defaults.fk_q }}">
+              <label for="fk_out_json">输出 JSON</label><input id="fk_out_json" type="text" name="fk_out_json" value="{{ defaults.fk_out_json }}">
+            </div>
+            <div class="toolbar sticky-actions">
+              <button type="submit">导出 FK 参考</button>
+            </div>
+          </div>
+        </form>
+
+        <form method="post" action="{{ url_for('run_traj') }}">
+          <div class="card">
+            <h3>轨迹导出</h3>
+            <div class="grid">
+              <label for="traj_q_start">q_start</label><input id="traj_q_start" type="text" name="traj_q_start" value="{{ defaults.traj_q_start }}">
+              <label for="traj_q_goal">q_goal</label><input id="traj_q_goal" type="text" name="traj_q_goal" value="{{ defaults.traj_q_goal }}">
+              <label for="traj_steps">轨迹步数</label><input id="traj_steps" type="text" name="traj_steps" value="{{ defaults.traj_steps }}">
+              <label for="traj_duration">播放时长(s)</label><input id="traj_duration" type="text" name="traj_duration" value="{{ defaults.traj_duration }}">
+              <label for="traj_name">轨迹名称</label><input id="traj_name" type="text" name="traj_name" value="{{ defaults.traj_name }}">
+              <label for="traj_out_json">输出 JSON</label><input id="traj_out_json" type="text" name="traj_out_json" value="{{ defaults.traj_out_json }}">
+            </div>
+            <div class="toolbar sticky-actions">
+              <button type="submit">导出轨迹 JSON</button>
+            </div>
+          </div>
+        </form>
+
+        <form method="post" action="{{ url_for('run_obstacle_unity') }}">
+          <div class="card">
+            <h3>避障结果转 Unity 回放</h3>
+            <div class="grid">
+              <label for="obstacle_plan_json">plan_json</label><input id="obstacle_plan_json" type="text" name="obstacle_plan_json" value="{{ defaults.obstacle_plan_json }}">
+              <label for="obstacle_demo_name">demo_name</label><input id="obstacle_demo_name" type="text" name="obstacle_demo_name" value="{{ defaults.obstacle_demo_name }}">
+              <label for="obstacle_unity_out_json">输出 JSON</label><input id="obstacle_unity_out_json" type="text" name="obstacle_unity_out_json" value="{{ defaults.obstacle_unity_out_json }}">
+            </div>
+            <div class="toolbar sticky-actions">
+              <button type="submit">导出避障回放 JSON</button>
+            </div>
+          </div>
+        </form>
+      </section>
+
+      <section class="section {{ 'active' if active_tab == 'figures' else '' }}" id="figures">
+        <div class="card">
+          <h2>图表</h2>
+          <div class="grid">
+            <label for="fig-out-dir">图像输出目录</label><input id="fig-out-dir" type="text" name="figure_output_dir" value="{{ defaults.figure_output_dir }}" form="fig-core-form">
+            <label for="fig-data-dir">数据输出目录</label><input id="fig-data-dir" type="text" name="figure_data_dir" value="{{ defaults.figure_data_dir }}" form="fig-core-form">
+          </div>
+          <p class="meta">三类图表任务共用同一组输出目录。核心图和工作空间图会同时用到图像目录与数据目录，避障图主要读取规划 JSON 并输出 PNG。</p>
+        </div>
+
+        <form id="fig-core-form" method="post" action="{{ url_for('run_core_figures') }}">
+          <input type="hidden" name="figure_output_dir" value="{{ defaults.figure_output_dir }}">
+          <input type="hidden" name="figure_data_dir" value="{{ defaults.figure_data_dir }}">
+          <div class="card">
+            <h3>1. 核心图表</h3>
+            <div class="grid">
+              <label for="figure_core_case_json">单案例 IK JSON</label><input id="figure_core_case_json" type="text" name="figure_core_case_json" value="{{ defaults.figure_core_case_json }}">
+            </div>
+            <p class="meta">读取当前工程实验结果与单案例 JSON，生成论文主体中使用的性能图、误差图和汇总图。</p>
+            <div class="toolbar sticky-actions">
+              <button type="submit">生成核心图表</button>
+            </div>
+          </div>
+        </form>
+
+        <form method="post" action="{{ url_for('run_workspace_figures') }}">
+          <input type="hidden" name="figure_output_dir" value="{{ defaults.figure_output_dir }}">
+          <input type="hidden" name="figure_data_dir" value="{{ defaults.figure_data_dir }}">
+          <div class="card">
+            <h3>2. 工作空间图</h3>
+            <div class="grid">
+              <label for="figure_workspace_ref_dir">参考样本目录</label><input id="figure_workspace_ref_dir" type="text" name="figure_workspace_ref_dir" value="{{ defaults.figure_workspace_ref_dir }}">
+            </div>
+            <p class="meta">读取 `subspace_*_reference.npz` 等参考样本文件，生成工作空间三视图与三维分布图。</p>
+            <div class="toolbar sticky-actions">
+              <button type="submit">生成工作空间图</button>
+            </div>
+          </div>
+        </form>
+
+        <form method="post" action="{{ url_for('run_obstacle_figures') }}">
+          <input type="hidden" name="figure_output_dir" value="{{ defaults.figure_output_dir }}">
+          <input type="hidden" name="figure_data_dir" value="{{ defaults.figure_data_dir }}">
+          <div class="card">
+            <h3>3. 避障图</h3>
+            <div class="grid">
+              <label for="figure_obstacle_plan_json">避障规划 JSON</label><input id="figure_obstacle_plan_json" type="text" name="figure_obstacle_plan_json" value="{{ defaults.figure_obstacle_plan_json }}">
+            </div>
+            <p class="meta">基于规划结果 JSON 生成候选轨迹、碰撞对比与论文风格总览图，并在右侧结果栏显示最近 PNG。</p>
+            <div class="toolbar sticky-actions">
+              <button type="submit">生成避障图</button>
+            </div>
+          </div>
+        </form>
+      </section>
+    </section>
+
+    <aside class="panel panel-scroll result-panel" id="result-panel">
+      <div class="result">
+        <h2>统一结果栏</h2>
+        <div class="card">
+          <h3>当前联动状态</h3>
+          {% if sync_hints %}
+          <ul class="result-list">
+            {% for hint in sync_hints %}
+            <li>{{ hint }}</li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p class="meta">当前没有可显示的联动提示。</p>
+          {% endif %}
+        </div>
+        {% if result %}
+          <div class="meta">任务：{{ result.title }}</div>
+          <div class="meta">退出码：{{ result.exit_code }}</div>
+          {% if result.output_path %}
+          <div class="meta">输出路径：{{ result.output_path }}</div>
+          {% endif %}
+          <div class="card" style="margin-top:12px;">
+            <h3>任务摘要</h3>
+            <pre>{{ result.summary_text }}</pre>
+          </div>
+          <div class="card">
+            <h3>原始日志</h3>
+            <pre>{{ result.log_text }}</pre>
+          </div>
+          <div class="card">
+            <h3>PNG 预览</h3>
+            {% if result.preview_url %}
+            <div class="toolbar" id="result-preview-toolbar">
+              <button type="button" class="subtle" data-preview-zoom="in">放大</button>
+              <button type="button" class="subtle" data-preview-zoom="out">缩小</button>
+              <button type="button" class="subtle" data-preview-zoom="reset">重置</button>
+              <button type="button" class="subtle" data-preview-zoom="refresh">刷新预览</button>
+            </div>
+            <div class="preview-image">
+              <img id="result-preview-image" src="{{ result.preview_url }}" alt="最近生成的预览图">
+            </div>
+            {% else %}
+            <p class="meta">暂无预览。</p>
+            {% endif %}
+          </div>
+          <div class="card">
+            <h3>最近图表产物</h3>
+            {% if latest_artifacts %}
+            <ul class="result-list">
+              {% for item in latest_artifacts %}
+              <li>{{ item.name }}<br><span class="meta">{{ item.modified_text }}</span></li>
+              {% endfor %}
+            </ul>
+            {% else %}
+            <p class="meta">当前图像输出目录下还没有可列出的产物。</p>
+            {% endif %}
+          </div>
+        {% else %}
+          <p class="meta">提交任一页面任务后，这里会统一显示摘要、原始日志、输出路径与最近 PNG 预览。</p>
+          <div class="card">
+            <h3>最近图表产物</h3>
+            {% if latest_artifacts %}
+            <ul class="result-list">
+              {% for item in latest_artifacts %}
+              <li>{{ item.name }}<br><span class="meta">{{ item.modified_text }}</span></li>
+              {% endfor %}
+            </ul>
+            {% else %}
+            <p class="meta">当前图像输出目录下还没有可列出的产物。</p>
+            {% endif %}
+          </div>
+        {% endif %}
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    const activeTab = {{ active_tab|tojson }};
+    const leftPanel = document.getElementById("left-panel");
+    const resultPanel = document.getElementById("result-panel");
+    const scrollKey = "abb-web-ui-scroll-state";
+    const previewImage = document.getElementById("result-preview-image");
+    const preview3dImage = document.getElementById("preview-3d-image");
+    const preview3dElevInput = document.getElementById("preview-3d-elev");
+    const preview3dAzimInput = document.getElementById("preview-3d-azim");
+    const stateCarrier = document.getElementById("state-carrier");
+    let previewScale = 1;
+    let previewDrag = null;
+    let preview3dDrag = null;
+    function showTab(tabId, { persist = true } = {}) {
+      document.querySelectorAll(".section").forEach((section) => {
+        section.classList.toggle("active", section.id === tabId);
+      });
+      document.querySelectorAll(".tablink").forEach((tab) => {
+        const href = (tab.getAttribute("href") || "").replace("#", "");
+        tab.classList.toggle("active", href === tabId);
+      });
+      if (history.replaceState) {
+        history.replaceState(null, "", "#" + tabId);
+      }
+      if (persist) {
+        persistState();
+      }
+    }
+    function persistState() {
+      const payload = {
+        tab: document.querySelector(".section.active")?.id || activeTab || "predict",
+        leftScrollTop: leftPanel ? leftPanel.scrollTop : 0,
+        resultScrollTop: resultPanel ? resultPanel.scrollTop : 0,
+        windowScrollTop: window.scrollY || 0,
+      };
+      try {
+        sessionStorage.setItem(scrollKey, JSON.stringify(payload));
+      } catch (_error) {}
+    }
+    function restoreState() {
+      try {
+        const raw = sessionStorage.getItem(scrollKey);
+        if (!raw) {
+          return false;
+        }
+        const payload = JSON.parse(raw);
+        const tabId = window.location.hash.replace("#", "") || payload.tab || activeTab || "predict";
+        showTab(tabId, { persist: false });
+        requestAnimationFrame(() => {
+          if (leftPanel && typeof payload.leftScrollTop === "number") {
+            leftPanel.scrollTop = payload.leftScrollTop;
+          }
+          if (resultPanel && typeof payload.resultScrollTop === "number") {
+            resultPanel.scrollTop = payload.resultScrollTop;
+          }
+          if (typeof payload.windowScrollTop === "number") {
+            window.scrollTo({ top: payload.windowScrollTop, behavior: "auto" });
+          }
+        });
+        return true;
+      } catch (_error) {
+        return false;
+      }
+    }
+    document.querySelectorAll(".tablink").forEach((tab) => {
+      tab.addEventListener("click", (event) => {
+        event.preventDefault();
+        const tabId = (tab.getAttribute("href") || "").replace("#", "");
+        showTab(tabId);
+      });
+    });
+    document.querySelectorAll("form").forEach((form) => {
+      form.addEventListener("submit", () => {
+        const parentSection = form.closest(".section");
+        if (parentSection && history.replaceState) {
+          history.replaceState(null, "", "#" + parentSection.id);
+        }
+        appendCarrierState(form);
+        persistState();
+      });
+    });
+    document.querySelectorAll("input[type='text'], select, input[type='checkbox']").forEach((input) => {
+      input.addEventListener("change", syncInputsToCarrier);
+      input.addEventListener("input", syncInputsToCarrier);
+    });
+    syncInputsToCarrier();
+    if (leftPanel) {
+      leftPanel.addEventListener("scroll", persistState, { passive: true });
+    }
+    if (resultPanel) {
+      resultPanel.addEventListener("scroll", persistState, { passive: true });
+    }
+    window.addEventListener("scroll", persistState, { passive: true });
+    const initialHash = window.location.hash.replace("#", "");
+    if (!restoreState()) {
+      showTab(initialHash || activeTab || "predict", { persist: false });
+    }
+    function applyPreviewTransform() {
+      if (!previewImage) {
+        return;
+      }
+      previewImage.style.transform = `scale(${previewScale})`;
+    }
+    document.querySelectorAll("[data-preview-zoom]").forEach((button) => {
+      button.addEventListener("click", () => {
+        if (!previewImage) {
+          return;
+        }
+        const action = button.getAttribute("data-preview-zoom");
+        if (action === "in") {
+          previewScale = Math.min(4, previewScale * 1.2);
+        } else if (action === "out") {
+          previewScale = Math.max(0.2, previewScale / 1.2);
+        } else if (action === "reset") {
+          previewScale = 1;
+          const container = previewImage.closest(".preview-image");
+          if (container) {
+            container.scrollLeft = 0;
+            container.scrollTop = 0;
+          }
+        } else if (action === "refresh") {
+          const currentSrc = previewImage.getAttribute("src") || "";
+          const joiner = currentSrc.includes("?") ? "&" : "?";
+          previewImage.setAttribute("src", `${currentSrc.split("?")[0]}${joiner}t=${Date.now()}`);
+          previewScale = 1;
+        }
+        applyPreviewTransform();
+      });
+    });
+    if (previewImage) {
+      applyPreviewTransform();
+      previewImage.addEventListener("wheel", (event) => {
+        event.preventDefault();
+        previewScale = event.deltaY < 0 ? Math.min(4, previewScale * 1.08) : Math.max(0.2, previewScale / 1.08);
+        applyPreviewTransform();
+      }, { passive: false });
+      previewImage.addEventListener("mousedown", (event) => {
+        const container = previewImage.closest(".preview-image");
+        if (!container) {
+          return;
+        }
+        previewDrag = {
+          x: event.clientX,
+          y: event.clientY,
+          left: container.scrollLeft,
+          top: container.scrollTop,
+        };
+        previewImage.style.cursor = "grabbing";
+      });
+      window.addEventListener("mousemove", (event) => {
+        const container = previewImage.closest(".preview-image");
+        if (!previewDrag || !container) {
+          return;
+        }
+        container.scrollLeft = previewDrag.left - (event.clientX - previewDrag.x);
+        container.scrollTop = previewDrag.top - (event.clientY - previewDrag.y);
+      });
+      window.addEventListener("mouseup", () => {
+        previewDrag = null;
+        previewImage.style.cursor = "grab";
+      });
+    }
+    if (preview3dImage && preview3dElevInput && preview3dAzimInput) {
+      const preview3dForm = preview3dElevInput.form;
+      preview3dImage.addEventListener("mousedown", (event) => {
+        preview3dDrag = {
+          x: event.clientX,
+          y: event.clientY,
+          elev: parseFloat(preview3dElevInput.value || "22"),
+          azim: parseFloat(preview3dAzimInput.value || "-56"),
+        };
+        preview3dImage.style.cursor = "grabbing";
+        event.preventDefault();
+      });
+      window.addEventListener("mousemove", (event) => {
+        if (!preview3dDrag) {
+          return;
+        }
+        const dx = event.clientX - preview3dDrag.x;
+        const dy = event.clientY - preview3dDrag.y;
+        const nextAzim = preview3dDrag.azim + dx * 0.45;
+        const nextElev = Math.max(-89, Math.min(89, preview3dDrag.elev - dy * 0.3));
+        preview3dAzimInput.value = nextAzim.toFixed(1);
+        preview3dElevInput.value = nextElev.toFixed(1);
+        if (stateFields["preview_3d_azim"]) {
+          stateFields["preview_3d_azim"].value = preview3dAzimInput.value;
+        }
+        if (stateFields["preview_3d_elev"]) {
+          stateFields["preview_3d_elev"].value = preview3dElevInput.value;
+        }
+      });
+      window.addEventListener("mouseup", () => {
+        if (!preview3dDrag) {
+          return;
+        }
+        preview3dDrag = null;
+        preview3dImage.style.cursor = "grab";
+        if (preview3dForm) {
+          preview3dForm.requestSubmit();
+        }
+      });
+    }
+  </script>
+</body>
+</html>
+    function buildStateMap() {
+      const fields = {};
+      if (!stateCarrier) {
+        return fields;
+      }
+      stateCarrier.querySelectorAll("input[name]").forEach((input) => {
+        fields[input.name] = input;
+      });
+      return fields;
+    }
+    const stateFields = buildStateMap();
+    function syncInputsToCarrier() {
+      Object.entries(stateFields).forEach(([name, hiddenInput]) => {
+        const source = document.querySelector(`[name="${CSS.escape(name)}"]:not(#state-carrier input[name="${CSS.escape(name)}"])`);
+        if (source) {
+          if (source.type === "checkbox") {
+            hiddenInput.value = source.checked ? "on" : "";
+          } else {
+            hiddenInput.value = source.value;
+          }
+        }
+      });
+    }
+    function appendCarrierState(form) {
+      if (!stateCarrier || !form) {
+        return;
+      }
+      syncInputsToCarrier();
+      Object.entries(stateFields).forEach(([name, hiddenInput]) => {
+        if (form.querySelector(`[name="${CSS.escape(name)}"]`)) {
+          return;
+        }
+        const clone = hiddenInput.cloneNode(true);
+        form.appendChild(clone);
+      });
+    }

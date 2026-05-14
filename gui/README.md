@@ -34,6 +34,25 @@ conda activate arm_nn
 python gui\app.py
 ```
 
+并行 Web UI 入口：
+
+```bash
+conda activate arm_nn
+python web\app.py
+```
+
+浏览器访问：
+
+```text
+http://127.0.0.1:5000
+```
+
+补充说明：
+- Web UI 是与当前桌面版并存的本机入口
+- 首版主要覆盖 `推理 / 避障 / Unity`
+- 首版预览仅显示已有 PNG，不包含浏览器内 3D 预览
+- 若 `arm_nn` 环境未安装 `Flask`，请先执行 `pip install flask`
+
 默认路径持久化说明：
 
 - 点击某个路径或目录输入框右侧的 `设为默认` 后
