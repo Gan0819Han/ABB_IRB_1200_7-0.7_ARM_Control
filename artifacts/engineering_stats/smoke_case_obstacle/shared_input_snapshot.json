@@ -1,0 +1,12 @@
+{
+  "schema": "abb_engineering_case_stats_v1",
+  "case_tag": "smoke_case_obstacle",
+  "generated_at": "2026-05-14T20:43:56",
+  "pose6": "100,200,800,0.1,-0.2,0.3",
+  "q_start": "0,0,0,0,0,0",
+  "scene_json": "data\\obstacles\\open_space_reselect_demo.json",
+  "scene_name": "open_space_reselect_demo",
+  "prediction_metadata": "artifacts\\prediction_system_formal\\metadata.json",
+  "branch_metadata": "artifacts\\branch_classification_system\\metadata.json",
+  "fine_metadata": "artifacts\\fine_classification_system\\metadata.json"
+}

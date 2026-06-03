@@ -185,9 +185,11 @@ def solve_nn_nr_goal(
     nr_options: NROptions,
 ) -> dict:
     t0 = time.perf_counter()
+    t_meta = time.perf_counter()
     pred_meta = load_json(pred_meta_path)
     branch_meta = load_json(branch_meta_path)
     fine_meta = load_json(fine_meta_path)
+    metadata_load_ms = float((time.perf_counter() - t_meta) * 1000.0)
 
     pred_profile = pred_meta.get("segment_profile", "abb_strict")
     branch_profile = branch_meta.get("segment_profile", "abb_strict")
@@ -198,9 +200,11 @@ def solve_nn_nr_goal(
             f"prediction={pred_profile}, branch={branch_profile}, fine={fine_profile}"
         )
 
+    t_norm = time.perf_counter()
     pred_mean = np.array(pred_meta["normalizer"]["mean"], dtype=np.float32).reshape(1, -1)
     pred_std = np.array(pred_meta["normalizer"]["std"], dtype=np.float32).reshape(1, -1)
     x_pred = apply_normalizer(target_pose.reshape(1, -1).astype(np.float32), pred_mean, pred_std)
+    normalization_ms = float((time.perf_counter() - t_norm) * 1000.0)
 
     candidate_labels, candidate_generation_info, timing_generation = generate_hierarchical_candidates(
         target_pose,
@@ -227,25 +231,43 @@ def solve_nn_nr_goal(
 
     goal_candidates: list[dict] = []
     unique_refined_solutions: list[np.ndarray] = []
+    model_load_ms = 0.0
+    model_restore_ms = 0.0
+    prediction_ms = 0.0
+    scoring_ms = 0.0
+    nr_refine_ms = 0.0
+    metrics_eval_ms = 0.0
 
     for rank_index, sid in enumerate(available, start=1):
+        t_model_load = time.perf_counter()
         ckpt = safe_torch_load(pred_meta_path.parent / "subspace_models" / model_index[int(sid)]["model_file"])
+        model_load_ms += float((time.perf_counter() - t_model_load) * 1000.0)
+        t_model_restore = time.perf_counter()
         m15, m6 = load_prediction_pair(ckpt)
+        model_restore_ms += float((time.perf_counter() - t_model_restore) * 1000.0)
+        t_predict = time.perf_counter()
         q0 = predict_q_deg(m15, m6, x_pred)
+        prediction_ms += float((time.perf_counter() - t_predict) * 1000.0)
+        t_score = time.perf_counter()
         l2 = position_l2_norm(q0, target_pose)
+        scoring_ms += float((time.perf_counter() - t_score) * 1000.0)
 
+        t_nr = time.perf_counter()
         nr = newton_raphson_refine(
             q0_deg=q0,
             target_pose6=target_pose,
             options=nr_options,
         )
+        nr_refine_ms += float((time.perf_counter() - t_nr) * 1000.0)
         q_goal_deg = np.asarray(nr["q_deg"], dtype=float).reshape(6)
 
         if is_duplicate_solution(q_deg=q_goal_deg, existing=unique_refined_solutions, atol_deg=dedupe_tol_deg):
             continue
         unique_refined_solutions.append(q_goal_deg.copy())
 
+        t_metrics = time.perf_counter()
         metrics = evaluate_solution_metrics(q_goal_deg, target_pose)
+        metrics_eval_ms += float((time.perf_counter() - t_metrics) * 1000.0)
         goal_candidates.append(
             {
                 "candidate_rank": int(rank_index),
@@ -267,6 +289,23 @@ def solve_nn_nr_goal(
 
     total_ms = float((time.perf_counter() - t0) * 1000.0)
     best_initial = min(goal_candidates, key=lambda item: item["position_l2_mm"])
+    model_load_restore_ms = model_load_ms + model_restore_ms
+    pure_inverse_compute_ms = total_ms - model_load_restore_ms
+    if pure_inverse_compute_ms < 0.0:
+        pure_inverse_compute_ms = 0.0
+    measured_total_ms = (
+        metadata_load_ms
+        + normalization_ms
+        + float(timing_generation.get("candidate_generation_ms", 0.0))
+        + prediction_ms
+        + scoring_ms
+        + nr_refine_ms
+        + metrics_eval_ms
+        + model_load_restore_ms
+    )
+    uninstrumented_overhead_ms = total_ms - measured_total_ms
+    if uninstrumented_overhead_ms < 0.0:
+        uninstrumented_overhead_ms = 0.0
     return {
         "method_id": "nn_nr",
         "label": "NN + NR",
@@ -291,6 +330,24 @@ def solve_nn_nr_goal(
             "e_max": float(best_initial["e_max"]),
         },
         "goal_candidates": goal_candidates,
+        "ik_timing_breakdown_ms": {
+            "metadata_load_ms": metadata_load_ms,
+            "normalization_ms": normalization_ms,
+            "candidate_generation_ms": float(timing_generation.get("candidate_generation_ms", 0.0)),
+            "branch_classification_ms": float(timing_generation.get("branch_classification_ms", 0.0)),
+            "fine_classification_ms": float(timing_generation.get("fine_classification_ms", 0.0)),
+            "model_load_ms": model_load_ms,
+            "model_restore_ms": model_restore_ms,
+            "prediction_ms": prediction_ms,
+            "initial_pick_scoring_ms": scoring_ms,
+            "nr_refine_ms": nr_refine_ms,
+            "metrics_eval_ms": metrics_eval_ms,
+            "model_load_restore_ms": model_load_restore_ms,
+            "pure_inverse_compute_ms": pure_inverse_compute_ms,
+            "uninstrumented_overhead_ms": uninstrumented_overhead_ms,
+            "total_ik_time_ms": total_ms,
+            "candidate_count": int(len(available)),
+        },
     }
 
 
@@ -343,9 +400,13 @@ def solve_numeric_goal_multistart(
     goal_candidates: list[dict] = []
     unique_refined_solutions: list[np.ndarray] = []
     evaluated_starts = 0
+    per_start_solver_times_ms: list[float] = []
 
     for start_index, guess in enumerate(initial_guesses, start=1):
+        t_start = time.perf_counter()
         out = solver_func(guess)
+        solver_time_ms = float((time.perf_counter() - t_start) * 1000.0)
+        per_start_solver_times_ms.append(solver_time_ms)
         evaluated_starts += 1
         q_goal_deg = np.asarray(out["q_deg"], dtype=float).reshape(6)
         if is_duplicate_solution(q_deg=q_goal_deg, existing=unique_refined_solutions, atol_deg=dedupe_tol_deg):
@@ -363,6 +424,7 @@ def solve_numeric_goal_multistart(
                 "final_pos_err_mm": float(out["final_pos_err_mm"]),
                 "final_ori_err_rad": float(out["final_ori_err_rad"]),
                 "weighted_cost": float(out.get("weighted_cost", float("nan"))),
+                "solver_time_ms": solver_time_ms,
                 "solver_output": {
                     key: value
                     for key, value in out.items()
@@ -384,6 +446,7 @@ def solve_numeric_goal_multistart(
             item["final_ori_err_rad"],
         ),
     )
+    mean_start_ms = float(sum(per_start_solver_times_ms) / max(1, len(per_start_solver_times_ms)))
     return {
         "method_id": method_id,
         "label": label,
@@ -401,6 +464,15 @@ def solve_numeric_goal_multistart(
         "unique_goal_candidate_count": int(len(goal_candidates)),
         "initial_guess_library": [[float(x) for x in guess.tolist()] for guess in initial_guesses],
         "goal_candidates": goal_candidates,
+        "ik_timing_breakdown_ms": {
+            "multistart_total_ms": total_ms,
+            "pure_inverse_compute_ms": total_ms,
+            "uninstrumented_overhead_ms": 0.0,
+            "mean_per_start_ms": mean_start_ms,
+            "selected_start_solve_ms": float(best_initial.get("solver_time_ms", mean_start_ms)),
+            "evaluated_starts": int(evaluated_starts),
+            "unique_goal_candidate_count": int(len(goal_candidates)),
+        },
     }
 
 
@@ -415,6 +487,9 @@ def build_method_record(
 ) -> dict:
     t0 = time.perf_counter()
     variants: list[dict] = []
+    trajectory_generation_time_ms = 0.0
+    trajectory_evaluation_time_ms = 0.0
+    selection_time_ms = 0.0
 
     goal_candidates = method.get("goal_candidates")
     if goal_candidates:
@@ -437,13 +512,20 @@ def build_method_record(
     for candidate in candidate_items:
         q_goal_deg = np.asarray(candidate["q_goal_deg"], dtype=float).reshape(6)
         for traj_variant in build_waypoint_joint_trajectory_candidates_deg(q_start_deg=q_start_deg, q_goal_deg=q_goal_deg):
+            t_generation = time.perf_counter()
             q_points_deg = np.asarray(traj_variant["q_points_deg"], dtype=float)
             q_traj_deg = build_piecewise_joint_trajectory_deg(q_points_deg=q_points_deg, steps=trajectory_steps)
+            trajectory_generation_time_ms += float((time.perf_counter() - t_generation) * 1000.0)
+
+            t_evaluation = time.perf_counter()
             trajectory_summary = evaluate_joint_trajectory_against_scene(
                 q_traj_deg=q_traj_deg,
                 scene=scene,
                 include_frames=False,
             )
+            trajectory_evaluation_time_ms += float((time.perf_counter() - t_evaluation) * 1000.0)
+
+            t_selection = time.perf_counter()
             selection_cost = compute_selection_cost(
                 final_pos_err_mm=float(candidate["final_pos_err_mm"]),
                 final_ori_err_rad=float(candidate["final_ori_err_rad"]),
@@ -457,6 +539,7 @@ def build_method_record(
                 selection_cost=selection_cost,
                 weights=selection_weights,
             )
+            selection_time_ms += float((time.perf_counter() - t_selection) * 1000.0)
             variants.append(
                 {
                     "candidate_rank": int(candidate.get("candidate_rank", 1)),
@@ -490,20 +573,38 @@ def build_method_record(
     if include_frames:
         selected_points = np.asarray(selected_solution["trajectory_points_deg"], dtype=float)
         selected_traj = build_piecewise_joint_trajectory_deg(q_points_deg=selected_points, steps=trajectory_steps)
+        t_selected_frames = time.perf_counter()
         selected_solution["trajectory_summary"] = evaluate_joint_trajectory_against_scene(
             q_traj_deg=selected_traj,
             scene=scene,
             include_frames=True,
         )
+        trajectory_evaluation_time_ms += float((time.perf_counter() - t_selected_frames) * 1000.0)
 
     selected_summary = selected_solution["trajectory_summary"]
-    total_planning_ms = float(method["planning_time_ms"]) + float((time.perf_counter() - t0) * 1000.0)
+    postprocess_time_ms = float((time.perf_counter() - t0) * 1000.0)
+    total_planning_ms = float(method["planning_time_ms"]) + postprocess_time_ms
     return {
         "method_id": method["method_id"],
         "label": method["label"],
         "solver_family": method["solver_family"],
         "planning_time_ms": total_planning_ms,
         "ik_time_ms": float(method["ik_time_ms"]),
+        "pure_inverse_compute_ms": float(method.get("ik_timing_breakdown_ms", {}).get("pure_inverse_compute_ms", method["ik_time_ms"])),
+        "model_load_restore_ms": float(method.get("ik_timing_breakdown_ms", {}).get("model_load_restore_ms", 0.0)),
+        "mean_per_start_ms": float(method.get("ik_timing_breakdown_ms", {}).get("mean_per_start_ms", method["ik_time_ms"])),
+        "selected_start_solve_ms": float(method.get("ik_timing_breakdown_ms", {}).get("selected_start_solve_ms", method["ik_time_ms"])),
+        "trajectory_generation_time_ms": trajectory_generation_time_ms,
+        "trajectory_evaluation_time_ms": trajectory_evaluation_time_ms,
+        "selection_time_ms": selection_time_ms,
+        "timing_breakdown_ms": {
+            "ik_time_ms": float(method["ik_time_ms"]),
+            "trajectory_generation_time_ms": trajectory_generation_time_ms,
+            "trajectory_evaluation_time_ms": trajectory_evaluation_time_ms,
+            "selection_time_ms": selection_time_ms,
+            "postprocess_time_ms": postprocess_time_ms,
+            "total_planning_time_ms": total_planning_ms,
+        },
         "final_pos_err_mm": float(selected_solution["final_pos_err_mm"]),
         "final_ori_err_rad": float(selected_solution["final_ori_err_rad"]),
         "converged": bool(selected_solution["nr_converged"]),

@@ -1,0 +1,515 @@
+{
+  "schema": "abb_engineering_case_stats_v1",
+  "module": "ik_single",
+  "case_tag": "smoke_case_ik_v2",
+  "generated_at": "2026-05-14T21:53:13",
+  "target_pose6": [
+    100.0,
+    200.0,
+    800.0,
+    0.10000000149011612,
+    -0.20000000298023224,
+    0.30000001192092896
+  ],
+  "q_start_deg": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "methods": [
+    {
+      "method_id": "nn_nr",
+      "label": "NN + NR",
+      "solve_time_ms": 117.81759999999997,
+      "converged": true,
+      "iters": 4,
+      "final_pose6": [
+        100.00003226345119,
+        200.00006210786407,
+        800.0000115811591,
+        0.10000016225125927,
+        -0.19999976924840235,
+        0.29999912505040904
+      ],
+      "final_pos_err_mm": 7.093969487127623e-05,
+      "final_ori_err_rad": 9.002570788260535e-07,
+      "candidate_source": "hierarchical_predictions",
+      "candidate_subspaces": [
+        148,
+        10,
+        164,
+        146,
+        166,
+        1,
+        153,
+        19,
+        151,
+        16,
+        150,
+        157,
+        21,
+        3,
+        69,
+        49,
+        58,
+        160
+      ],
+      "candidate_generation": {
+        "mode": "hierarchical",
+        "topk": {
+          "shoulder": 2,
+          "elbow": 1,
+          "wrist": 2,
+          "fine_per_branch": 3
+        },
+        "max_branch_candidates": 6,
+        "max_subspace_candidates": 18,
+        "branch_candidates": [
+          {
+            "branch_label": 1,
+            "branch_name": "shoulder_negative|elbow_low|wrist_middle",
+            "score": -1.5767469108104706
+          },
+          {
+            "branch_label": 7,
+            "branch_name": "shoulder_positive|elbow_low|wrist_middle",
+            "score": -1.6871357858181
+          },
+          {
+            "branch_label": 8,
+            "branch_name": "shoulder_positive|elbow_low|wrist_positive",
+            "score": -2.635265350341797
+          },
+          {
+            "branch_label": 2,
+            "branch_name": "shoulder_negative|elbow_low|wrist_positive",
+            "score": -2.6968207955360413
+          },
+          {
+            "branch_label": 0,
+            "branch_name": "shoulder_negative|elbow_low|wrist_negative",
+            "score": -2.9384562373161316
+          },
+          {
+            "branch_label": 6,
+            "branch_name": "shoulder_positive|elbow_low|wrist_negative",
+            "score": -3.068225860595703
+          }
+        ],
+        "fine_per_branch": [
+          {
+            "branch_label": 1,
+            "branch_name": "shoulder_negative|elbow_low|wrist_middle",
+            "branch_score": -1.5767469108104706,
+            "fine_candidates": [
+              {
+                "fine_label": 7,
+                "subspace_id": 21,
+                "score": -10.226810544729233
+              },
+              {
+                "fine_label": 1,
+                "subspace_id": 3,
+                "score": -10.287646144628525
+              },
+              {
+                "fine_label": 15,
+                "subspace_id": 69,
+                "score": -10.399647206068039
+              }
+            ]
+          },
+          {
+            "branch_label": 7,
+            "branch_name": "shoulder_positive|elbow_low|wrist_middle",
+            "branch_score": -1.6871357858181,
+            "fine_candidates": [
+              {
+                "fine_label": 14,
+                "subspace_id": 164,
+                "score": -6.266586989164352
+              },
+              {
+                "fine_label": 8,
+                "subspace_id": 146,
+                "score": -6.443645924329758
+              },
+              {
+                "fine_label": 11,
+                "subspace_id": 153,
+                "score": -7.374469608068466
+              }
+            ]
+          },
+          {
+            "branch_label": 8,
+            "branch_name": "shoulder_positive|elbow_low|wrist_positive",
+            "branch_score": -2.635265350341797,
+            "fine_candidates": [
+              {
+                "fine_label": 8,
+                "subspace_id": 148,
+                "score": -6.1624754667282104
+              },
+              {
+                "fine_label": 14,
+                "subspace_id": 166,
+                "score": -6.542173445224762
+              },
+              {
+                "fine_label": 12,
+                "subspace_id": 160,
+                "score": -12.566317319869995
+              }
+            ]
+          },
+          {
+            "branch_label": 2,
+            "branch_name": "shoulder_negative|elbow_low|wrist_positive",
+            "branch_score": -2.6968207955360413,
+            "fine_candidates": [
+              {
+                "fine_label": 2,
+                "subspace_id": 10,
+                "score": -6.246236607432365
+              },
+              {
+                "fine_label": 4,
+                "subspace_id": 16,
+                "score": -9.050385236740112
+              },
+              {
+                "fine_label": 10,
+                "subspace_id": 58,
+                "score": -11.640958845615387
+              }
+            ]
+          },
+          {
+            "branch_label": 0,
+            "branch_name": "shoulder_negative|elbow_low|wrist_negative",
+            "branch_score": -2.9384562373161316,
+            "fine_candidates": [
+              {
+                "fine_label": 1,
+                "subspace_id": 1,
+                "score": -7.29680997133255
+              },
+              {
+                "fine_label": 7,
+                "subspace_id": 19,
+                "score": -7.388627886772156
+              },
+              {
+                "fine_label": 9,
+                "subspace_id": 49,
+                "score": -10.834942758083344
+              }
+            ]
+          },
+          {
+            "branch_label": 6,
+            "branch_name": "shoulder_positive|elbow_low|wrist_negative",
+            "branch_score": -3.068225860595703,
+            "fine_candidates": [
+              {
+                "fine_label": 11,
+                "subspace_id": 151,
+                "score": -8.816268563270569
+              },
+              {
+                "fine_label": 10,
+                "subspace_id": 150,
+                "score": -9.673371031880379
+              },
+              {
+                "fine_label": 13,
+                "subspace_id": 157,
+                "score": -10.168734312057495
+              }
+            ]
+          }
+        ],
+        "per_model_branch_candidates": [
+          {
+            "variant": 1,
+            "candidates": [
+              {
+                "branch_label": 7,
+                "branch_name": "shoulder_positive|elbow_low|wrist_middle",
+                "score": -1.8071416020393372
+              },
+              {
+                "branch_label": 1,
+                "branch_name": "shoulder_negative|elbow_low|wrist_middle",
+                "score": -1.8686970472335815
+              },
+              {
+                "branch_label": 8,
+                "branch_name": "shoulder_positive|elbow_low|wrist_positive",
+                "score": -2.635265350341797
+              },
+              {
+                "branch_label": 2,
+                "branch_name": "shoulder_negative|elbow_low|wrist_positive",
+                "score": -2.6968207955360413
+              }
+            ]
+          },
+          {
+            "variant": 2,
+            "candidates": [
+              {
+                "branch_label": 1,
+                "branch_name": "shoulder_negative|elbow_low|wrist_middle",
+                "score": -1.8109449446201324
+              },
+              {
+                "branch_label": 7,
+                "branch_name": "shoulder_positive|elbow_low|wrist_middle",
+                "score": -1.940714567899704
+              },
+              {
+                "branch_label": 0,
+                "branch_name": "shoulder_negative|elbow_low|wrist_negative",
+                "score": -2.9384562373161316
+              },
+              {
+                "branch_label": 6,
+                "branch_name": "shoulder_positive|elbow_low|wrist_negative",
+                "score": -3.068225860595703
+              }
+            ]
+          },
+          {
+            "variant": 3,
+            "candidates": [
+              {
+                "branch_label": 1,
+                "branch_name": "shoulder_negative|elbow_low|wrist_middle",
+                "score": -1.5767469108104706
+              },
+              {
+                "branch_label": 7,
+                "branch_name": "shoulder_positive|elbow_low|wrist_middle",
+                "score": -1.6871357858181
+              },
+              {
+                "branch_label": 2,
+                "branch_name": "shoulder_negative|elbow_low|wrist_positive",
+                "score": -2.8199477791786194
+              },
+              {
+                "branch_label": 8,
+                "branch_name": "shoulder_positive|elbow_low|wrist_positive",
+                "score": -2.930336654186249
+              }
+            ]
+          }
+        ],
+        "candidate_subspaces_with_scores": [
+          {
+            "subspace_id": 148,
+            "score": -6.1624754667282104
+          },
+          {
+            "subspace_id": 10,
+            "score": -6.246236607432365
+          },
+          {
+            "subspace_id": 164,
+            "score": -6.266586989164352
+          },
+          {
+            "subspace_id": 146,
+            "score": -6.443645924329758
+          },
+          {
+            "subspace_id": 166,
+            "score": -6.542173445224762
+          },
+          {
+            "subspace_id": 1,
+            "score": -7.29680997133255
+          },
+          {
+            "subspace_id": 153,
+            "score": -7.374469608068466
+          },
+          {
+            "subspace_id": 19,
+            "score": -7.388627886772156
+          },
+          {
+            "subspace_id": 151,
+            "score": -8.816268563270569
+          },
+          {
+            "subspace_id": 16,
+            "score": -9.050385236740112
+          },
+          {
+            "subspace_id": 150,
+            "score": -9.673371031880379
+          },
+          {
+            "subspace_id": 157,
+            "score": -10.168734312057495
+          },
+          {
+            "subspace_id": 21,
+            "score": -10.226810544729233
+          },
+          {
+            "subspace_id": 3,
+            "score": -10.287646144628525
+          },
+          {
+            "subspace_id": 69,
+            "score": -10.399647206068039
+          },
+          {
+            "subspace_id": 49,
+            "score": -10.834942758083344
+          },
+          {
+            "subspace_id": 58,
+            "score": -11.640958845615387
+          },
+          {
+            "subspace_id": 160,
+            "score": -12.566317319869995
+          }
+        ]
+      },
+      "initial_solution": {
+        "subspace_id": 164,
+        "q0_deg": [
+          69.2541732788086,
+          99.33446502685547,
+          -198.62179565429688,
+          198.32774353027344,
+          11.147384643554688,
+          -77.87554931640625
+        ],
+        "position_l2_mm": 44.826365820498395,
+        "e_max": 668.9664306640625
+      },
+      "fallback_full_scan_triggered": false,
+      "timing_breakdown_ms": {
+        "metadata_load_ms": 1.9692000000000043,
+        "normalization_ms": 0.023500000000176158,
+        "candidate_generation_ms": 13.832999999999984,
+        "branch_classification_ms": 2.903600000000228,
+        "fine_classification_ms": 10.929399999999756,
+        "model_load_ms": 12.834200000001239,
+        "model_restore_ms": 10.82260000000046,
+        "prediction_ms": 2.315500000000803,
+        "initial_pick_scoring_ms": 2.918299999998819,
+        "nr_refine_ms": 19.50289999999999,
+        "metrics_eval_ms": 0.1617999999998787,
+        "model_load_restore_ms": 23.6568000000017,
+        "pure_inverse_compute_ms": 94.16079999999828,
+        "total_solve_time_ms": 117.81759999999997
+      },
+      "solver_family": "nn",
+      "within_joint_limits": true,
+      "q_result_deg": [
+        63.38750884869562,
+        92.57801299464103,
+        -191.72096699390892,
+        179.34658706676467,
+        11.419219739145976,
+        -55.25643970952676
+      ]
+    },
+    {
+      "method_id": "dls",
+      "label": "DLS",
+      "solve_time_ms": 32.25880000000014,
+      "converged": true,
+      "iters": 34,
+      "final_pose6": [
+        99.78573379278376,
+        199.55779130775153,
+        799.7922627280889,
+        0.09891012258936736,
+        -0.2034341049527456,
+        0.3057301505038684
+      ],
+      "final_pos_err_mm": 0.5334916205490148,
+      "final_ori_err_rad": 0.006581252541805071,
+      "start_q_deg": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "weighted_cost": 1.058614265710007,
+      "timing_breakdown_ms": {
+        "pure_inverse_compute_ms": 32.25880000000014,
+        "optimizer_solve_ms": 32.25880000000014,
+        "total_solve_time_ms": 32.25880000000014
+      },
+      "solver_family": "numeric",
+      "within_joint_limits": true,
+      "q_result_deg": [
+        -116.61187103833751,
+        -92.58139341400035,
+        25.368882682854434,
+        3.810270966753695,
+        -1.853060203790428,
+        -59.70466740228564
+      ]
+    },
+    {
+      "method_id": "lbfgsb",
+      "label": "L-BFGS-B",
+      "solve_time_ms": 118.54209999999998,
+      "converged": true,
+      "iters": 55,
+      "final_pose6": [
+        99.99999971542667,
+        199.99999990721244,
+        799.9999998006849,
+        0.10000000376063417,
+        -0.20000000438279333,
+        0.30000001098586204
+      ],
+      "final_pos_err_mm": 3.596081398033311e-07,
+      "final_ori_err_rad": 0.0,
+      "start_q_deg": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "weighted_cost": 2.245946146059355e-13,
+      "eval_count": 150,
+      "optimizer_success": true,
+      "optimizer_message": "CONVERGENCE: REL_REDUCTION_OF_F_<=_FACTR*EPSMCH",
+      "timing_breakdown_ms": {
+        "pure_inverse_compute_ms": 118.54209999999998,
+        "optimizer_solve_ms": 118.54209999999998,
+        "total_solve_time_ms": 118.54209999999998
+      },
+      "solver_family": "numeric",
+      "within_joint_limits": true,
+      "q_result_deg": [
+        -116.61248612286703,
+        -92.57801065001006,
+        25.367890265453493,
+        -176.67702765630006,
+        2.2321289024608606,
+        120.78261495411007
+      ]
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "schema": "abb_engineering_case_stats_v1",
+  "case_tag": "eng_case_20260514_210104",
+  "generated_at": "2026-05-14T21:02:27",
+  "pose6": "100,200,800,0.1,-0.2,0.3",
+  "q_start": "0,0,0,0,0,0",
+  "scene_json": "E:\\CSU\\毕业设计\\ABB_Arm_Control\\data\\obstacles\\open_space_reselect_demo.json",
+  "scene_name": "open_space_reselect_demo",
+  "prediction_metadata": "E:\\CSU\\毕业设计\\ABB_Arm_Control\\artifacts\\prediction_system_formal\\metadata.json",
+  "branch_metadata": "E:\\CSU\\毕业设计\\ABB_Arm_Control\\artifacts\\branch_classification_system\\metadata.json",
+  "fine_metadata": "E:\\CSU\\毕业设计\\ABB_Arm_Control\\artifacts\\fine_classification_system\\metadata.json"
+}
