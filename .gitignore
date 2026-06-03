@@ -15,6 +15,9 @@ env/
 
 # Notebook / editor temp
 .ipynb_checkpoints/
+.codex_tmp/
+tmp/
+docs/GLTFUtility-master.zip
 
 # OS / editor
 .DS_Store

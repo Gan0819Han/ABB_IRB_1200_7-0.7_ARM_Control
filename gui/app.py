@@ -229,10 +229,22 @@ class App(tk.Tk):
         self.obstacle_preview_offset_y = 0.0
         self._obstacle_preview_drag_last: tuple[float, float] | None = None
 
+        self.engineering_case_root_var = tk.StringVar(value=self._default_path_value("engineering_case_root", ROOT / "artifacts" / "engineering_stats"))
+        self.engineering_case_tag_var = tk.StringVar(value="")
+        self.engineering_case_dir_var = tk.StringVar(value="")
+        self.engineering_preview_status_var = tk.StringVar(value="当前 case 尚未生成统计图。")
+        self.engineering_preview_path_var = tk.StringVar(value="")
+        self.engineering_preview_photo: ImageTk.PhotoImage | None = None
+        self.engineering_preview_image_original: Image.Image | None = None
+        self.engineering_preview_canvas: tk.Canvas | None = None
+        self.engineering_summary_view: ScrollText | None = None
+        self.engineering_files_view: ScrollText | None = None
+
         self._build_ui()
         self._try_load_obstacle_editor_from_scene()
         self.refresh_obstacle_editor_preview()
         self.refresh_obstacle_figure_preview()
+        self.refresh_engineering_case_view()
 
     def _build_ui(self) -> None:
         self.columnconfigure(0, weight=1)
@@ -283,6 +295,7 @@ class App(tk.Tk):
         self._build_obstacle_compare_tab()
         self._build_unity_tab()
         self._build_comparison_tab()
+        self._build_engineering_tab()
         self._build_figure_tab()
 
         right = ttk.Frame(main_pane, padding=8)
@@ -433,6 +446,19 @@ class App(tk.Tk):
     def _make_labeled_entry(self, parent: ttk.Frame, row: int, label: str, var: tk.StringVar) -> None:
         ttk.Label(parent, text=label).grid(row=row, column=0, sticky="w", pady=2)
         ttk.Entry(parent, textvariable=var).grid(row=row, column=1, sticky="ew", pady=2)
+
+    def _make_readonly_entry(
+        self,
+        parent: ttk.Frame,
+        row: int,
+        label: str,
+        var: tk.StringVar,
+        *,
+        columnspan: int = 3,
+    ) -> None:
+        ttk.Label(parent, text=label).grid(row=row, column=0, sticky="w", pady=2)
+        entry = ttk.Entry(parent, textvariable=var, state="readonly")
+        entry.grid(row=row, column=1, columnspan=columnspan, sticky="ew", pady=2)
 
     def _create_component_vars(self, source_var: tk.StringVar, count: int) -> list[tk.StringVar]:
         part_vars = [tk.StringVar() for _ in range(count)]
@@ -1173,6 +1199,129 @@ class App(tk.Tk):
         )
         ttk.Button(benchmark_group, text="运行批量 benchmark", command=self.run_benchmark_six_methods).grid(row=4, column=0, columnspan=2, sticky="ew", pady=(8, 0))
 
+    def _build_engineering_tab(self) -> None:
+        tab = ttk.Frame(self.notebook, padding=10)
+        self.notebook.add(tab, text="工程统计")
+        tab.columnconfigure(0, weight=1)
+        tab.rowconfigure(0, weight=1)
+
+        pane = ttk.Panedwindow(tab, orient="horizontal")
+        pane.grid(row=0, column=0, sticky="nsew")
+
+        left = ttk.Frame(pane, padding=4)
+        left.columnconfigure(0, weight=1)
+        left.rowconfigure(0, weight=1)
+        scroll = ScrollableForm(left)
+        scroll.grid(row=0, column=0, sticky="nsew")
+        form = scroll.inner
+        form.columnconfigure(0, weight=1)
+
+        intro_group = ttk.LabelFrame(form, text="统计说明", padding=8)
+        intro_group.grid(row=0, column=0, sticky="ew", pady=(0, 8))
+        self._make_note(
+            intro_group,
+            0,
+            "本页用于论文中的工程效率对比，只做单解统计。会围绕当前 GUI 共享输入生成独立统计包，不与 figure/ 或其他 artifacts 结果混放。",
+            columnspan=4,
+        )
+
+        case_group = ttk.LabelFrame(form, text="统计包位置", padding=8)
+        case_group.grid(row=1, column=0, sticky="ew", pady=(0, 8))
+        case_group.columnconfigure(1, weight=1)
+        self._make_labeled_dir_entry(case_group, 0, "统计根目录", self.engineering_case_root_var, default_key="engineering_case_root")
+        self._make_labeled_entry(case_group, 1, "当前 case_tag", self.engineering_case_tag_var)
+        self._make_note(
+            case_group,
+            2,
+            "case_tag 为空时会自动生成 eng_case_YYYYMMDD_HHMMSS。普通逆解统计和避障统计会写入同一个 case 目录，便于统一汇总。",
+            columnspan=4,
+        )
+
+        source_group = ttk.LabelFrame(form, text="当前共享输入", padding=8)
+        source_group.grid(row=2, column=0, sticky="ew", pady=(0, 8))
+        source_group.columnconfigure(1, weight=1)
+        self._make_readonly_entry(source_group, 0, "目标位姿 pose6", self.pose_var)
+        self._make_readonly_entry(source_group, 1, "起始关节 q_start", self.q_start_var)
+        self._make_readonly_entry(source_group, 2, "scene_json", self.scene_var)
+        self._make_readonly_entry(source_group, 3, "prediction metadata", self.pred_meta_var)
+        self._make_readonly_entry(source_group, 4, "branch metadata", self.branch_meta_var)
+        self._make_readonly_entry(source_group, 5, "fine metadata", self.fine_meta_var)
+        self._make_note(
+            source_group,
+            6,
+            "这里不维护独立副本，直接读取前面页面当前输入。修改“推理”“避障”“方法对比”“避障对比”页里的共享参数后，本页会直接使用最新值。",
+            columnspan=4,
+        )
+
+        ik_group = ttk.LabelFrame(form, text="普通逆解单解统计", padding=8)
+        ik_group.grid(row=3, column=0, sticky="ew", pady=(0, 8))
+        for idx in range(3):
+            ik_group.columnconfigure(idx, weight=1)
+        self._make_note(
+            ik_group,
+            0,
+            "对同一 pose6 + q_start 同时统计 NN + NR、DLS、L-BFGS-B，输出 raw_result.json、中文汇总表和单案例对比图。",
+            columnspan=3,
+        )
+        ttk.Button(ik_group, text="运行普通逆解单解统计", command=self.run_engineering_ik_stats).grid(row=1, column=0, sticky="ew", pady=(8, 0), padx=(0, 6))
+        ttk.Button(ik_group, text="生成普通逆解图表", command=self.run_engineering_ik_plots).grid(row=1, column=1, sticky="ew", pady=(8, 0), padx=3)
+        ttk.Button(ik_group, text="打开统计目录", command=self.open_engineering_current_case_dir).grid(row=1, column=2, sticky="ew", pady=(8, 0), padx=(6, 0))
+
+        obstacle_group = ttk.LabelFrame(form, text="避障单解统计", padding=8)
+        obstacle_group.grid(row=4, column=0, sticky="ew")
+        for idx in range(3):
+            obstacle_group.columnconfigure(idx, weight=1)
+        self._make_note(
+            obstacle_group,
+            0,
+            "对同一 pose6 + q_start + scene_json 统计 NN + NR + waypoint 重选、DLS + waypoint 重选、L-BFGS-B + waypoint 重选，并补齐耗时拆分字段。",
+            columnspan=3,
+        )
+        ttk.Button(obstacle_group, text="运行避障单解统计", command=self.run_engineering_obstacle_stats).grid(row=1, column=0, sticky="ew", pady=(8, 0), padx=(0, 6))
+        ttk.Button(obstacle_group, text="生成避障单解图表", command=self.run_engineering_obstacle_plots).grid(row=1, column=1, sticky="ew", pady=(8, 0), padx=3)
+        ttk.Button(obstacle_group, text="打开统计根目录", command=self.open_engineering_root_dir).grid(row=1, column=2, sticky="ew", pady=(8, 0), padx=(6, 0))
+
+        right = ttk.Frame(pane, padding=4)
+        right.columnconfigure(0, weight=1)
+        right.rowconfigure(2, weight=1)
+        right.rowconfigure(3, weight=1)
+
+        meta_group = ttk.LabelFrame(right, text="当前统计结果", padding=8)
+        meta_group.grid(row=0, column=0, sticky="ew", pady=(0, 8))
+        meta_group.columnconfigure(1, weight=1)
+        self._make_readonly_entry(meta_group, 0, "当前 case_tag", self.engineering_case_tag_var, columnspan=2)
+        self._make_readonly_entry(meta_group, 1, "当前 case 目录", self.engineering_case_dir_var, columnspan=2)
+        self._make_note(meta_group, 2, "新图表会自动显示最近生成的一张 PNG。若只运行统计未生成图表，右侧会保留文件清单和中文汇总表。", columnspan=3)
+
+        preview_group = ttk.LabelFrame(right, text="最近图表预览", padding=8)
+        preview_group.grid(row=1, column=0, sticky="nsew", pady=(0, 8))
+        preview_group.columnconfigure(0, weight=1)
+        preview_group.rowconfigure(1, weight=1)
+        ttk.Label(preview_group, textvariable=self.engineering_preview_status_var).grid(row=0, column=0, sticky="w")
+        self.engineering_preview_canvas = tk.Canvas(preview_group, bg=CANVAS_BG, highlightthickness=0, bd=0, height=240)
+        self.engineering_preview_canvas.grid(row=1, column=0, sticky="nsew", pady=(8, 0))
+        self.engineering_preview_canvas.bind("<Configure>", self._on_engineering_preview_canvas_configure)
+        ttk.Label(preview_group, textvariable=self.engineering_preview_path_var).grid(row=2, column=0, sticky="w", pady=(8, 0))
+
+        summary_group = ttk.LabelFrame(right, text="中文汇总表", padding=8)
+        summary_group.grid(row=2, column=0, sticky="nsew", pady=(0, 8))
+        summary_group.columnconfigure(0, weight=1)
+        summary_group.rowconfigure(0, weight=1)
+        self.engineering_summary_view = ScrollText(summary_group, height=12, font=("Consolas", 10))
+        self.engineering_summary_view.grid(row=0, column=0, sticky="nsew")
+        self._style_text_widget(self.engineering_summary_view.text)
+
+        files_group = ttk.LabelFrame(right, text="文件清单", padding=8)
+        files_group.grid(row=3, column=0, sticky="nsew")
+        files_group.columnconfigure(0, weight=1)
+        files_group.rowconfigure(0, weight=1)
+        self.engineering_files_view = ScrollText(files_group, height=10, font=("Consolas", 9))
+        self.engineering_files_view.grid(row=0, column=0, sticky="nsew")
+        self._style_text_widget(self.engineering_files_view.text)
+
+        pane.add(left, weight=5)
+        pane.add(right, weight=4)
+
     def _get_obstacle_preview_candidates(self) -> list[Path]:
         figures_dir = Path(self.figure_output_dir_var.get())
         return [
@@ -1903,6 +2052,70 @@ class App(tk.Tk):
             f"{source}"
         )
 
+    def _prepare_engineering_case(self, *, require_existing: bool) -> Path:
+        case_root = self.engineering_case_root_var.get().strip() or str(ROOT / "artifacts" / "engineering_stats")
+        case_tag = self.engineering_case_tag_var.get().strip()
+        if require_existing:
+            if not case_tag:
+                raise ValueError("当前还没有 case_tag，请先运行一次单解统计。")
+            case_dir = Path(case_root) / case_tag
+            if not case_dir.exists():
+                raise FileNotFoundError(f"未找到当前 case 目录：{case_dir}")
+        else:
+            case_tag, case_dir = services.resolve_engineering_case_dir(case_root, case_tag)
+            self.engineering_case_tag_var.set(case_tag)
+        self.engineering_case_root_var.set(case_root)
+        self.engineering_case_dir_var.set(str(case_dir))
+        return case_dir
+
+    def _engineering_ik_form_data(self) -> dict[str, str]:
+        return {
+            "engineering_case_root": self.engineering_case_root_var.get().strip(),
+            "engineering_case_tag": self.engineering_case_tag_var.get().strip(),
+            "pose6": self.pose_var.get().strip(),
+            "q_start": self.q_start_var.get().strip(),
+            "scene_json": self.scene_var.get().strip(),
+            "pred_meta": self.pred_meta_var.get().strip(),
+            "branch_meta": self.branch_meta_var.get().strip(),
+            "fine_meta": self.fine_meta_var.get().strip(),
+            "topk_shoulder": self.predict_topk_shoulder_var.get().strip(),
+            "topk_elbow": self.predict_topk_elbow_var.get().strip(),
+            "topk_wrist": self.predict_topk_wrist_var.get().strip(),
+            "max_branch_candidates": self.predict_max_branch_candidates_var.get().strip(),
+            "fine_topk_per_branch": self.predict_fine_topk_per_branch_var.get().strip(),
+            "max_subspace_candidates": self.predict_max_subspace_candidates_var.get().strip(),
+            "nr_max_iters": self.predict_nr_max_iters_var.get().strip(),
+            "nr_tol_pos_mm": self.predict_nr_tol_pos_mm_var.get().strip(),
+            "nr_tol_ori_rad": self.predict_nr_tol_ori_rad_var.get().strip(),
+            "nr_damping": self.predict_nr_damping_var.get().strip(),
+            "nr_step_scale": self.predict_nr_step_scale_var.get().strip(),
+            "trajectory_steps": self.comparison_steps_var.get().strip(),
+        }
+
+    def _engineering_obstacle_form_data(self) -> dict[str, str]:
+        return {
+            "engineering_case_root": self.engineering_case_root_var.get().strip(),
+            "engineering_case_tag": self.engineering_case_tag_var.get().strip(),
+            "pose6": self.pose_var.get().strip(),
+            "q_start": self.q_start_var.get().strip(),
+            "scene_json": self.scene_var.get().strip(),
+            "pred_meta": self.pred_meta_var.get().strip(),
+            "branch_meta": self.branch_meta_var.get().strip(),
+            "fine_meta": self.fine_meta_var.get().strip(),
+            "topk_shoulder": self.obstacle_topk_shoulder_var.get().strip(),
+            "topk_elbow": self.obstacle_topk_elbow_var.get().strip(),
+            "topk_wrist": self.obstacle_topk_wrist_var.get().strip(),
+            "max_branch_candidates": self.obstacle_max_branch_candidates_var.get().strip(),
+            "fine_topk_per_branch": self.obstacle_fine_topk_per_branch_var.get().strip(),
+            "max_subspace_candidates": self.obstacle_max_subspace_candidates_var.get().strip(),
+            "nr_max_iters": self.obstacle_nr_max_iters_var.get().strip(),
+            "nr_tol_pos_mm": self.obstacle_nr_tol_pos_mm_var.get().strip(),
+            "nr_tol_ori_rad": self.obstacle_nr_tol_ori_rad_var.get().strip(),
+            "nr_damping": self.obstacle_nr_damping_var.get().strip(),
+            "nr_step_scale": self.obstacle_nr_step_scale_var.get().strip(),
+            "trajectory_steps": self.obstacle_trajectory_steps_var.get().strip(),
+        }
+
     def _comparison_form_data(self) -> dict[str, str]:
         return {
             "pose6": self.pose_var.get().strip(),
@@ -1961,6 +2174,76 @@ class App(tk.Tk):
             "benchmark_tag": self.benchmark_tag_var.get().strip(),
             "figure_data_dir": self.figure_data_dir_var.get().strip(),
         }
+
+    def _render_engineering_preview_image(self) -> None:
+        if self.engineering_preview_canvas is None:
+            return
+        canvas = self.engineering_preview_canvas
+        canvas.delete("all")
+        if self.engineering_preview_image_original is None:
+            self.engineering_preview_photo = None
+            canvas.create_text(
+                max(1, canvas.winfo_width()) / 2,
+                max(1, canvas.winfo_height()) / 2,
+                text="暂无图表预览",
+                fill="#64748B",
+                font=("Microsoft YaHei UI", 12),
+            )
+            return
+
+        canvas_width = max(1, canvas.winfo_width())
+        canvas_height = max(1, canvas.winfo_height())
+        preview = self.engineering_preview_image_original.copy()
+        width, height = preview.size
+        ratio = min((canvas_width * 0.96) / max(1, width), (canvas_height * 0.96) / max(1, height))
+        preview = preview.resize((max(1, int(width * ratio)), max(1, int(height * ratio))), Image.LANCZOS)
+        self.engineering_preview_photo = ImageTk.PhotoImage(preview)
+        canvas.create_image(canvas_width / 2, canvas_height / 2, image=self.engineering_preview_photo, anchor="center")
+
+    def _update_engineering_preview_widget(self, image_path: Path | None) -> None:
+        if image_path is None or not image_path.exists():
+            self.engineering_preview_image_original = None
+            self.engineering_preview_photo = None
+            self.engineering_preview_status_var.set("当前 case 尚未生成统计图。")
+            self.engineering_preview_path_var.set("")
+            self._render_engineering_preview_image()
+            return
+        self.engineering_preview_image_original = Image.open(image_path)
+        self.engineering_preview_status_var.set("已加载最近生成的统计图。")
+        self.engineering_preview_path_var.set(str(image_path))
+        self._render_engineering_preview_image()
+
+    def _on_engineering_preview_canvas_configure(self, _event: tk.Event) -> None:
+        self._render_engineering_preview_image()
+
+    def refresh_engineering_case_view(self, case_dir: Path | None = None) -> None:
+        if case_dir is None:
+            current = self.engineering_case_dir_var.get().strip()
+            case_dir = Path(current) if current else None
+        if case_dir is None or not case_dir.exists():
+            if self.engineering_summary_view is not None:
+                self.engineering_summary_view.set_text("当前 case 还没有统计结果。")
+            if self.engineering_files_view is not None:
+                self.engineering_files_view.set_text("暂无文件。")
+            self._update_engineering_preview_widget(None)
+            return
+
+        self.engineering_case_dir_var.set(str(case_dir))
+        sections: list[str] = []
+        for module_name, title in [("ik_single", "普通逆解单解统计"), ("obstacle_single", "避障单解统计")]:
+            summary_path = case_dir / module_name / "summary_zh.md"
+            if summary_path.exists():
+                sections.append(f"【{title}】\n{summary_path.read_text(encoding='utf-8').strip()}")
+        if self.engineering_summary_view is not None:
+            self.engineering_summary_view.set_text("\n\n".join(sections) if sections else "当前 case 还没有统计结果。")
+
+        file_lines = []
+        for path in services.list_engineering_case_files(case_dir):
+            file_lines.append(str(path.relative_to(case_dir)))
+        if self.engineering_files_view is not None:
+            self.engineering_files_view.set_text("\n".join(file_lines) if file_lines else "暂无文件。")
+
+        self._update_engineering_preview_widget(services.find_engineering_preview_image(case_dir))
 
     def _build_predict_summary(self, json_path: Path) -> str:
         if not json_path.exists():
@@ -2337,6 +2620,87 @@ class App(tk.Tk):
             summary_path,
             env=self._build_figure_env(),
         )
+
+    def run_engineering_ik_stats(self) -> None:
+        try:
+            case_dir = self._prepare_engineering_case(require_existing=False)
+        except Exception as exc:
+            self.set_summary(f"任务：工程统计\n\n无法创建 case 目录：{exc}")
+            self.append_log(f"[engineering stats] 无法创建 case 目录：{exc}")
+            return
+        form = self._engineering_ik_form_data()
+        cmd, summary_path = services.build_engineering_stats_command(form, module="ik_single", action="run")
+        self.run_command(
+            "engineering_ik_single_run",
+            cmd,
+            services.build_engineering_stats_summary,
+            summary_path,
+            on_success=lambda: self.refresh_engineering_case_view(case_dir),
+        )
+
+    def run_engineering_ik_plots(self) -> None:
+        try:
+            case_dir = self._prepare_engineering_case(require_existing=True)
+        except Exception as exc:
+            self.set_summary(f"任务：工程统计\n\n无法生成普通逆解图表：{exc}")
+            self.append_log(f"[engineering stats] 无法生成普通逆解图表：{exc}")
+            return
+        form = self._engineering_ik_form_data()
+        cmd, summary_path = services.build_engineering_stats_command(form, module="ik_single", action="plot")
+        self.run_command(
+            "engineering_ik_single_plot",
+            cmd,
+            services.build_engineering_stats_summary,
+            summary_path,
+            on_success=lambda: self.refresh_engineering_case_view(case_dir),
+        )
+
+    def run_engineering_obstacle_stats(self) -> None:
+        try:
+            case_dir = self._prepare_engineering_case(require_existing=False)
+            save_msg = self._save_obstacle_editor_to_scene()
+            self.append_log(save_msg)
+        except Exception as exc:
+            self.set_summary(f"任务：工程统计\n\n无法运行避障单解统计：{exc}")
+            self.append_log(f"[engineering stats] 无法运行避障单解统计：{exc}")
+            return
+        form = self._engineering_obstacle_form_data()
+        cmd, summary_path = services.build_engineering_stats_command(form, module="obstacle_single", action="run")
+        self.run_command(
+            "engineering_obstacle_single_run",
+            cmd,
+            services.build_engineering_stats_summary,
+            summary_path,
+            on_success=lambda: self.refresh_engineering_case_view(case_dir),
+        )
+
+    def run_engineering_obstacle_plots(self) -> None:
+        try:
+            case_dir = self._prepare_engineering_case(require_existing=True)
+        except Exception as exc:
+            self.set_summary(f"任务：工程统计\n\n无法生成避障图表：{exc}")
+            self.append_log(f"[engineering stats] 无法生成避障图表：{exc}")
+            return
+        form = self._engineering_obstacle_form_data()
+        cmd, summary_path = services.build_engineering_stats_command(form, module="obstacle_single", action="plot")
+        self.run_command(
+            "engineering_obstacle_single_plot",
+            cmd,
+            services.build_engineering_stats_summary,
+            summary_path,
+            on_success=lambda: self.refresh_engineering_case_view(case_dir),
+        )
+
+    def open_engineering_current_case_dir(self) -> None:
+        current = self.engineering_case_dir_var.get().strip()
+        target = Path(current) if current else Path(self.engineering_case_root_var.get().strip() or ROOT / "artifacts" / "engineering_stats")
+        target.mkdir(parents=True, exist_ok=True)
+        subprocess.Popen(["explorer", str(target)])
+
+    def open_engineering_root_dir(self) -> None:
+        target = Path(self.engineering_case_root_var.get().strip() or ROOT / "artifacts" / "engineering_stats")
+        target.mkdir(parents=True, exist_ok=True)
+        subprocess.Popen(["explorer", str(target)])
 
     def open_result_dir(self) -> None:
         subprocess.Popen(["explorer", str(ROOT / "artifacts")])

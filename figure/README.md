@@ -7,6 +7,7 @@
 - `figures/subspace_profile_comparison.png`
 - `figures/prediction_subspace_error_distribution.png`
 - `figures/prediction_subspace_error_rank.png`
+- `figures/prediction_subspace_mse_by_net.png`
 - `figures/classification_hierarchical_comparison.png`
 - `figures/single_case_ik_metrics.png`
 - `figures/obstacle_candidates_free_only.png`

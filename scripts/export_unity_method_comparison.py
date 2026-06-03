@@ -105,7 +105,7 @@ def choose_prediction_initial_solution(
     pred_meta: dict,
     candidate_labels: Sequence[int],
     force_all_subspaces: bool,
-) -> tuple[dict, list[int], str, bool]:
+) -> tuple[dict, list[int], str, bool, dict]:
     model_index: Dict[int, Dict[str, object]] = {
         int(item["subspace_id"]): item for item in pred_meta["trained_subspaces"]
     }
@@ -124,11 +124,23 @@ def choose_prediction_initial_solution(
             candidate_labels = available_candidates
 
     best = None
+    model_load_ms = 0.0
+    model_restore_ms = 0.0
+    prediction_ms = 0.0
+    scoring_ms = 0.0
     for sid in candidate_labels:
+        t_model_load = time.perf_counter()
         ckpt = safe_torch_load(pred_meta_path.parent / "subspace_models" / model_index[int(sid)]["model_file"])
+        model_load_ms += float((time.perf_counter() - t_model_load) * 1000.0)
+        t_model_restore = time.perf_counter()
         m15, m6 = load_prediction_pair(ckpt)
+        model_restore_ms += float((time.perf_counter() - t_model_restore) * 1000.0)
+        t_predict = time.perf_counter()
         q0 = predict_q_deg(m15, m6, x_pred)
+        prediction_ms += float((time.perf_counter() - t_predict) * 1000.0)
+        t_score = time.perf_counter()
         l2 = position_l2_norm(q0, target_pose)
+        scoring_ms += float((time.perf_counter() - t_score) * 1000.0)
         item = {
             "subspace_id": int(sid),
             "q0_deg": q0.tolist(),
@@ -146,10 +158,18 @@ def choose_prediction_initial_solution(
         fallback_triggered = True
         fallback_best = None
         for sid in trained_all:
+            t_model_load = time.perf_counter()
             ckpt = safe_torch_load(pred_meta_path.parent / "subspace_models" / model_index[int(sid)]["model_file"])
+            model_load_ms += float((time.perf_counter() - t_model_load) * 1000.0)
+            t_model_restore = time.perf_counter()
             m15, m6 = load_prediction_pair(ckpt)
+            model_restore_ms += float((time.perf_counter() - t_model_restore) * 1000.0)
+            t_predict = time.perf_counter()
             q0 = predict_q_deg(m15, m6, x_pred)
+            prediction_ms += float((time.perf_counter() - t_predict) * 1000.0)
+            t_score = time.perf_counter()
             l2 = position_l2_norm(q0, target_pose)
+            scoring_ms += float((time.perf_counter() - t_score) * 1000.0)
             item = {
                 "subspace_id": int(sid),
                 "q0_deg": q0.tolist(),
@@ -161,7 +181,13 @@ def choose_prediction_initial_solution(
         if fallback_best is not None:
             best = fallback_best
 
-    return best, list(candidate_labels), candidate_source, fallback_triggered
+    timing = {
+        "model_load_ms": model_load_ms,
+        "model_restore_ms": model_restore_ms,
+        "prediction_ms": prediction_ms,
+        "scoring_ms": scoring_ms,
+    }
+    return best, list(candidate_labels), candidate_source, fallback_triggered, timing
 
 
 def solve_nn_nr(
@@ -178,9 +204,11 @@ def solve_nn_nr(
     nr_options: NROptions,
 ) -> dict:
     t0 = time.perf_counter()
+    t_meta = time.perf_counter()
     pred_meta = load_json(pred_meta_path)
     branch_meta = load_json(branch_meta_path)
     fine_meta = load_json(fine_meta_path)
+    metadata_load_ms = float((time.perf_counter() - t_meta) * 1000.0)
 
     pred_profile = pred_meta.get("segment_profile", "abb_strict")
     branch_profile = branch_meta.get("segment_profile", "abb_strict")
@@ -191,11 +219,13 @@ def solve_nn_nr(
             f"prediction={pred_profile}, branch={branch_profile}, fine={fine_profile}"
         )
 
+    t_norm = time.perf_counter()
     pred_mean = np.array(pred_meta["normalizer"]["mean"], dtype=np.float32).reshape(1, -1)
     pred_std = np.array(pred_meta["normalizer"]["std"], dtype=np.float32).reshape(1, -1)
     x_pred = apply_normalizer(target_pose.reshape(1, -1).astype(np.float32), pred_mean, pred_std)
+    normalization_ms = float((time.perf_counter() - t_norm) * 1000.0)
 
-    candidate_labels, candidate_generation_info, _ = generate_hierarchical_candidates(
+    candidate_labels, candidate_generation_info, timing_generation = generate_hierarchical_candidates(
         target_pose,
         branch_meta_path,
         branch_meta,
@@ -209,7 +239,7 @@ def solve_nn_nr(
         max_subspace_candidates,
     )
 
-    initial, candidate_labels, candidate_source, fallback_triggered = choose_prediction_initial_solution(
+    initial, candidate_labels, candidate_source, fallback_triggered, initial_pick_timing = choose_prediction_initial_solution(
         target_pose=target_pose,
         x_pred=x_pred,
         pred_meta_path=pred_meta_path,
@@ -218,18 +248,40 @@ def solve_nn_nr(
         force_all_subspaces=False,
     )
 
+    t_nr = time.perf_counter()
     nr = newton_raphson_refine(
         q0_deg=initial["q0_deg"],
         target_pose6=target_pose,
         options=nr_options,
     )
+    nr_refine_ms = float((time.perf_counter() - t_nr) * 1000.0)
     q_goal_deg = np.asarray(nr["q_deg"], dtype=float)
+    t_metrics = time.perf_counter()
     metrics = evaluate_solution_metrics(q_goal_deg, target_pose)
+    metrics_eval_ms = float((time.perf_counter() - t_metrics) * 1000.0)
+    total_ms = float((time.perf_counter() - t0) * 1000.0)
+    model_load_restore_ms = float(initial_pick_timing["model_load_ms"]) + float(initial_pick_timing["model_restore_ms"])
+    pure_inverse_compute_ms = total_ms - model_load_restore_ms
+    if pure_inverse_compute_ms < 0.0:
+        pure_inverse_compute_ms = 0.0
+    measured_total_ms = (
+        metadata_load_ms
+        + normalization_ms
+        + float(timing_generation.get("candidate_generation_ms", 0.0))
+        + float(initial_pick_timing["prediction_ms"])
+        + float(initial_pick_timing["scoring_ms"])
+        + nr_refine_ms
+        + metrics_eval_ms
+        + model_load_restore_ms
+    )
+    uninstrumented_overhead_ms = total_ms - measured_total_ms
+    if uninstrumented_overhead_ms < 0.0:
+        uninstrumented_overhead_ms = 0.0
 
     return {
         "method_id": "nn_nr",
         "label": "NN + NR",
-        "solve_time_ms": float((time.perf_counter() - t0) * 1000.0),
+        "solve_time_ms": total_ms,
         "q_goal_deg": q_goal_deg.tolist(),
         "converged": bool(nr["converged"]),
         "iters": int(nr["iters"]),
@@ -241,6 +293,23 @@ def solve_nn_nr(
         "candidate_generation": candidate_generation_info,
         "initial_solution": initial,
         "fallback_full_scan_triggered": bool(fallback_triggered),
+        "timing_breakdown_ms": {
+            "metadata_load_ms": metadata_load_ms,
+            "normalization_ms": normalization_ms,
+            "candidate_generation_ms": float(timing_generation.get("candidate_generation_ms", 0.0)),
+            "branch_classification_ms": float(timing_generation.get("branch_classification_ms", 0.0)),
+            "fine_classification_ms": float(timing_generation.get("fine_classification_ms", 0.0)),
+            "model_load_ms": float(initial_pick_timing["model_load_ms"]),
+            "model_restore_ms": float(initial_pick_timing["model_restore_ms"]),
+            "prediction_ms": float(initial_pick_timing["prediction_ms"]),
+            "initial_pick_scoring_ms": float(initial_pick_timing["scoring_ms"]),
+            "nr_refine_ms": nr_refine_ms,
+            "metrics_eval_ms": metrics_eval_ms,
+            "model_load_restore_ms": model_load_restore_ms,
+            "pure_inverse_compute_ms": pure_inverse_compute_ms,
+            "uninstrumented_overhead_ms": uninstrumented_overhead_ms,
+            "total_solve_time_ms": total_ms,
+        },
     }
 
 
@@ -251,11 +320,12 @@ def solve_dls(target_pose: np.ndarray, q_start_deg: np.ndarray, options: DLSOpti
         target_pose6=target_pose,
         options=options,
     )
+    total_ms = float((time.perf_counter() - t0) * 1000.0)
     q_goal_deg = np.asarray(out["q_deg"], dtype=float)
     return {
         "method_id": "dls",
         "label": "DLS",
-        "solve_time_ms": float((time.perf_counter() - t0) * 1000.0),
+        "solve_time_ms": total_ms,
         "q_goal_deg": q_goal_deg.tolist(),
         "converged": bool(out["converged"]),
         "iters": int(out["iters"]),
@@ -264,6 +334,12 @@ def solve_dls(target_pose: np.ndarray, q_start_deg: np.ndarray, options: DLSOpti
         "final_ori_err_rad": float(out["final_ori_err_rad"]),
         "start_q_deg": [float(x) for x in q_start_deg.tolist()],
         "weighted_cost": float(out.get("weighted_cost", float("nan"))),
+        "timing_breakdown_ms": {
+            "pure_inverse_compute_ms": total_ms,
+            "optimizer_solve_ms": total_ms,
+            "uninstrumented_overhead_ms": 0.0,
+            "total_solve_time_ms": total_ms,
+        },
     }
 
 
@@ -274,11 +350,12 @@ def solve_lbfgsb(target_pose: np.ndarray, q_start_deg: np.ndarray, options: LBFG
         target_pose6=target_pose,
         options=options,
     )
+    total_ms = float((time.perf_counter() - t0) * 1000.0)
     q_goal_deg = np.asarray(out["q_deg"], dtype=float)
     return {
         "method_id": "lbfgsb",
         "label": "L-BFGS-B",
-        "solve_time_ms": float((time.perf_counter() - t0) * 1000.0),
+        "solve_time_ms": total_ms,
         "q_goal_deg": q_goal_deg.tolist(),
         "converged": bool(out["converged"]),
         "iters": int(out["iters"]),
@@ -290,6 +367,12 @@ def solve_lbfgsb(target_pose: np.ndarray, q_start_deg: np.ndarray, options: LBFG
         "eval_count": int(out.get("eval_count", 0)),
         "optimizer_success": bool(out.get("optimizer_success", False)),
         "optimizer_message": str(out.get("optimizer_message", "")),
+        "timing_breakdown_ms": {
+            "pure_inverse_compute_ms": total_ms,
+            "optimizer_solve_ms": total_ms,
+            "uninstrumented_overhead_ms": 0.0,
+            "total_solve_time_ms": total_ms,
+        },
     }
 
 

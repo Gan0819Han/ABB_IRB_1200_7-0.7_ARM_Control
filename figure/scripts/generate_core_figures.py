@@ -225,6 +225,47 @@ def plot_prediction_error_rank(df: pd.DataFrame) -> None:
     save_figure(fig, "prediction_subspace_error_rank")
 
 
+def plot_prediction_subspace_mse(df: pd.DataFrame) -> None:
+    ordered = df.sort_values("subspace_id").reset_index(drop=True).copy()
+    ordered["net_index"] = ordered["subspace_id"] + 1
+
+    fig, axes = plt.subplots(1, 2, figsize=(10.0, 4.0), constrained_layout=True)
+    colors = {
+        "q15": "#2A5CAA",
+        "q6": "#C95F46",
+    }
+
+    axes[0].plot(
+        ordered["net_index"],
+        ordered["val_loss_q15_deg2"],
+        color=colors["q15"],
+        linewidth=1.2,
+        label="Validation set",
+    )
+    axes[0].set_title("Net for the first five joints")
+    axes[0].set_xlabel("Net index")
+    axes[0].set_ylabel("MSE (deg$^2$)")
+    axes[0].legend(frameon=True)
+
+    axes[1].plot(
+        ordered["net_index"],
+        ordered["val_loss_q6_deg2"],
+        color=colors["q6"],
+        linewidth=1.2,
+        label="Validation set",
+    )
+    axes[1].set_title("Net for the last joint")
+    axes[1].set_xlabel("Net index")
+    axes[1].set_ylabel("MSE (deg$^2$)")
+    axes[1].legend(frameon=True)
+
+    for ax in axes:
+        ax.set_xlim(1, len(ordered))
+        ax.grid(True, axis="y", alpha=0.25)
+
+    save_figure(fig, "prediction_subspace_mse_by_net")
+
+
 def export_classification_metrics(flat_path: Path, branch_path: Path, fine_path: Path) -> pd.DataFrame:
     flat = load_json(flat_path)
     branch = load_json(branch_path)
@@ -421,6 +462,7 @@ def main() -> None:
     pred_df = export_subspace_prediction_metrics(Path(args.prediction_meta))
     plot_prediction_error_distribution(pred_df)
     plot_prediction_error_rank(pred_df)
+    plot_prediction_subspace_mse(pred_df)
 
     cls_df = export_classification_metrics(
         Path(args.flat_cls_meta),
@@ -438,6 +480,7 @@ def main() -> None:
             "figures/subspace_profile_comparison.png",
             "figures/prediction_subspace_error_distribution.png",
             "figures/prediction_subspace_error_rank.png",
+            "figures/prediction_subspace_mse_by_net.png",
             "figures/classification_hierarchical_comparison.png",
             "figures/single_case_ik_metrics.png",
         ]

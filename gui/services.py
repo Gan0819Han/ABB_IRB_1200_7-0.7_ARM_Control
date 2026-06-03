@@ -7,6 +7,7 @@ import json
 import os
 import subprocess
 import sys
+from datetime import datetime
 from io import BytesIO
 from html import escape
 from dataclasses import dataclass
@@ -984,6 +985,84 @@ def build_benchmark_six_methods_command(form: dict[str, str]) -> tuple[list[str]
         "--tag", form["benchmark_tag"],
     ]
     return cmd, summary_path
+
+
+def generate_engineering_case_tag() -> str:
+    return "eng_case_" + datetime.now().strftime("%Y%m%d_%H%M%S")
+
+
+def resolve_engineering_case_dir(case_root: str, case_tag: str) -> tuple[str, Path]:
+    final_tag = case_tag.strip() or generate_engineering_case_tag()
+    case_dir = Path(case_root).expanduser() / final_tag
+    case_dir.mkdir(parents=True, exist_ok=True)
+    return final_tag, case_dir
+
+
+def build_engineering_stats_command(form: dict[str, str], *, module: str, action: str) -> tuple[list[str], Path]:
+    case_dir = Path(form["engineering_case_root"]) / form["engineering_case_tag"]
+    ensure_parent(str(case_dir))
+    cmd = [
+        PYTHON, "-X", "utf8", "scripts\\export_engineering_case_stats.py",
+        "--module", module,
+        "--action", action,
+        "--case_root", form["engineering_case_root"],
+        "--case_tag", form["engineering_case_tag"],
+        "--pose", form["pose6"],
+        "--q_start", form["q_start"],
+        "--scene_json", form.get("scene_json", ""),
+        "--pred_meta", form["pred_meta"],
+        "--branch_meta", form["branch_meta"],
+        "--fine_meta", form["fine_meta"],
+        "--topk_shoulder", form["topk_shoulder"],
+        "--topk_elbow", form["topk_elbow"],
+        "--topk_wrist", form["topk_wrist"],
+        "--max_branch_candidates", form["max_branch_candidates"],
+        "--fine_topk_per_branch", form["fine_topk_per_branch"],
+        "--max_subspace_candidates", form["max_subspace_candidates"],
+        "--nr_max_iters", form["nr_max_iters"],
+        "--nr_tol_pos_mm", form["nr_tol_pos_mm"],
+        "--nr_tol_ori_rad", form["nr_tol_ori_rad"],
+        "--nr_damping", form["nr_damping"],
+        "--nr_step_scale", form["nr_step_scale"],
+        "--trajectory_steps", form.get("trajectory_steps", "120"),
+    ]
+    if action == "run":
+        return cmd, case_dir / module / "raw_result.json"
+    return cmd, case_dir / module
+
+
+def build_engineering_stats_summary(summary_root: Path) -> str:
+    raw_path = Path(summary_root)
+    module_dir = raw_path.parent if raw_path.name == "raw_result.json" else raw_path
+    case_dir = module_dir.parent
+    summary_md = module_dir / "summary_zh.md"
+    preview_paths = list(module_dir.glob("*.png"))
+    lines = ["任务：工程统计", ""]
+    lines.append(f"case_tag：{case_dir.name}")
+    lines.append(f"输出目录：{module_dir}")
+    if summary_md.exists():
+        lines.append("")
+        lines.append(summary_md.read_text(encoding="utf-8").strip())
+    else:
+        lines.append("")
+        lines.append("中文汇总表：尚未生成。")
+    if preview_paths:
+        lines.append("")
+        lines.append("图表文件：")
+        for path in sorted(preview_paths):
+            lines.append(f"- {path.name}")
+    return "\n".join(lines)
+
+
+def find_engineering_preview_image(case_dir: Path) -> Path | None:
+    candidates = sorted(case_dir.rglob("*.png"), key=lambda path: path.stat().st_mtime, reverse=True)
+    return candidates[0] if candidates else None
+
+
+def list_engineering_case_files(case_dir: Path) -> list[Path]:
+    if not case_dir.exists():
+        return []
+    return sorted([path for path in case_dir.rglob("*") if path.is_file()])
 
 
 def build_method_comparison_summary(json_path: Path) -> str:
